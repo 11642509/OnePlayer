@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'vlc_short_video/vlc_demo_short_video_player.dart';
+import 'short_video/vlc_video/vlc_short_video_player.dart';
 import 'short_video/pages/short_video.dart';
 
 void main() {

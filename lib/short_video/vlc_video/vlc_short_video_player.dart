@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import 'dart:math';
-import 'mock/vlc_video.dart';
-import '../short_video/views/video_page.dart';
-import '../short_video/views/video_side_bar.dart';
-import '../short_video/views/video_comment.dart';
-import '../short_video/mock/video.dart';
+import '../../vlc_short_video/mock/vlc_video.dart';
+import '../views/video_page.dart';
+import '../views/video_side_bar.dart';
+import '../views/video_comment.dart';
+import '../mock/video.dart';
 import 'dart:async';
 
 class VlcDemoShortVideoPlayer extends StatefulWidget {
