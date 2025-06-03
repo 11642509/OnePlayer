@@ -69,16 +69,16 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
     for (var entry in _controllers.entries) {
       try {
         final controller = entry.value;
-        if (controller != null) {
-          // 先停止播放
-          await controller.pause();
-          // 停止渲染器扫描
-          await controller.stopRendererScanning();
-          // 释放资源
-          await controller.dispose();
+        // 先停止播放
+        await controller.pause();
+        // 停止渲染器扫描
+        await controller.stopRendererScanning();
+        // 释放资源
+        await controller.dispose();
+            } catch (e) {
+        if (kDebugMode) {
+          print('Error disposing controller ${entry.key}: $e');
         }
-      } catch (e) {
-        print('Error disposing controller ${entry.key}: $e');
       }
     }
     _controllers.clear();
@@ -100,7 +100,9 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
         await controller.dispose();
       }
     } catch (e) {
-      print('Error disposing controller $index: $e');
+      if (kDebugMode) {
+        print('Error disposing controller $index: $e');
+      }
     } finally {
       _controllers.remove(index);
       _isVideoReady.remove(index);
@@ -179,7 +181,9 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                 });
               }
             } catch (e) {
-              print('Error pausing old video: $e');
+              if (kDebugMode) {
+                print('Error pausing old video: $e');
+              }
             }
           });
         }
@@ -190,7 +194,9 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
         try {
           await _initController(target);
         } catch (e) {
-          print('Error initializing controller: $e');
+          if (kDebugMode) {
+            print('Error initializing controller: $e');
+          }
         }
       }
       
@@ -217,7 +223,9 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
               }
             }
           } catch (e) {
-            print('Error playing video: $e');
+            if (kDebugMode) {
+              print('Error playing video: $e');
+            }
           }
         });
       }
@@ -232,7 +240,9 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                 try {
                   await _disposeController(i);
                 } catch (e) {
-                  print('Error disposing controller $i: $e');
+                  if (kDebugMode) {
+                    print('Error disposing controller $i: $e');
+                  }
                 }
               }
             }
@@ -241,7 +251,9 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
               try {
                 await _initController(i);
               } catch (e) {
-                print('Error preloading video $i: $e');
+                if (kDebugMode) {
+                  print('Error preloading video $i: $e');
+                }
               }
             }
           }
@@ -251,11 +263,15 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
             try {
               await _loadMoreVideos();
             } catch (e) {
-              print('Error loading more videos: $e');
+              if (kDebugMode) {
+                print('Error loading more videos: $e');
+              }
             }
           }
         } catch (e) {
-          print('Error in async task: $e');
+          if (kDebugMode) {
+            print('Error in async task: $e');
+          }
         }
       });
 
@@ -263,7 +279,9 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
         _currentIndex = target;
       }
     } catch (e) {
-      print('Error loading index $target: $e');
+      if (kDebugMode) {
+        print('Error loading index $target: $e');
+      }
     } finally {
       if (_lastLoadIndex == target) {
         _isLoading = false;
@@ -278,7 +296,9 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
       try {
         await _disposeController(index);
       } catch (e) {
-        print('Error disposing existing controller $index: $e');
+        if (kDebugMode) {
+          print('Error disposing existing controller $index: $e');
+        }
       }
     }
 
@@ -310,11 +330,15 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                 _waitForPlaying(controller, index);
               }
             } catch (e) {
-              print('Error playing video in init: $e');
+              if (kDebugMode) {
+                print('Error playing video in init: $e');
+              }
             }
           });
         } catch (e) {
-          print('Error in init listener: $e');
+          if (kDebugMode) {
+            print('Error in init listener: $e');
+          }
           if (mounted) {
             setState(() {
               _isPrepared[index] = false;
@@ -335,7 +359,9 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
         });
       }
     } catch (e) {
-      print('Error initializing controller $index: $e');
+      if (kDebugMode) {
+        print('Error initializing controller $index: $e');
+      }
       if (mounted) {
         setState(() {
           _isPrepared[index] = false;
@@ -498,6 +524,8 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                       await _disposeAllControllers();
                       // 返回上一页
                       if (mounted) {
+                        if (!mounted) return; // Added to satisfy linter
+                        // ignore: use_build_context_synchronously
                         Navigator.pop(context);
                       }
                     },
