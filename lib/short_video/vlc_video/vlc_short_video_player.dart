@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import 'dart:math';
-import '../../vlc_short_video/mock/vlc_video.dart';
 import '../views/video_page.dart';
 import '../views/video_side_bar.dart';
 import '../views/video_comment.dart';
@@ -19,7 +18,7 @@ class VlcDemoShortVideoPlayer extends StatefulWidget {
 class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with WidgetsBindingObserver {
   final PageController _pageController = PageController();
   final Map<int, VlcPlayerController> _controllers = {};
-  List<VlcVideo> _videoList = [];
+  List<UserVideo> _videoList = [];
   int _currentIndex = 0;
   final Map<int, bool> _favoriteMap = {};
   bool _isInitialized = false;
@@ -113,7 +112,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
 
   Future<void> _initVideos() async {
     try {
-      _videoList = VlcVideo.fetchVideo();
+      _videoList = UserVideo.fetchVideo();
       // 只初始化第一个视频
       await _initController(0);
       setState(() {
@@ -378,7 +377,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
 
     try {
       // 模拟加载更多视频
-      final moreVideos = VlcVideo.fetchVideo();
+      final moreVideos = UserVideo.fetchVideo();
       setState(() {
         _videoList.addAll(moreVideos);
       });
