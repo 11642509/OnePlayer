@@ -69,16 +69,16 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
     for (var entry in _controllers.entries) {
       try {
         final controller = entry.value;
-        // 先停止播放
-        await controller.pause();
-        // 停止渲染器扫描
-        await controller.stopRendererScanning();
-        // 释放资源
-        await controller.dispose();
-            } catch (e) {
-        if (kDebugMode) {
-          print('Error disposing controller ${entry.key}: $e');
+        if (controller != null) {
+          // 先停止播放
+          await controller.pause();
+          // 停止渲染器扫描
+          await controller.stopRendererScanning();
+          // 释放资源
+          await controller.dispose();
         }
+      } catch (e) {
+        print('Error disposing controller ${entry.key}: $e');
       }
     }
     _controllers.clear();
@@ -100,9 +100,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
         await controller.dispose();
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error disposing controller $index: $e');
-      }
+      print('Error disposing controller $index: $e');
     } finally {
       _controllers.remove(index);
       _isVideoReady.remove(index);
@@ -171,8 +169,8 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
       if (_controllers.containsKey(_currentIndex)) {
         final oldController = _controllers[_currentIndex];
         if (oldController != null) {
-          // 使用 scheduleMicrotask 替代 Future.microtask
-          scheduleMicrotask(() async {
+          // 异步暂停，不阻塞主线程
+          Future.microtask(() async {
             try {
               await oldController.pause();
               if (mounted && _lastLoadIndex == target) {
@@ -181,9 +179,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                 });
               }
             } catch (e) {
-              if (kDebugMode) {
-                print('Error pausing old video: $e');
-              }
+              print('Error pausing old video: $e');
             }
           });
         }
@@ -194,16 +190,14 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
         try {
           await _initController(target);
         } catch (e) {
-          if (kDebugMode) {
-            print('Error initializing controller: $e');
-          }
+          print('Error initializing controller: $e');
         }
       }
       
       final currentController = _controllers[target];
       if (currentController != null) {
-        // 使用 scheduleMicrotask 替代 Future.microtask
-        scheduleMicrotask(() async {
+        // 异步播放，不阻塞主线程
+        Future.microtask(() async {
           try {
             if (_isVideoReady[target] == true) {
               await currentController.play();
@@ -223,15 +217,13 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
               }
             }
           } catch (e) {
-            if (kDebugMode) {
-              print('Error playing video: $e');
-            }
+            print('Error playing video: $e');
           }
         });
       }
 
-      // 使用 scheduleMicrotask 替代 Future.microtask
-      scheduleMicrotask(() async {
+      // 异步处理预加载/释放内存，不阻塞主线程
+      Future.microtask(() async {
         try {
           for (var i = 0; i < _videoList.length; i++) {
             // 释放不需要的视频
@@ -240,9 +232,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                 try {
                   await _disposeController(i);
                 } catch (e) {
-                  if (kDebugMode) {
-                    print('Error disposing controller $i: $e');
-                  }
+                  print('Error disposing controller $i: $e');
                 }
               }
             }
@@ -251,9 +241,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
               try {
                 await _initController(i);
               } catch (e) {
-                if (kDebugMode) {
-                  print('Error preloading video $i: $e');
-                }
+                print('Error preloading video $i: $e');
               }
             }
           }
@@ -263,15 +251,11 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
             try {
               await _loadMoreVideos();
             } catch (e) {
-              if (kDebugMode) {
-                print('Error loading more videos: $e');
-              }
+              print('Error loading more videos: $e');
             }
           }
         } catch (e) {
-          if (kDebugMode) {
-            print('Error in async task: $e');
-          }
+          print('Error in async task: $e');
         }
       });
 
@@ -279,9 +263,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
         _currentIndex = target;
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error loading index $target: $e');
-      }
+      print('Error loading index $target: $e');
     } finally {
       if (_lastLoadIndex == target) {
         _isLoading = false;
@@ -296,9 +278,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
       try {
         await _disposeController(index);
       } catch (e) {
-        if (kDebugMode) {
-          print('Error disposing existing controller $index: $e');
-        }
+        print('Error disposing existing controller $index: $e');
       }
     }
 
@@ -318,22 +298,31 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
       );
 
       // 添加初始化监听器
-      controller.addOnInitListener(() {
+      controller.addOnInitListener(() async {
         if (!mounted) return;
         
-        // 使用 scheduleMicrotask 替代 Future.microtask
-        scheduleMicrotask(() async {
-          try {
-            await controller.play();
-            if (mounted) {
-              _waitForPlaying(controller, index);
-            }
-          } catch (e) {
-            if (kDebugMode) {
+        try {
+          // 异步播放，不阻塞主线程
+          Future.microtask(() async {
+            try {
+              await controller.play();
+              if (mounted) {
+                _waitForPlaying(controller, index);
+              }
+            } catch (e) {
               print('Error playing video in init: $e');
             }
+          });
+        } catch (e) {
+          print('Error in init listener: $e');
+          if (mounted) {
+            setState(() {
+              _isPrepared[index] = false;
+              _isVideoReady[index] = false;
+              _isPlaying[index] = false;
+            });
           }
-        });
+        }
       });
 
       _controllers[index] = controller;
@@ -346,9 +335,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
         });
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error initializing controller $index: $e');
-      }
+      print('Error initializing controller $index: $e');
       if (mounted) {
         setState(() {
           _isPrepared[index] = false;
@@ -388,18 +375,6 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
         });
       }
     }
-  }
-
-  Future<void> _handleBack() async {
-    // 先暂停当前视频
-    if (_controllers.containsKey(_currentIndex)) {
-      final controller = _controllers[_currentIndex];
-      if (controller != null) {
-        await controller.pause();
-      }
-    }
-    // 释放所有控制器
-    await _disposeAllControllers();
   }
 
   @override
@@ -469,11 +444,10 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                     });
                   },
                   onComment: () {
-                    // 使用 Navigator.of(context) 替代直接使用 context
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CommentBottomSheet(),
-                      ),
+                    showModalBottomSheet(
+                      backgroundColor: Colors.transparent,
+                      context: context,
+                      builder: (context) => const CommentBottomSheet(),
                     );
                   },
                 ),
@@ -482,7 +456,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                   final currentController = _controllers[index];
                   if (currentController != null) {
                     // 异步处理播放/暂停，不阻塞主线程
-                    scheduleMicrotask(() async {
+                    Future.microtask(() async {
                       if (isPlaying) {
                         await currentController.pause();
                         if (mounted) {
@@ -512,15 +486,20 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-                    onPressed: () {
-                      // 使用 scheduleMicrotask 确保在正确的时机执行
-                      scheduleMicrotask(() async {
-                        await _handleBack();
-                        // 使用 context.mounted 检查
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
+                    onPressed: () async {
+                      // 先暂停当前视频
+                      if (_controllers.containsKey(_currentIndex)) {
+                        final controller = _controllers[_currentIndex];
+                        if (controller != null) {
+                          await controller.pause();
                         }
-                      });
+                      }
+                      // 释放所有控制器
+                      await _disposeAllControllers();
+                      // 返回上一页
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
                     },
                   ),
                   IconButton(
