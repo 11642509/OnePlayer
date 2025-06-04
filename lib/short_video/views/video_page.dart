@@ -21,6 +21,7 @@ class VideoPage extends StatelessWidget {
 
   final Widget? rightButtonColumn;
   final Widget? userInfoWidget;
+  final Widget? bottomWidget;
 
   final bool hidePauseIcon;
   final bool isPlaying;
@@ -37,6 +38,7 @@ class VideoPage extends StatelessWidget {
     this.tag,
     this.rightButtonColumn,
     this.userInfoWidget,
+    this.bottomWidget,
     this.onAddFavorite,
     this.onSingleTap,
     this.video,
@@ -54,72 +56,94 @@ class VideoPage extends StatelessWidget {
     // 用户信息
     Widget userInfo = userInfoWidget ??
         VideoUserInfo(
-          bottomPadding: bottomPadding,
+          bottomPadding: bottomWidget != null ? 40 : bottomPadding, // 增加底部间距，防止进度条遮挡
           desc: videoData.desc,
         );
     // 视频加载的动画
     Widget videoLoading = isLoading ? VideoLoadingPlaceHolder(tag: tag ?? '') : Container();
-    // 视频播放页
-    Widget videoContainer = Stack(
-      children: <Widget>[
-        Container(
-          height: double.infinity,
-          width: double.infinity,
-          color: Colors.black,
-          alignment: Alignment.center,
-          child: AspectRatio(
-            aspectRatio: aspectRatio,
-            child: video,
-          ),
-        ),
-        Positioned.fill(
-          child: VideoGesture(
-            onAddFavorite: onAddFavorite,
-            onSingleTap: onSingleTap,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Container(color: Colors.transparent),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (!isPlaying && !hidePauseIcon)
-          Tapped(
-            onTap: onSingleTap,
-            child: Container(
-              height: double.infinity,
-              width: double.infinity,
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.play_circle_outline,
-                size: 120,
-                color: Colors.white.withAlpha((255 * 0.4).round()),
+    // 视频播放页 - 填充整个屏幕，包括状态栏区域
+    Widget videoContainer = Container(
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height,
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          video ?? Container(color: Colors.black),
+          Positioned.fill(
+            child: VideoGesture(
+              onAddFavorite: onAddFavorite,
+              onSingleTap: onSingleTap,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Container(color: Colors.transparent),
+                  ),
+                ],
               ),
             ),
           ),
-      ],
+          if (!isPlaying && !hidePauseIcon)
+            Tapped(
+              onTap: onSingleTap,
+              child: Container(
+                height: double.infinity,
+                width: double.infinity,
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.play_circle_outline,
+                  size: 120,
+                  color: Colors.white.withAlpha((255 * 0.4).round()),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
+    
+    // B站风格：确保标题和简介显示在上方，进度条在最底部但更贴近内容
     Widget body = Stack(
       children: <Widget>[
         videoContainer,
         videoLoading,
+          
+        // 右侧按钮
         Container(
           height: double.infinity,
           width: double.infinity,
           alignment: Alignment.bottomRight,
           child: rightButtons,
         ),
-        Container(
-          height: double.infinity,
-          width: double.infinity,
-          alignment: Alignment.bottomLeft,
-          child: DefaultTextStyle(
-            style: const TextStyle(color: Colors.white),
-            child: userInfo,
-          ),
+        
+        // 底部用户信息
+        Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 主要内容区域
+            Expanded(child: Container()), // 占位，让内容移到底部
+            
+            // 用户信息
+            DefaultTextStyle(
+              style: const TextStyle(color: Colors.white),
+              child: userInfo,
+            ),
+            
+            // 底部安全区域，避免被进度条遮挡，但减少高度使进度条靠近内容
+            SizedBox(height: bottomWidget != null ? 25 : 0), // 增加空间，防止进度条遮挡
+          ],
         ),
+        
+        // 进度条，放在最底部但更贴近内容
+        if (bottomWidget != null)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 10, // 从底部移上来一点
+            child: SafeArea(
+              child: bottomWidget!,
+            ),
+          ),
       ],
     );
     return body;
@@ -137,7 +161,9 @@ class VideoLoadingPlaceHolder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height,
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           colors: <Color>[
@@ -154,7 +180,7 @@ class VideoLoadingPlaceHolder extends StatelessWidget {
             color: Colors.white.withAlpha((255 * 0.3).round()),
           ),
           Container(
-            padding: EdgeInsets.all(50),
+            padding: const EdgeInsets.all(50),
             child: Text(
               tag,
               style: StandardTextStyle.normalWithOpacity, // ignore: deprecated_member_use
@@ -186,7 +212,7 @@ class VideoUserInfo extends StatelessWidget {
         left: 12,
         bottom: bottomPadding,
       ),
-      margin: EdgeInsets.only(right: 80),
+      margin: const EdgeInsets.only(right: 80),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +229,7 @@ class VideoUserInfo extends StatelessWidget {
           Container(height: 6),
           Row(
             children: <Widget>[
-              Icon(Icons.music_note, size: 14),
+              const Icon(Icons.music_note, size: 14),
               Expanded(
                 child: Text(
                   '朱二旦的枯燥生活创作的原声',
