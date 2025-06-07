@@ -3,7 +3,6 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  desktop_window
   media_kit_libs_linux
   media_kit_video
   volume_controller
