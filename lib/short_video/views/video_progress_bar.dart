@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 
 class VideoProgressBar extends StatefulWidget {
@@ -8,15 +7,17 @@ class VideoProgressBar extends StatefulWidget {
   final ValueChanged<Duration> onSeek;
   final bool isDragging;
   final ValueChanged<bool>? onDragStatusChanged;
+  final bool isLandscape; // 添加横屏标志
 
   const VideoProgressBar({
-    Key? key,
+    super.key,
     required this.position,
     required this.duration,
     required this.onSeek,
     this.isDragging = false,
     this.onDragStatusChanged,
-  }) : super(key: key);
+    this.isLandscape = false, // 默认为竖屏
+  });
 
   @override
   State<VideoProgressBar> createState() => _VideoProgressBarState();
@@ -135,227 +136,247 @@ class _VideoProgressBarState extends State<VideoProgressBar> with SingleTickerPr
     
     return Container(
       margin: const EdgeInsets.only(bottom: 5), // 向上移动一些
+      // 移除宽度限制，让进度条铺满屏幕宽度
+      width: double.infinity,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Row(
-          children: [
-            // 左侧时间
-            Text(
-              _formatDuration(displayPosition), 
-              style: const TextStyle(
-                color: Colors.white, 
-                fontSize: 10,
-                fontWeight: FontWeight.w400,
-                shadows: [
-                  Shadow(
-                    offset: Offset(1.0, 1.0),
-                    blurRadius: 2.0,
-                    color: Colors.black54,
-                  ),
-                ],
-              )
-            ),
-            const SizedBox(width: 8),
-            // 进度条占据中间空间
-            Expanded(
-              child: Stack(
-                key: _progressBarKey,
-                alignment: Alignment.center,
-                children: [
-                  // 自定义进度条背景
-                  Container(
-                    height: barHeight,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(barHeight / 2),
+        // 统一横竖屏模式下的边距
+        padding: const EdgeInsets.symmetric(
+          horizontal: 2, 
+          vertical: 5
+        ),
+        // 使用AbsorbPointer包装整个Row，确保手势事件不会穿透
+        child: AbsorbPointer(
+          absorbing: false, // 不吸收事件，让子组件能接收手势
+          child: Row(
+            children: [
+              // 左侧时间
+              Text(
+                _formatDuration(displayPosition), 
+                style: const TextStyle(
+                  color: Colors.white, 
+                  fontSize: 10,
+                  fontWeight: FontWeight.w400,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(1.0, 1.0),
+                      blurRadius: 2.0,
+                      color: Colors.black54,
                     ),
-                  ),
-                  // 自定义活动进度条
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: total > 0 ? (value / total).clamp(0.0, 1.0) : 0,
-                      child: Container(
+                  ],
+                )
+              ),
+              const SizedBox(width: 8),
+              // 进度条占据中间空间
+              Expanded(
+                // 使用GestureDetector捕获整个进度条区域的手势
+                child: GestureDetector(
+                  // 阻止点击事件继续传递
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    // 空实现，阻止点击事件传递
+                  },
+                  child: Stack(
+                    key: _progressBarKey,
+                    alignment: Alignment.center,
+                    children: [
+                      // 自定义进度条背景
+                      Container(
                         height: barHeight,
                         decoration: BoxDecoration(
-                          color: bilibiliPink,
+                          color: Colors.white.withAlpha(77),
                           borderRadius: BorderRadius.circular(barHeight / 2),
                         ),
                       ),
-                    ),
-                  ),
-                  // 触摸区域
-                  GestureDetector(
-                    onHorizontalDragStart: (details) {
-                      try {
-                        if (_seeking) return;
-                        
-                        setState(() {
-                          _dragging = true;
-                          // 计算初始拖动位置
-                          _dragValue = _calculateValueFromPosition(details.localPosition);
-                        });
-                        
-                        // 通知父组件
-                        widget.onDragStatusChanged?.call(true);
-                      } catch (e) {
-                        if (kDebugMode) {
-                          print('Error in drag start: $e');
-                        }
-                      }
-                    },
-                    onHorizontalDragUpdate: (details) {
-                      try {
-                        if (_seeking) return;
-                        
-                        setState(() {
-                          // 更新拖动位置
-                          _dragValue = _calculateValueFromPosition(details.localPosition);
-                        });
-                      } catch (e) {
-                        if (kDebugMode) {
-                          print('Error in drag update: $e');
-                        }
-                      }
-                    },
-                    onHorizontalDragEnd: (details) {
-                      try {
-                        if (_seeking) return;
-                        
-                        if (_dragValue != null) {
-                          final seekMs = _dragValue!.toInt();
-                          _safeSeek(Duration(milliseconds: seekMs));
-                        }
-                        
-                        setState(() {
-                          _dragging = false;
-                          _dragValue = null;
-                        });
-                        
-                        // 通知父组件
-                        widget.onDragStatusChanged?.call(false);
-                      } catch (e) {
-                        if (kDebugMode) {
-                          print('Error in drag end: $e');
-                        }
-                        
-                        // 确保状态重置
-                        setState(() {
-                          _dragging = false;
-                          _dragValue = null;
-                        });
-                        
-                        widget.onDragStatusChanged?.call(false);
-                      }
-                    },
-                    onTapDown: (details) {
-                      try {
-                        if (_seeking) return;
-                        
-                        // 防抖处理，避免短时间内多次点击
-                        final now = DateTime.now();
-                        if (_lastTapTime != null && 
-                            now.difference(_lastTapTime!) < _minTapInterval) {
-                          return;
-                        }
-                        _lastTapTime = now;
-                        
-                        // 设置状态标识
-                        _seeking = true;
-                        
-                        // 计算点击位置并准备UI状态
-                        final double newValue = _calculateValueFromPosition(details.localPosition);
-                        final int seekMs = newValue.toInt();
-                        
-                        setState(() {
-                          _dragValue = newValue;
-                        });
-                        
-                        // 使用异步处理seek操作，避免阻塞UI
-                        Future.microtask(() {
+                      // 自定义活动进度条
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: total > 0 ? (value / total).clamp(0.0, 1.0) : 0,
+                          child: Container(
+                            height: barHeight,
+                            decoration: BoxDecoration(
+                              color: bilibiliPink,
+                              borderRadius: BorderRadius.circular(barHeight / 2),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 触摸区域
+                      GestureDetector(
+                        // 使用opaque确保触摸事件不会穿透
+                        behavior: HitTestBehavior.opaque,
+                        onHorizontalDragStart: (details) {
                           try {
-                            // 执行seek并通知父组件
-                            _safeSeek(Duration(milliseconds: seekMs));
+                            if (_seeking) return;
                             
-                            // 简短延迟后重置状态
-                            Future.delayed(const Duration(milliseconds: 200), () {
-                              if (mounted) {
-                                setState(() {
-                                  _dragValue = null;
-                                  _seeking = false;
+                            setState(() {
+                              _dragging = true;
+                              // 计算初始拖动位置
+                              _dragValue = _calculateValueFromPosition(details.localPosition);
+                            });
+                            
+                            // 通知父组件
+                            widget.onDragStatusChanged?.call(true);
+                          } catch (e) {
+                            if (kDebugMode) {
+                              print('Error in drag start: $e');
+                            }
+                          }
+                        },
+                        onHorizontalDragUpdate: (details) {
+                          try {
+                            if (_seeking) return;
+                            
+                            setState(() {
+                              // 更新拖动位置
+                              _dragValue = _calculateValueFromPosition(details.localPosition);
+                            });
+                          } catch (e) {
+                            if (kDebugMode) {
+                              print('Error in drag update: $e');
+                            }
+                          }
+                        },
+                        onHorizontalDragEnd: (details) {
+                          try {
+                            if (_seeking) return;
+                            
+                            if (_dragValue != null) {
+                              final seekMs = _dragValue!.toInt();
+                              _safeSeek(Duration(milliseconds: seekMs));
+                            }
+                            
+                            setState(() {
+                              _dragging = false;
+                              _dragValue = null;
+                            });
+                            
+                            // 通知父组件
+                            widget.onDragStatusChanged?.call(false);
+                          } catch (e) {
+                            if (kDebugMode) {
+                              print('Error in drag end: $e');
+                            }
+                            
+                            // 确保状态重置
+                            setState(() {
+                              _dragging = false;
+                              _dragValue = null;
+                            });
+                            
+                            widget.onDragStatusChanged?.call(false);
+                          }
+                        },
+                        onTapDown: (details) {
+                          try {
+                            if (_seeking) return;
+                            
+                            // 防抖处理，避免短时间内多次点击
+                            final now = DateTime.now();
+                            if (_lastTapTime != null && 
+                                now.difference(_lastTapTime!) < _minTapInterval) {
+                              return;
+                            }
+                            _lastTapTime = now;
+                            
+                            // 设置状态标识
+                            _seeking = true;
+                            
+                            // 计算点击位置并准备UI状态
+                            final double newValue = _calculateValueFromPosition(details.localPosition);
+                            final int seekMs = newValue.toInt();
+                            
+                            setState(() {
+                              _dragValue = newValue;
+                            });
+                            
+                            // 使用异步处理seek操作，避免阻塞UI
+                            Future.microtask(() {
+                              try {
+                                // 执行seek并通知父组件
+                                _safeSeek(Duration(milliseconds: seekMs));
+                                
+                                // 简短延迟后重置状态
+                                Future.delayed(const Duration(milliseconds: 200), () {
+                                  if (mounted) {
+                                    setState(() {
+                                      _dragValue = null;
+                                      _seeking = false;
+                                    });
+                                  }
                                 });
+                              } catch (e) {
+                                if (kDebugMode) {
+                                  print('Error in tap seek: $e');
+                                }
+                                
+                                // 出错时也要重置状态
+                                if (mounted) {
+                                  setState(() {
+                                    _dragValue = null;
+                                    _seeking = false;
+                                  });
+                                }
                               }
                             });
                           } catch (e) {
                             if (kDebugMode) {
-                              print('Error in tap seek: $e');
+                              print('Error in tap down: $e');
                             }
                             
-                            // 出错时也要重置状态
-                            if (mounted) {
-                              setState(() {
-                                _dragValue = null;
-                                _seeking = false;
-                              });
-                            }
+                            // 确保重置状态
+                            _seeking = false;
                           }
-                        });
-                      } catch (e) {
-                        if (kDebugMode) {
-                          print('Error in tap down: $e');
-                        }
-                        
-                        // 确保重置状态
-                        _seeking = false;
-                      }
-                    },
-                    // 扩大触摸区域
-                    child: Container(
-                      height: 20, // 减小高度，避免遮挡文字
-                      color: Colors.transparent,
-                    ),
-                  ),
-                  // 滑块
-                  if (_dragging || widget.isDragging)
-                    Positioned(
-                      left: total > 0 ? ((value / total).clamp(0.0, 1.0) * _getProgressBarWidth()) - thumbRadius : 0,
-                      child: Container(
-                        width: thumbRadius * 2,
-                        height: thumbRadius * 2,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 2,
-                              spreadRadius: 1,
-                            ),
-                          ],
+                        },
+                        // 扩大触摸区域
+                        child: Container(
+                          height: 30, // 增加高度，让触摸区域更大
+                          color: Colors.transparent,
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // 右侧总时长
-            Text(
-              _formatDuration(widget.duration), 
-              style: const TextStyle(
-                color: Colors.white, 
-                fontSize: 10,
-                fontWeight: FontWeight.w400,
-                shadows: [
-                  Shadow(
-                    offset: Offset(1.0, 1.0),
-                    blurRadius: 2.0,
-                    color: Colors.black54,
+                      // 滑块
+                      if (_dragging || widget.isDragging)
+                        Positioned(
+                          left: total > 0 ? ((value / total).clamp(0.0, 1.0) * _getProgressBarWidth()) - thumbRadius : 0,
+                          child: Container(
+                            width: thumbRadius * 2,
+                            height: thumbRadius * 2,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withAlpha(51),
+                                  blurRadius: 2,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              )
-            ),
-          ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // 右侧总时长
+              Text(
+                _formatDuration(widget.duration), 
+                style: const TextStyle(
+                  color: Colors.white, 
+                  fontSize: 10,
+                  fontWeight: FontWeight.w400,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(1.0, 1.0),
+                      blurRadius: 2.0,
+                      color: Colors.black54,
+                    ),
+                  ],
+                )
+              ),
+            ],
+          ),
         ),
       ),
     );

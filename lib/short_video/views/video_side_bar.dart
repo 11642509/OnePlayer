@@ -7,7 +7,6 @@ class VideoButtonColumn extends StatelessWidget {
   final bool isFavorite;
   final Function? onFavorite;
   final Function? onComment;
-  final Function? onShare;
   final Function? onAvatar;
 
   const VideoButtonColumn({
@@ -15,22 +14,17 @@ class VideoButtonColumn extends StatelessWidget {
     this.bottomPadding,
     this.onFavorite,
     this.onComment,
-    this.onShare,
     this.isFavorite = false,
     this.onAvatar,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: SysSize.avatar,
-      margin: EdgeInsets.only(
-        bottom: bottomPadding ?? 50,
-        right: 12,
-      ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           Tapped(
             onTap: onAvatar,
@@ -48,20 +42,6 @@ class VideoButtonColumn extends StatelessWidget {
             text: '4213',
             onTap: onComment,
           ),
-          _IconButton(
-            icon: IconToText(Icons.share, size: SysSize.iconBig),
-            text: '346',
-            onTap: onShare,
-          ),
-          Container(
-            width: SysSize.avatar,
-            height: SysSize.avatar,
-            margin: EdgeInsets.only(top: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(SysSize.avatar / 2.0),
-              // color: Colors.black.withOpacity(0.8),
-            ),
-          )
         ],
       ),
     );
@@ -199,6 +179,7 @@ class _IconButton extends StatelessWidget {
       ],
     );
     Widget body = Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         Tapped(
           onTap: onTap,
@@ -212,6 +193,7 @@ class _IconButton extends StatelessWidget {
             fontSize: SysSize.small,
             color: ColorPlate.white,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );

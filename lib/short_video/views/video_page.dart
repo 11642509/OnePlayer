@@ -31,6 +31,7 @@ class VideoPage extends StatelessWidget {
 
   final bool isLoading;
   final UserVideo videoData;
+  final bool isLandscape; // 添加横屏状态参数
 
   const VideoPage({
     super.key,
@@ -47,6 +48,7 @@ class VideoPage extends StatelessWidget {
     this.isPlaying = false,
     this.isLoading = false,
     required this.videoData,
+    this.isLandscape = false, // 默认为竖屏模式
   });
 
   @override
@@ -107,11 +109,11 @@ class VideoPage extends StatelessWidget {
         videoContainer,
         videoLoading,
           
-        // 右侧按钮
-        Container(
-          height: double.infinity,
-          width: double.infinity,
-          alignment: Alignment.bottomRight,
+        // 右侧按钮 - 位于接近底部，刚好在进度条上方
+        Positioned(
+          right: 12,
+          // 调整到接近底部的位置，只比进度条略高一点
+          bottom: 50, // 固定高度，接近进度条上方
           child: rightButtons,
         ),
         
@@ -130,18 +132,34 @@ class VideoPage extends StatelessWidget {
             ),
             
             // 底部安全区域，避免被进度条遮挡，但减少高度使进度条靠近内容
-            SizedBox(height: bottomWidget != null ? 25 : 0), // 增加空间，防止进度条遮挡
+            SizedBox(height: bottomWidget != null ? (isLandscape ? 20 : 30) : 0), // 横屏模式下减小间距
           ],
         ),
         
-        // 进度条，放在最底部但更贴近内容
+        // 进度条区域 - 使用GestureDetector拦截事件
         if (bottomWidget != null)
           Positioned(
             left: 0,
             right: 0,
-            bottom: 10, // 从底部移上来一点
+            // 使用负值进一步下移进度条
+            bottom: -8,
             child: SafeArea(
-              child: bottomWidget!,
+              // 使用GestureDetector包装，拦截可能穿透到视频区域的事件
+              child: GestureDetector(
+                // 阻止事件冒泡
+                behavior: HitTestBehavior.opaque,
+                // 拦截触摸事件，防止传递给视频区域
+                onTap: () {},
+                onDoubleTap: () {},
+                child: Container(
+                  // 统一横竖屏的内边距
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 0, // 移除垂直内边距
+                    horizontal: 0,
+                  ),
+                  child: bottomWidget!,
+                ),
+              ),
             ),
           ),
       ],

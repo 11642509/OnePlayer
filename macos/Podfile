@@ -1,0 +1,80 @@
+platform :osx, '10.14'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure \"flutter pub get\" is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Flutter-Generated.xcconfig, then run \"flutter pub get\""
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_macos_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+  
+  post_install do |installer|
+    installer.pods_project.targets.each do |target|
+      flutter_additional_macos_build_settings(target)
+      
+      # 为所有目标添加架构设置
+      target.build_configurations.each do |config|
+        # 强制arm64架构
+        config.build_settings['ARCHS'] = 'arm64'
+        config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
+        config.build_settings['EXCLUDED_ARCHS'] = 'x86_64 i386'
+        config.build_settings['VALID_ARCHS'] = 'arm64'
+        
+        # Swift编译条件
+        config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = '$(inherited) ARM64_ONLY'
+        
+        # 链接设置
+        config.build_settings['OTHER_LDFLAGS'] = '$(inherited)'
+        
+        # 启用BitCode
+        config.build_settings['ENABLE_BITCODE'] = 'NO'
+        
+        # 指定Swift版本
+        config.build_settings['SWIFT_VERSION'] = '5.0'
+      end
+      
+      # 处理volume_controller插件
+      if target.name == 'volume_controller'
+        target.build_configurations.each do |config|
+          config.build_settings['EXCLUDED_SOURCE_FILE_NAMES'] = ['**/PrivacyInfo.xcprivacy']
+          config.build_settings['INFOPLIST_KEY_NSPrivacyAccessedAPITypes'] = '$(inherited)'
+        end
+      end
+      
+      # 特别处理media_kit插件
+      if target.name.include?('media_kit')
+        target.build_configurations.each do |config|
+          config.build_settings['ARCHS'] = 'arm64'
+          config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
+        end
+      end
+    end
+  end
+end

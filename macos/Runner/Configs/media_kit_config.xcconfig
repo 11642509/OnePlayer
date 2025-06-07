@@ -1,0 +1,6 @@
+// 媒体框架配置
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(SRCROOT)/Flutter/ephemeral/.symlinks/plugins/media_kit_libs_macos_video/macos/Frameworks $(SRCROOT)/Flutter/ephemeral
+HEADER_SEARCH_PATHS = $(inherited) $(SRCROOT)/Flutter/ephemeral/.symlinks/plugins/media_kit_libs_macos_video/macos/Frameworks/Headers
+ARCHS = arm64
+EXCLUDED_ARCHS = x86_64 i386
+OTHER_LDFLAGS = $(inherited) -framework media_kit_libs_macos_video 

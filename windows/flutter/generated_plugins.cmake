@@ -3,6 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  desktop_window
+  media_kit_libs_windows_video
+  media_kit_video
+  volume_controller
+  window_size
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

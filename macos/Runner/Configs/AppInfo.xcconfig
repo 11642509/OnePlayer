@@ -12,3 +12,20 @@ PRODUCT_BUNDLE_IDENTIFIER = com.example.oneplayer
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+
+APP_NAME = Runner
+APP_SUFFIX = .app
+FLUTTER_BUILD_DIR = build
+FLUTTER_BUILD_NAME = 1.0.0
+FLUTTER_BUILD_NUMBER = 1
+
+// 导入架构配置
+#include? "../arm64_only.xcconfig"
+
+// 导入媒体框架配置
+#include? "media_kit_config.xcconfig"
+
+// 导入Pod配置文件，解决配置问题
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"

@@ -1,0 +1,16 @@
+// 强制使用arm64架构
+ARCHS = arm64
+ONLY_ACTIVE_ARCH = YES
+EXCLUDED_ARCHS = x86_64 i386
+
+// 强制Swift编译目标
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) ARM64_ONLY
+VALID_ARCHS = arm64
+
+// 禁用重复构建任务
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited)
+GCC_PREPROCESSOR_DEFINITIONS = $(inherited)
+
+// 确保所有依赖也使用相同架构
+LIBRARY_SEARCH_PATHS = $(inherited) $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(SDKROOT)/usr/lib/swift
+FRAMEWORK_SEARCH_PATHS = $(inherited) "$(SRCROOT)/Flutter"
