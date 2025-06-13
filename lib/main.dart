@@ -5,6 +5,8 @@ import 'window_controller.dart';
 import 'short_video/vlc_video/vlc_short_video_player.dart';
 import 'short_video/pages/short_video.dart';
 import 'short_video/video_players/video_player_impl/video_player_factory.dart';
+import 'player/vlc_player_page.dart';
+import 'player/video_player_page.dart';
 
 // 全局窗口控制器
 final windowController = WindowController();
@@ -165,6 +167,44 @@ class _HomePageState extends State<HomePage> {
                                 },
                                 child: const Text(
                                   'Short Video 播放器',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SingleTabPage(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'Single Tab 测试',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SingleVideoTabPage(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'Single Video Tab 测试',
                                   style: TextStyle(fontSize: 18),
                                 ),
                               ),
