@@ -139,12 +139,19 @@ class ShortVideoPageState extends State<ShortVideoPage> with WidgetsBindingObser
     // 从全局获取设备方向
     final isLandscape = !windowController.isPortrait.value;
     
-    return WillPopScope(
+    return PopScope(
       // 拦截返回按钮，确保资源正确释放
-      onWillPop: () async {
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        // 如果已经pop了，不需要做任何事
+        if (didPop) {
+          return;
+        }
+        
         // 暂停当前播放器
         _videoListController.currentPlayer.pause();
-        return true; // 允许返回
+        // 手动触发返回操作
+        Navigator.of(context).pop();
       },
       child: Scaffold(
         backgroundColor: Colors.black,

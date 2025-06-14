@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 添加导入SystemChrome
 import 'dart:ui';
+import '../page/home_test.dart';
+import '../page/vod_page.dart'; // 导入VodPage
+import '../main.dart' show windowController; // 导入windowController实例
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -9,7 +13,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _currentTab = '热门'; // 默认选中热门页面
+  String _currentTab = '测试'; // 默认选中测试页面
   final _navBarKey = GlobalKey<NavigationBarState>();
 
   void _handleTabChanged(String tab) {
@@ -17,17 +21,25 @@ class _MyAppState extends State<MyApp> {
   }
 
   Widget _getPage() {
-    // 简单展示当前选中的页面
-    return Center(
-      child: Text(
-        '$_currentTab 页面',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 24,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
+    // 根据选中的标签返回对应的页面
+    switch (_currentTab) {
+      case '测试':
+        return const HomeTest();
+      case '影视':
+        return const VodPage(); // 影视标签显示VodPage
+      default:
+        // 其他标签仍然显示默认内容
+        return Center(
+          child: Text(
+            '$_currentTab 页面',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        );
+    }
   }
 
   @override
@@ -78,7 +90,7 @@ class NavigationBar extends StatefulWidget {
 
 class NavigationBarState extends State<NavigationBar> {
   // 导航标签列表
-  final List<String> _tabs = ['热门', '哔哩哔哩', '番剧', '排行榜', '动态', '我的'];
+  final List<String> _tabs = ['测试', '影视', '番剧', '排行榜', '动态', '我的'];
   
   // 当前选中的标签索引
   int _selectedIndex = 0;
@@ -260,6 +272,184 @@ class NavigationBarState extends State<NavigationBar> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// 竖屏导航栏组件
+class PortraitNavigationBar extends StatefulWidget {
+  final ValueChanged<int> onTabChanged;
+  final int currentIndex;
+
+  const PortraitNavigationBar({
+    super.key,
+    required this.onTabChanged,
+    required this.currentIndex,
+  });
+
+  @override
+  State<PortraitNavigationBar> createState() => _PortraitNavigationBarState();
+}
+
+class _PortraitNavigationBarState extends State<PortraitNavigationBar> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final List<String> _tabs = ['测试', '影视', '频道', '精选', '动态'];
+  
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: _tabs.length, 
+      vsync: this,
+      initialIndex: widget.currentIndex,
+    );
+    
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        widget.onTabChanged(_tabController.index);
+      }
+    });
+    
+    // 设置状态栏样式
+    _updateStatusBarStyle();
+  }
+  
+  @override
+  void didUpdateWidget(PortraitNavigationBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentIndex != oldWidget.currentIndex) {
+      _tabController.animateTo(widget.currentIndex);
+    }
+    
+    // 更新状态栏样式
+    _updateStatusBarStyle();
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 每次依赖变化时更新状态栏样式
+    _updateStatusBarStyle();
+  }
+  
+  // 更新状态栏样式
+  void _updateStatusBarStyle() {
+    // 竖屏模式下设置状态栏图标为深色
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light, // iOS
+    ));
+  }
+  
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    // 确保状态栏样式正确
+    _updateStatusBarStyle();
+    
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white, // 确保标签栏为白色背景
+        border: Border(
+          bottom: BorderSide(
+            color: Color(0xFFEEEEEE), // 使用更浅的灰色作为分隔线
+            width: 0.5, // 更细的线条
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
+          // 搜索栏
+          Padding(
+            padding: const EdgeInsets.fromLTRB(15, 6, 15, 8),
+            child: Row(
+              children: [
+                // 头像
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.pink.withAlpha(60), width: 2),
+                    image: const DecorationImage(
+                      image: NetworkImage('https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // 搜索框
+                Expanded(
+                  child: Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withAlpha(15),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 12),
+                        Icon(Icons.search, color: Colors.grey[400], size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          '搜索视频、番剧、UP主',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // 消息图标
+                Icon(Icons.notifications_none, color: Colors.grey[500], size: 24),
+                
+                // 屏幕旋转按钮
+                const SizedBox(width: 10),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.screen_lock_rotation, size: 24),
+                  color: Colors.grey[500],
+                  onPressed: windowController.toggleOrientation,
+                ),
+              ],
+            ),
+          ),
+          
+          // 标签页
+          TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            labelColor: const Color(0xFFFF7BB0), // B站风格的粉色
+            unselectedLabelColor: Colors.grey[600], 
+            indicatorColor: const Color(0xFFFF7BB0),
+            indicatorSize: TabBarIndicatorSize.label,
+            indicatorWeight: 3,
+            labelStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.normal,
+            ),
+            tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+          ),
+        ],
       ),
     );
   }

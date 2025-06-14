@@ -139,7 +139,7 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
     return _wrapWithInteraction(
       Stack(
         alignment: Alignment.bottomCenter,
-        children: [
+      children: [
           // 视频区域+点击控制
           GestureDetector(
             onTap: () {
@@ -150,7 +150,7 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
               alignment: Alignment.center,
               children: [
                 ColoredBox(
-                  color: Colors.black,
+                                  color: Colors.black,
                   child: SizedBox.expand(
                     child: FittedBox(
                       fit: BoxFit.cover,
@@ -169,11 +169,11 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                           return SizedBox(
                             width: screenWidth,
                             height: screenHeight,
-                            child: VlcPlayer(
-                              controller: _controller,
+                  child: VlcPlayer(
+                    controller: _controller,
                               aspectRatio: aspectRatio,
                               placeholder: const Center(child: CircularProgressIndicator()),
-                            ),
+                  ),
                           );
                         }
                       ),
@@ -192,7 +192,7 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                         Icons.play_circle_outline,
                         size: 120,
                         color: Colors.white.withAlpha(102),
-                      ),
+                        ),
                     ),
                   ),
               ],
@@ -208,12 +208,12 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
               duration: const Duration(milliseconds: 300),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Row(
+            child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      color: Colors.white,
-                      icon: _controller.value.isPlaying
+              children: [
+                IconButton(
+                  color: Colors.white,
+                  icon: _controller.value.isPlaying
                           ? const Icon(Icons.pause_rounded, size: 28)
                           : const BiliPlayIcon(size: 28),
                       iconSize: 28,
@@ -225,12 +225,12 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                       constraints: const BoxConstraints(),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      position,
+                      Text(
+                        position,
                       style: const TextStyle(color: Colors.white, fontSize: 13),
-                    ),
+                      ),
                     const SizedBox(width: 4),
-                    Expanded(
+                      Expanded(
                       child: SliderTheme(
                         data: SliderTheme.of(context).copyWith(
                           activeTrackColor: Colors.pinkAccent,
@@ -252,17 +252,17 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      duration,
+                      Text(
+                        duration,
                       style: const TextStyle(color: Colors.white, fontSize: 13),
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             ),
-          ),
-        ],
-      ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -332,7 +332,7 @@ class _BiliPlayIconPainter extends CustomPainter {
     path.lineTo(w * 0.80, h * 0.5);  // 右中
     path.close();
     canvas.drawPath(path, paint);
-  }
+              }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;

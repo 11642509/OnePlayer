@@ -102,8 +102,14 @@ class _HomePageState extends State<HomePage> {
       // 横屏模式下隐藏状态栏
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } else {
-      // 竖屏模式下显示状态栏
+      // 竖屏模式下显示状态栏，并设置为深色图标
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      // 设置状态栏图标为深色，以便在浅色背景下可见
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent, // 透明状态栏
+        statusBarIconBrightness: Brightness.dark, // 深色图标
+        statusBarBrightness: Brightness.light, // iOS状态栏亮度
+      ));
     }
   }
 
@@ -115,25 +121,25 @@ class _HomePageState extends State<HomePage> {
       setState(() {});
     }
   }
-  
+
   // 打开播放器页面，根据当前方向选择合适的播放器
   void _openPlayerPage(BuildContext context, PlayerType type) {
     
     switch (type) {
       case PlayerType.vlc:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const VlcDemoShortVideoPlayer(),
-          ),
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const VlcDemoShortVideoPlayer(),
+                                    ),
         ).then((_) => windowController.ensureCorrectOrientation());
         break;
       case PlayerType.shortVideo:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ShortVideoPage(),
-          ),
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const ShortVideoPage(),
+                                    ),
         ).then((_) => windowController.ensureCorrectOrientation());
         break;
       case PlayerType.singleTab:
@@ -149,7 +155,7 @@ class _HomePageState extends State<HomePage> {
           context,
           MaterialPageRoute(
             builder: (context) => const SingleVideoTabPage(),
-          ),
+                                ),
         ).then((_) => windowController.ensureCorrectOrientation());
         break;
     }
@@ -167,9 +173,9 @@ class _HomePageState extends State<HomePage> {
           body: isPortrait 
             ? SafeArea(child: PortraitHomeLayout(onPlayerSelected: _openPlayerPage))
             : LandscapeHomeLayout(onPlayerSelected: _openPlayerPage),
-        );
-      },
-    );
+                  );
+                },
+            );
   }
 }
 
