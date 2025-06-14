@@ -92,7 +92,7 @@ class VideoPage extends StatelessWidget {
                 child: Icon(
                   Icons.play_circle_outline,
                   size: 120,
-                  color: Colors.white.withAlpha((255 * 0.4).round()),
+                  color: Colors.white.withAlpha(102),
                 ),
               ),
             ),
@@ -192,13 +192,13 @@ class VideoLoadingPlaceHolder extends StatelessWidget {
         children: <Widget>[
           SpinKitWave(
             size: 36,
-            color: Colors.white.withAlpha((255 * 0.3).round()),
+            color: Colors.white.withAlpha(77),
           ),
           Container(
             padding: const EdgeInsets.all(50),
             child: Text(
               tag,
-              style: StandardTextStyle.normalWithOpacity, // ignore: deprecated_member_use
+              style: StandardTextStyle.normalWithOpacity,
             ),
           ),
         ],

@@ -191,7 +191,7 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                       child: Icon(
                         Icons.play_circle_outline,
                         size: 120,
-                        color: Colors.white.withAlpha((255 * 0.4).round()),
+                        color: Colors.white.withAlpha(102),
                       ),
                     ),
                   ),
@@ -236,8 +236,7 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                           activeTrackColor: Colors.pinkAccent,
                           inactiveTrackColor: Colors.white,
                           thumbColor: Colors.pinkAccent,
-                          // ignore: deprecated_member_use
-                          overlayColor: Colors.pinkAccent.withOpacity(0.2),
+                          overlayColor: Colors.pinkAccent.withAlpha(51),
                           trackHeight: 2,
                           thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
                           overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),

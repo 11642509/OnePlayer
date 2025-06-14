@@ -172,7 +172,7 @@ class _IconButton extends StatelessWidget {
     var shadowStyle = TextStyle(
       shadows: [
         Shadow(
-          color: Colors.black.withAlpha((255 * 0.15).round()),
+          color: Colors.black.withAlpha(38),
           offset: Offset(0, 1),
           blurRadius: 1,
         ),

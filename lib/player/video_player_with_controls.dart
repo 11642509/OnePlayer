@@ -171,7 +171,7 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
                       child: Icon(
                         Icons.play_circle_outline,
                         size: 120,
-                        color: Colors.white.withAlpha((255 * 0.4).round()),
+                        color: Colors.white.withAlpha(102),
                       ),
                     ),
                   ),

@@ -10,7 +10,7 @@ import 'package:video_player/video_player.dart';
 import '../video_players/video_player_impl/video_player_factory.dart';
 import '../video_players/video_player_impl/media_kit_video_controller.dart';
 import '../../window_controller.dart';
-import 'dart:math';
+
 
 // 访问全局窗口控制器
 final windowController = WindowController();
@@ -190,6 +190,7 @@ class ShortVideoPageState extends State<ShortVideoPage> with WidgetsBindingObser
                     child: Builder(
                       builder: (context) {
                         // 获取视频的宽高比
+                        // ignore: unused_local_variable
                         final videoAspectRatio = player.controller.value.aspectRatio;
                         
                         // 使用SizedBox.expand让视频铺满整个可用空间

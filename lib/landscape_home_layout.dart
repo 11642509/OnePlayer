@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'short_video/vlc_video/vlc_short_video_player.dart';
-import 'short_video/pages/short_video.dart';
-import 'player/vlc_player_page.dart';
-import 'player/video_player_page.dart';
 import 'main.dart'; // 导入PlayerType枚举
 
 /// 横屏主页布局
@@ -26,9 +22,9 @@ class LandscapeHomeLayout extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(24.0),
               decoration: BoxDecoration(
-                color: Colors.grey[900]?.withOpacity(0.7),
+                color: Colors.grey[900]?.withAlpha(179),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
+                border: Border.all(color: Colors.blue.withAlpha(77), width: 1),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -140,7 +136,7 @@ class LandscapeHomeLayout extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.2),
+            color: color.withAlpha(51),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -158,7 +154,7 @@ class LandscapeHomeLayout extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: color.withAlpha(51),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

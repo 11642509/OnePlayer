@@ -1,4 +1,4 @@
- import '../style/style.dart';
+import '../style/style.dart';
 import 'package:flutter/material.dart';
 
 class CommentBottomSheet extends StatelessWidget {
@@ -21,14 +21,14 @@ class CommentBottomSheet extends StatelessWidget {
             height: 4,
             width: 32,
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha((255 * 0.2).round()),
+              color: Colors.white.withAlpha(51),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           Container(
             height: 24,
             alignment: Alignment.center,
-            // color: Colors.white.withOpacity(0.2),
+            // color: Colors.white.withAlpha(51), // 0.2 * 255 ≈ 51
             child: Text(
               '128条评论',
               style: StandardTextStyle.small,

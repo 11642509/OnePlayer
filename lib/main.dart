@@ -96,7 +96,6 @@ class _HomePageState extends State<HomePage> {
   
   // 打开播放器页面，根据当前方向选择合适的播放器
   void _openPlayerPage(BuildContext context, PlayerType type) {
-    final isPortrait = windowController.isPortrait.value;
     
     switch (type) {
       case PlayerType.vlc:

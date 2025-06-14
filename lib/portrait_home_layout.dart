@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'short_video/vlc_video/vlc_short_video_player.dart';
-import 'short_video/pages/short_video.dart';
-import 'player/vlc_player_page.dart';
-import 'player/video_player_page.dart';
 import 'main.dart'; // 导入PlayerType枚举
 
 /// 竖屏主页布局
@@ -100,7 +96,7 @@ class PortraitHomeLayout extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
+            color: color.withAlpha(77),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

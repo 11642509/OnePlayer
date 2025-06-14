@@ -23,7 +23,7 @@ class StandardTextStyle {
     inherit: true,
   );
   static const TextStyle bigWithOpacity = TextStyle(
-    color: Color.fromRGBO(0xff, 0xff, 0xff, .66),
+    color: Colors.white70,
     fontWeight: FontWeight.w600,
     fontSize: SysSize.big,
     inherit: true,
@@ -39,7 +39,7 @@ class StandardTextStyle {
     inherit: true,
   );
   static const TextStyle normalWithOpacity = TextStyle(
-    color: Color.fromRGBO(255, 255, 255, 0.66),
+    color: Colors.white70,
     fontWeight: FontWeight.normal,
     fontSize: SysSize.normal,
     inherit: true,
@@ -50,7 +50,7 @@ class StandardTextStyle {
     inherit: true,
   );
   static const TextStyle smallWithOpacity = TextStyle(
-    color: Color.fromRGBO(0xff, 0xff, 0xff, .66),
+    color: Colors.white70,
     fontWeight: FontWeight.normal,
     fontSize: SysSize.small,
     inherit: true,
