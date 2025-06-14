@@ -64,10 +64,7 @@ class VideoPage extends StatelessWidget {
     // 视频加载的动画
     Widget videoLoading = isLoading ? VideoLoadingPlaceHolder(tag: tag ?? '') : Container();
     // 视频播放页 - 填充整个屏幕，包括状态栏区域
-    Widget videoContainer = Container(
-      width: MediaQuery.of(context).size.width,
-      height: MediaQuery.of(context).size.height,
-      color: Colors.black,
+    Widget videoContainer = SizedBox.expand(
       child: Stack(
         fit: StackFit.expand,
         children: <Widget>[

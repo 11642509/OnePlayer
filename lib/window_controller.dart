@@ -41,19 +41,16 @@ class WindowController {
         debugPrint('窗口初始化失败: $e');
       }
     } else {
-      // 移动设备默认锁定为竖屏模式
-      isPortrait.value = true;
+      // 移动设备默认设置为横屏模式
+      isPortrait.value = false;
       
-      // 锁定为竖屏，禁用自动旋转
+      // 锁定为横屏，禁用自动旋转
       SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
       ]);
       
       // 应用系统UI设置
-      _updateSystemUIOverlays(true);
-      
-      // 不再需要监听方向变化
-      // WidgetsBinding.instance.addObserver(_OrientationObserver(this));
+      _updateSystemUIOverlays(false);
     }
   }
   
@@ -110,7 +107,7 @@ class WindowController {
         } else {
           // 切换到横屏模式
           await SystemChrome.setPreferredOrientations([
-            DeviceOrientation.landscapeRight,
+            DeviceOrientation.landscapeLeft,
           ]);
         }
         
@@ -121,6 +118,31 @@ class WindowController {
       } catch (e) {
         debugPrint('移动设备方向切换失败: $e');
       }
+    }
+  }
+  
+  // 确保当前屏幕方向与设置一致（用于页面返回时）
+  Future<void> ensureCorrectOrientation() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+    
+    try {
+      // 根据当前设置的方向状态强制更新屏幕方向
+      if (isPortrait.value) {
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+        ]);
+      } else {
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+        ]);
+      }
+      
+      // 更新UI显示
+      await _updateSystemUIOverlays(isPortrait.value);
+      
+      debugPrint('确保屏幕方向与设置一致: ${isPortrait.value ? "竖屏" : "横屏"}');
+    } catch (e) {
+      debugPrint('屏幕方向同步失败: $e');
     }
   }
   

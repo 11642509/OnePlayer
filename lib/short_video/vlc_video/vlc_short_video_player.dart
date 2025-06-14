@@ -9,6 +9,7 @@ import '../mock/video.dart';
 import 'dart:async';
 import '../views/video_progress_bar.dart';
 import 'package:flutter/services.dart';
+import '../../window_controller.dart';
 
 class VlcDemoShortVideoPlayer extends StatefulWidget {
   const VlcDemoShortVideoPlayer({super.key});
@@ -29,6 +30,7 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
   final Map<int, bool> _isPrepared = {};
   bool _isLoadingMore = false;
   int _targetLoadingIndex = 0; // 添加跟踪正在加载的目标索引
+  final windowController = WindowController();
 
   // 预加载数量
   static const int preloadCount = 2;
@@ -83,6 +85,8 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
     _pageController.dispose();
     // 恢复系统UI设置
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+    // 确保屏幕方向与按钮设置一致
+    windowController.ensureCorrectOrientation();
     super.dispose();
   }
 
@@ -783,6 +787,8 @@ class _VlcDemoShortVideoPlayerState extends State<VlcDemoShortVideoPlayer> with 
                         await _disposeAllControllers();
                         // 恢复系统UI设置
                         SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+                        // 确保屏幕方向与主页面设置一致
+                        await windowController.ensureCorrectOrientation();
                         // 返回上一页
                         if (mounted) {
                           if (!mounted) return; // Added to satisfy linter

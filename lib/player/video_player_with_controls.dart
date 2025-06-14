@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:tapped/tapped.dart';
 
 typedef OnStopRecordingCallback = void Function(String);
 
@@ -161,15 +162,17 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
                 ),
                 // 暂停时中央大暂停按钮
                 if (!_controller.value.isPlaying)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black38,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.play_arrow,
-                      color: Colors.white,
-                      size: 80,
+                  Tapped(
+                    onTap: _togglePlaying,
+                    child: Container(
+                      height: double.infinity,
+                      width: double.infinity,
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.play_circle_outline,
+                        size: 120,
+                        color: Colors.white.withAlpha((255 * 0.4).round()),
+                      ),
                     ),
                   ),
               ],
@@ -185,13 +188,6 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
               duration: const Duration(milliseconds: 300),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(18),
-                    topRight: Radius.circular(18),
-                  ),
-                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [

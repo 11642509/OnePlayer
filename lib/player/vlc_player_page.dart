@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'vlc_tab.dart';
+import '../window_controller.dart';
 
 class SingleTabPage extends StatefulWidget {
   const SingleTabPage({super.key});
@@ -12,22 +13,19 @@ class SingleTabPage extends StatefulWidget {
 class _SingleTabPageState extends State<SingleTabPage> with WidgetsBindingObserver {
   bool showBar = true;
   bool _isLandscape = false;
+  final windowController = WindowController();
 
   @override
   void initState() {
     super.initState();
     // 添加观察者以监听设备方向变化
     WidgetsBinding.instance.addObserver(this);
-    // 启用所有方向
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     // 设置全屏模式
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     // 确保控制栏初始显示，然后会自动隐藏
     showBar = true;
+    // 检查当前方向状态
+    _isLandscape = !windowController.isPortrait.value;
   }
 
   @override
@@ -57,7 +55,8 @@ class _SingleTabPageState extends State<SingleTabPage> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     // 恢复系统UI设置
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    // 确保屏幕方向与按钮设置一致
+    windowController.ensureCorrectOrientation();
     super.dispose();
   }
 
@@ -83,13 +82,6 @@ class _SingleTabPageState extends State<SingleTabPage> with WidgetsBindingObserv
             child: Container(
               height: 56,
               padding: EdgeInsets.only(top: _isLandscape ? 0 : MediaQuery.of(context).padding.top),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-              ),
               child: Row(
                 children: [
                   IconButton(
@@ -97,7 +89,6 @@ class _SingleTabPageState extends State<SingleTabPage> with WidgetsBindingObserv
                     onPressed: () {
                       // 退出全屏模式
                       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-                      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
                       Navigator.of(context).maybePop();
                     },
                   ),
@@ -107,23 +98,6 @@ class _SingleTabPageState extends State<SingleTabPage> with WidgetsBindingObserv
                     style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
-                  // 添加旋转屏幕按钮
-                  IconButton(
-                    icon: Icon(
-                      _isLandscape ? Icons.screen_rotation : Icons.screen_lock_rotation,
-                      color: Colors.white,
-                    ),
-                    onPressed: () {
-                      if (_isLandscape) {
-                        SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-                      } else {
-                        SystemChrome.setPreferredOrientations([
-                          DeviceOrientation.landscapeLeft,
-                          DeviceOrientation.landscapeRight,
-                        ]);
-                      }
-                    },
-                  ),
                 ],
               ),
             ),

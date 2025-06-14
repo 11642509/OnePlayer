@@ -7,6 +7,8 @@ import 'short_video/pages/short_video.dart';
 import 'short_video/video_players/video_player_impl/video_player_factory.dart';
 import 'player/vlc_player_page.dart';
 import 'player/video_player_page.dart';
+import 'portrait_home_layout.dart';
+import 'landscape_home_layout.dart';
 
 // 全局窗口控制器
 final windowController = WindowController();
@@ -18,13 +20,12 @@ void main() async {
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     await windowController.initialize();
   } else if (Platform.isAndroid || Platform.isIOS) {
-    // 允许所有方向
+    // 默认设置为横屏模式
     SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
       DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
     ]);
+    // 初始化为横屏状态
+    windowController.isPortrait.value = false;
   }
   
   // 初始化MediaKit视频播放器
@@ -92,6 +93,46 @@ class _HomePageState extends State<HomePage> {
       setState(() {});
     }
   }
+  
+  // 打开播放器页面，根据当前方向选择合适的播放器
+  void _openPlayerPage(BuildContext context, PlayerType type) {
+    final isPortrait = windowController.isPortrait.value;
+    
+    switch (type) {
+      case PlayerType.vlc:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const VlcDemoShortVideoPlayer(),
+          ),
+        ).then((_) => windowController.ensureCorrectOrientation());
+        break;
+      case PlayerType.shortVideo:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ShortVideoPage(),
+          ),
+        ).then((_) => windowController.ensureCorrectOrientation());
+        break;
+      case PlayerType.singleTab:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SingleTabPage(),
+          ),
+        ).then((_) => windowController.ensureCorrectOrientation());
+        break;
+      case PlayerType.singleVideoTab:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SingleVideoTabPage(),
+          ),
+        ).then((_) => windowController.ensureCorrectOrientation());
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,113 +154,24 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: Center(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return Container(
-              width: constraints.maxWidth,
-              height: constraints.maxHeight,
-              alignment: Alignment.center,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: windowController.isPortrait,
-                builder: (context, isPortrait, _) {
-                  return AspectRatio(
-                    aspectRatio: windowController.getAspectRatio(),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const VlcDemoShortVideoPlayer(),
-                                    ),
-                                  );
-                                },
-                                child: const Text(
-                                  'VLC 播放器',
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const ShortVideoPage(),
-                                    ),
-                                  );
-                                },
-                                child: const Text(
-                                  'Short Video 播放器',
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const SingleTabPage(),
-                                    ),
-                                  );
-                                },
-                                child: const Text(
-                                  'Single Tab 测试',
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const SingleVideoTabPage(),
-                                    ),
-                                  );
-                                },
-                                child: const Text(
-                                  'Single Video Tab 测试',
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        ),
+      body: ValueListenableBuilder<bool>(
+        valueListenable: windowController.isPortrait,
+        builder: (context, isPortrait, _) {
+          if (isPortrait) {
+            return PortraitHomeLayout(onPlayerSelected: _openPlayerPage);
+          } else {
+            return LandscapeHomeLayout(onPlayerSelected: _openPlayerPage);
+          }
+        },
       ),
     );
   }
+}
+
+// 播放器类型枚举
+enum PlayerType {
+  vlc,
+  shortVideo,
+  singleTab,
+  singleVideoTab,
 }

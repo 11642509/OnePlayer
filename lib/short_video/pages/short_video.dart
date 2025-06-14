@@ -91,6 +91,9 @@ class ShortVideoPageState extends State<ShortVideoPage> with WidgetsBindingObser
     // 移除方向监听
     windowController.isPortrait.removeListener(_handleOrientationChange);
     
+    // 确保屏幕方向与按钮设置一致
+    windowController.ensureCorrectOrientation();
+    
     super.dispose();
   }
 
@@ -189,48 +192,17 @@ class ShortVideoPageState extends State<ShortVideoPage> with WidgetsBindingObser
                         // 获取视频的宽高比
                         final videoAspectRatio = player.controller.value.aspectRatio;
                         
-                        // 判断是横向还是竖向视频
-                        final isLandscapeVideo = videoAspectRatio > 1.0;
-                        
-                        if (isLandscapeVideo) {
-                          // 对于横向视频，填满宽度
-                          return AspectRatio(
-                            aspectRatio: videoAspectRatio,
-                            child: Transform.scale(
-                              scale: max(
-                                1.0,
-                                MediaQuery.of(context).size.width / 
-                                (MediaQuery.of(context).size.height * videoAspectRatio)
-                              ),
+                        // 使用SizedBox.expand让视频铺满整个可用空间
+                        return SizedBox.expand(
+                          child: FittedBox(
+                            fit: BoxFit.cover, // 使用cover确保视频填满整个区域
+                            child: SizedBox(
+                              width: MediaQuery.of(context).size.width,
+                              height: MediaQuery.of(context).size.height,
                               child: VideoPlayer(player.controller),
                             ),
-                          );
-                        } else {
-                          // 对于竖向视频
-                          if (isLandscape) {
-                            // 设备横屏时，竖屏视频保持原始比例
-                            return AspectRatio(
-                              aspectRatio: videoAspectRatio,
-                              child: VideoPlayer(player.controller),
-                            );
-                          } else {
-                            // 设备竖屏时，确保视频铺满屏幕宽度
-                            final screenWidth = MediaQuery.of(context).size.width;
-                            final screenHeight = MediaQuery.of(context).size.height;
-                            final screenRatio = screenWidth / screenHeight;
-                            
-                            // 计算需要的缩放比例，确保视频至少铺满屏幕宽度
-                            final scale = max(1.0, screenRatio / videoAspectRatio);
-                            
-                            return Transform.scale(
-                              scale: scale,
-                              child: AspectRatio(
-                                aspectRatio: videoAspectRatio,
-                                child: VideoPlayer(player.controller),
-                              ),
-                            );
-                          }
-                        }
+                          ),
+                        );
                       }
                     ),
                   );
@@ -361,7 +333,9 @@ class ShortVideoPageState extends State<ShortVideoPage> with WidgetsBindingObser
                       onPressed: () {
                         // 确保暂停播放，并在返回前清理资源
                         _videoListController.currentPlayer.pause();
-                                              Navigator.pop(context);
+                        // 确保屏幕方向与主页面设置一致
+                        windowController.ensureCorrectOrientation();
+                        Navigator.pop(context);
                       },
                     ),
                     IconButton(
