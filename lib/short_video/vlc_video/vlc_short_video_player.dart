@@ -5,7 +5,7 @@ import 'dart:math';
 import '../views/video_page.dart';
 import '../views/video_side_bar.dart';
 import '../views/video_comment.dart';
-import '../mock/video.dart';
+import '../../mock/video.dart';
 import 'dart:async';
 import '../views/video_progress_bar.dart';
 import 'package:flutter/services.dart';

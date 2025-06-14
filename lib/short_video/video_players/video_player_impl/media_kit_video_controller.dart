@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../mock/video.dart';
+import '../../../mock/video.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../../controller/video_list_controller.dart';

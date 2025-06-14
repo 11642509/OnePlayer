@@ -1,4 +1,4 @@
-import '../mock/video.dart';
+import '../../mock/video.dart';
 import '../views/video_page.dart';
 import '../views/video_side_bar.dart';
 import '../views/video_comment.dart';

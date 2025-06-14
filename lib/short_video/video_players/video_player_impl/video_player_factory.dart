@@ -4,7 +4,7 @@ import 'package:video_player/video_player.dart';
 import 'package:video_player_media_kit/video_player_media_kit.dart';
 
 import '../../controller/video_list_controller.dart';
-import '../../mock/video.dart';
+import '../../../mock/video.dart';
 import 'media_kit_video_controller.dart';
 
 /// 初始化MediaKit视频播放器

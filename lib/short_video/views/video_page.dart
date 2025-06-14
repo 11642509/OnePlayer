@@ -3,7 +3,7 @@ import './video_gesture.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:tapped/tapped.dart';
-import '../mock/video.dart'; // 导入 UserVideo 类
+import '../../mock/video.dart'; // 导入 UserVideo 类
 
 ///
 /// TikTok风格的一个视频页组件，覆盖在video上，提供以下功能：

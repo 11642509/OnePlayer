@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
-import '../mock/video.dart';
+import '../../mock/video.dart';
 import 'package:flutter/material.dart';
 
 typedef LoadMoreVideoCallback = Future<List<VideoController<dynamic>>> Function(

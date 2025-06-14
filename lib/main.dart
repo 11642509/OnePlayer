@@ -56,8 +56,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Video Player Demo',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        brightness: Brightness.dark,
+        primarySwatch: Colors.pink,
+        primaryColor: const Color(0xFFFF7BB0), // B站风格粉色
+        brightness: Brightness.light, // 浅色主题
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 0,
+        ),
       ),
       home: const HomePage(),
     );
@@ -78,6 +84,9 @@ class _HomePageState extends State<HomePage> {
     
     // 监听窗口方向变化
     windowController.isPortrait.addListener(_updateLayout);
+    
+    // 初始化时设置系统UI模式
+    _updateSystemUIMode();
   }
 
   @override
@@ -87,9 +96,22 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  // 更新系统UI模式
+  void _updateSystemUIMode() {
+    if (!windowController.isPortrait.value && Platform.isAndroid) {
+      // 横屏模式下隐藏状态栏
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      // 竖屏模式下显示状态栏
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
+  }
+
   // 更新布局
   void _updateLayout() {
     if (mounted) {
+      // 方向改变时更新系统UI模式
+      _updateSystemUIMode();
       setState(() {});
     }
   }
@@ -135,34 +157,18 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('视频播放器'),
-        backgroundColor: Colors.black,
-        actions: [
-          ValueListenableBuilder<bool>(
-            valueListenable: windowController.isPortrait,
-            builder: (context, isPortrait, _) {
-              return IconButton(
-                icon: Icon(isPortrait ? Icons.screen_lock_rotation : Icons.screen_lock_portrait),
-                tooltip: isPortrait ? '切换为横屏' : '切换为竖屏',
-                onPressed: windowController.toggleOrientation,
-              );
-            },
-          ),
-        ],
-      ),
-      body: ValueListenableBuilder<bool>(
-        valueListenable: windowController.isPortrait,
-        builder: (context, isPortrait, _) {
-          if (isPortrait) {
-            return PortraitHomeLayout(onPlayerSelected: _openPlayerPage);
-          } else {
-            return LandscapeHomeLayout(onPlayerSelected: _openPlayerPage);
-          }
-        },
-      ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: windowController.isPortrait,
+      builder: (context, isPortrait, _) {
+        return Scaffold(
+          backgroundColor: isPortrait ? Colors.white : Colors.black, // 竖屏白色背景，横屏黑色背景
+          // 竖屏和横屏模式都不显示AppBar，让自定义标签栏显示在顶部
+          appBar: null,
+          body: isPortrait 
+            ? SafeArea(child: PortraitHomeLayout(onPlayerSelected: _openPlayerPage))
+            : LandscapeHomeLayout(onPlayerSelected: _openPlayerPage),
+        );
+      },
     );
   }
 }
