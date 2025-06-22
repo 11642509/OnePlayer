@@ -1,7 +1,7 @@
 /// 应用配置类
 class AppConfig {
   /// API基础URL
-  static const String apiBaseUrl = 'http://localhost:8080';
+  static const String apiBaseUrl = 'http://192.168.5.48:8080';
   
   /// API版本
   static const String apiVersion = 'v1';

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
@@ -14,10 +15,11 @@ class VodPage extends StatefulWidget {
   State<VodPage> createState() => _VodPageState();
 }
 
-class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
+class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic>? _homeData;
   bool _isLoading = true;
+  bool _isTabControllerInitialized = false; // 添加标志来跟踪TabController是否已初始化
   
   // 添加主页分类
   final Map<String, dynamic> _homeCategory = {"type_id": "0", "type_name": "主页"};
@@ -47,22 +49,49 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _fetchHomeData().then((_) {
-      _tabController.addListener(() {
-        if (_tabController.indexIsChanging) {
-          final tabIndex = _tabController.index;
-          if (tabIndex >= 0 && tabIndex < _classList.length) {
-            final category = _classList[tabIndex];
-            final typeName = category['type_name'] as String;
+      // 确保TabController只初始化一次，并且监听器只添加一次
+      if (_isTabControllerInitialized) {
+        _setupTabControllerListener();
+      }
+    });
+  }
+  
+  // 设置TabController监听器的单独方法
+  void _setupTabControllerListener() {
+    // 先移除可能存在的旧监听器，防止重复
+    _tabController.removeListener(_tabChangeListener);
+    // 添加新的监听器
+    _tabController.addListener(_tabChangeListener);
+  }
+  
+  // 标签变化的回调函数
+  void _tabChangeListener() {
+    if (_tabController.indexIsChanging) {
+      setState(() {
+        _isLoading = true;
+      });
+      
+      final tabIndex = _tabController.index;
+      if (tabIndex >= 0 && tabIndex < _classList.length) {
+        final category = _classList[tabIndex];
+        final typeName = category['type_name'] as String;
 
-            if (typeName == "主页") {
-              _refreshHomeData();
-            } else {
-              _refreshCategoryData(typeName);
-            }
-          }
+        if (typeName == "主页") {
+          _refreshHomeData();
+        } else {
+          _refreshCategoryData(typeName);
+        }
+      }
+      
+      // 延迟加载，确保UI切换完成
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
         }
       });
-    });
+    }
   }
   
   // 获取首页数据
@@ -105,26 +134,19 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
             _categoryData["主页"] = _homeData!['list'] as List;
           }
           
-          _tabController = TabController(length: _classList.length, vsync: this);
-          _isLoading = false;
-        });
-        
-        // 监听标签变化
-        _tabController.addListener(() {
-          if (_tabController.indexIsChanging) {
-            setState(() {
-              _isLoading = true;
-            });
-            
-            // 延迟加载，确保UI切换完成
-            Future.delayed(const Duration(milliseconds: 300), () {
-              if (mounted) {
-                setState(() {
-                  _isLoading = false;
-                });
-              }
-            });
+          // 确保TabController只初始化一次
+          if (!_isTabControllerInitialized) {
+            _tabController = TabController(length: _classList.length, vsync: this);
+            _setupTabControllerListener();
+            _isTabControllerInitialized = true;
+          } else if (_tabController.length != _classList.length) {
+            // 如果分类数量变化，需要重新创建TabController
+            _tabController.dispose();
+            _tabController = TabController(length: _classList.length, vsync: this);
+            _setupTabControllerListener();
           }
+          
+          _isLoading = false;
         });
         
         return;
@@ -161,30 +183,25 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
           _categoryData["主页"] = _homeData!['list'] as List;
         }
         
-        _tabController = TabController(length: _classList.length, vsync: this);
-        _isLoading = false;
-      });
-      
-      // 监听标签变化
-      _tabController.addListener(() {
-        if (_tabController.indexIsChanging) {
-          setState(() {
-            _isLoading = true;
-          });
-          
-          // 延迟加载，确保UI切换完成
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-          });
+        // 确保TabController只初始化一次
+        if (!_isTabControllerInitialized) {
+          _tabController = TabController(length: _classList.length, vsync: this);
+          _setupTabControllerListener();
+          _isTabControllerInitialized = true;
+        } else if (_tabController.length != _classList.length) {
+          // 如果分类数量变化，需要重新创建TabController
+          _tabController.dispose();
+          _tabController = TabController(length: _classList.length, vsync: this);
+          _setupTabControllerListener();
         }
+        
+        _isLoading = false;
       });
     } catch (e) {
       // 如果接口调用失败，回退到使用mock数据
-      print('API调用失败，使用mock数据: $e');
+      if (kDebugMode) {
+        print('API调用失败，使用mock数据: $e');
+      }
       final mockData = HomeContent.getMockData();
       setState(() {
         _homeData = mockData;
@@ -215,26 +232,19 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
           _categoryData["主页"] = _homeData!['list'] as List;
         }
         
-        _tabController = TabController(length: _classList.length, vsync: this);
-        _isLoading = false;
-      });
-      
-      // 监听标签变化
-      _tabController.addListener(() {
-        if (_tabController.indexIsChanging) {
-          setState(() {
-            _isLoading = true;
-          });
-          
-          // 模拟加载延迟
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-          });
+        // 确保TabController只初始化一次
+        if (!_isTabControllerInitialized) {
+          _tabController = TabController(length: _classList.length, vsync: this);
+          _setupTabControllerListener();
+          _isTabControllerInitialized = true;
+        } else if (_tabController.length != _classList.length) {
+          // 如果分类数量变化，需要重新创建TabController
+          _tabController.dispose();
+          _tabController = TabController(length: _classList.length, vsync: this);
+          _setupTabControllerListener();
         }
+        
+        _isLoading = false;
       });
     }
   }
@@ -270,7 +280,13 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
     for (var controller in _scrollControllers.values) {
       controller.dispose();
     }
-    _tabController.dispose();
+    
+    // 确保在销毁前移除监听器
+    if (_isTabControllerInitialized) {
+      _tabController.removeListener(_tabChangeListener);
+      _tabController.dispose();
+    }
+    
     super.dispose();
   }
 
@@ -355,6 +371,7 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
       ),
       body: TabBarView(
         controller: _tabController,
+        physics: const ClampingScrollPhysics(), // 防止TabBarView拦截下拉手势
         children: _classList.map((category) {
           final typeId = category['type_id'] as String;
           final typeName = category['type_name'] as String;
@@ -428,7 +445,7 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
     if (AppConfig.forceMockData) {
       // 强制使用mock数据
       final typeId = _getTypeIdByName(typeName);
-      final mockData = await CategoryContent.getMockData(typeId);
+      final mockData = CategoryContent.getMockData(typeId);
       
       // 如果不是初始加载，将新数据添加到现有数据中
       if (!isInitialLoad && _categoryData.containsKey(typeName)) {
@@ -483,11 +500,13 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
       
       return data;
     } catch (e) {
-      print('分类API调用失败，使用mock数据: $e');
+      if (kDebugMode) {
+        print('分类API调用失败，使用mock数据: $e');
+      }
       // 如果API调用失败，回退到使用mock数据
       // 注意：这里我们仍然使用typeId，因为mock数据是按照typeId组织的
       final typeId = _getTypeIdByName(typeName);
-      final mockData = await CategoryContent.getMockData(typeId);
+      final mockData = CategoryContent.getMockData(typeId);
       
       // 如果不是初始加载，将新数据添加到现有数据中
       if (!isInitialLoad && _categoryData.containsKey(typeName)) {
@@ -558,35 +577,36 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
   
   // 实际构建网格和RefreshIndicator的辅助方法
   Widget _buildGridWithLayout(List videoList, String typeName, bool isLandscapeLayout) {
-    return RefreshIndicator(
-      color: const Color(0xFFFF7BB0),
-      backgroundColor: Colors.grey[900],
-      onRefresh: () async {
-        if (typeName == "主页") {
-          await _refreshHomeData();
-        } else {
-          await _refreshCategoryData(typeName);
-        }
-      },
-      child: Column(
-        children: [
-          Expanded(
+    return Column(
+      children: [
+        Expanded(
+          child: RefreshIndicator(
+            color: const Color(0xFFFF7BB0),
+            backgroundColor: Colors.grey[900],
+            displacement: 40.0, // 调整下拉触发距离，使其更容易触发
+            onRefresh: () async {
+              if (typeName == "主页") {
+                await _refreshHomeData();
+              } else {
+                await _refreshCategoryData(typeName);
+              }
+            },
             child: _buildVideoGrid(videoList, typeName, isLandscapeLayout),
           ),
-          if (_isLoadingMore && typeName != "主页")
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: const Center(
-                child: CircularProgressIndicator(color: Color(0xFFFF7BB0), strokeWidth: 3),
-              ),
+        ),
+        if (_isLoadingMore && typeName != "主页")
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFF7BB0), strokeWidth: 3),
             ),
-          if (_hasMoreData[typeName] == false && typeName != "主页")
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              child: const Text('没有更多内容了', style: TextStyle(color: Colors.grey, fontSize: 14)),
-            ),
-        ],
-      ),
+          ),
+        if (_hasMoreData[typeName] == false && typeName != "主页")
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            child: const Text('没有更多内容了', style: TextStyle(color: Colors.grey, fontSize: 14)),
+          ),
+      ],
     );
   }
 
@@ -601,15 +621,17 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
     if (isPortrait) {
       // 竖屏模式，固定2列
       crossAxisCount = 2;
-      childAspectRatio = isLandscapeLayout ? 1.3 : 0.65; // 恢复之前的比例
+      childAspectRatio = isLandscapeLayout ? 1.3 : 0.65;
     } else {
       // 横屏模式，固定4列
       crossAxisCount = 4;
-      childAspectRatio = isLandscapeLayout ? 1.6 : 0.75; // 恢复之前的比例
+      childAspectRatio = isLandscapeLayout ? 1.6 : 0.75;
     }
 
     return GridView.builder(
       controller: _scrollControllers[typeName],
+      physics: const AlwaysScrollableScrollPhysics(), // 确保GridView始终可以滚动以触发刷新
+      primary: false, // 确保不使用PrimaryScrollController，避免与RefreshIndicator冲突
       padding: EdgeInsets.all(isPortrait ? 12 : 15),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -633,7 +655,7 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
 
     final String? remarks = video['vod_remarks'];
     // 判断备注是否应该显示（长度小于等于15个字符）
-    final bool shouldShowRemarks = remarks != null && remarks.length <= 30;
+    final bool shouldShowRemarks = remarks != null && remarks.length <= 16;
 
     return InkWell(
       onTap: () {
@@ -693,7 +715,10 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
                         bottom: 0,
                         left: 0,
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: isPortrait ? 8 : 6, vertical: isPortrait ? 4 : 3),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isPortrait ? 8 : 6, 
+                            vertical: isPortrait ? 2.4 : 1.8, // 竖屏和横屏模式下都减少到原来的60%
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.5),
                             borderRadius: BorderRadius.only(
@@ -702,8 +727,13 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
                             ),
                           ),
                           child: Text(
-                            remarks!, // 此时 remarks 必不为 null
-                            style: TextStyle(fontSize: isPortrait ? 11 : 10, color: Colors.white, fontWeight: FontWeight.bold),
+                            remarks, // 此时 remarks 必不为 null
+                            style: TextStyle(
+                              fontSize: isPortrait ? 9 : 8, // 竖屏和横屏模式下都缩小字体
+                              color: Colors.white, 
+                              fontWeight: FontWeight.bold,
+                              height: isPortrait ? 1.0 : 1.0, // 行高都设为1.0以减小高度
+                            ),
                             textAlign: TextAlign.right,
                           ),
                         ),
@@ -805,6 +835,10 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
   // 刷新主页数据
   Future<void> _refreshHomeData() async {
     await _fetchHomeData(isRefresh: true);
+    // 确保在数据获取后刷新UI
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   // 刷新分类数据
@@ -815,5 +849,9 @@ class _VodPageState extends State<VodPage> with SingleTickerProviderStateMixin {
       _categoryData[typeName]?.clear();
     });
     await _fetchCategoryData(typeName, isInitialLoad: true);
+    // 确保在数据获取后刷新UI
+    if (mounted) {
+      setState(() {});
+    }
   }
 }

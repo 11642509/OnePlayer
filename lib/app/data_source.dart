@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'config.dart';
 
 /// 数据源类型枚举
@@ -52,7 +53,9 @@ class DataSource {
       final response = await _dio.get(AppConfig.getApiPath(endpoint));
       return response.data;
     } catch (e) {
-      print('获取首页数据失败: $e');
+      if (kDebugMode) {
+        print('获取首页数据失败: $e');
+      }
       if (AppConfig.useMockData) {
         // 如果配置允许使用模拟数据，则在API请求失败时返回模拟数据
         // 这里我们抛出异常，让调用方处理
@@ -91,7 +94,9 @@ class DataSource {
       );
       return response.data;
     } catch (e) {
-      print('获取分类数据失败: $e');
+      if (kDebugMode) {
+        print('获取分类数据失败: $e');
+      }
       if (AppConfig.useMockData) {
         // 如果配置允许使用模拟数据，则在API请求失败时返回模拟数据
         // 这里我们抛出异常，让调用方处理
