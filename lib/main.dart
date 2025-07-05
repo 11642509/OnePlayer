@@ -9,9 +9,13 @@ import 'player/vlc_player_page.dart';
 import 'player/video_player_page.dart';
 import 'portrait_home_layout.dart';
 import 'landscape_home_layout.dart';
+import 'app/data_source.dart';
 
 // 全局窗口控制器
 final windowController = WindowController();
+
+// 测试视频URL
+const String testVideoUrl = 'https://static.ybhospital.net/test-video-10.MP4';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -124,29 +128,37 @@ class _HomePageState extends State<HomePage> {
 
   // 打开播放器页面，根据当前方向选择合适的播放器
   void _openPlayerPage(BuildContext context, PlayerType type) {
+    // 创建测试用的播放配置
+    final testPlayConfig = VideoPlayConfig(
+      url: testVideoUrl,
+      headers: const {},
+    );
     
     switch (type) {
       case PlayerType.vlc:
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const VlcDemoShortVideoPlayer(),
-                                    ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const VlcDemoShortVideoPlayer(),
+          ),
         ).then((_) => windowController.ensureCorrectOrientation());
         break;
       case PlayerType.shortVideo:
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const ShortVideoPage(),
-                                    ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ShortVideoPage(),
+          ),
         ).then((_) => windowController.ensureCorrectOrientation());
         break;
       case PlayerType.singleTab:
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const SingleTabPage(),
+            builder: (context) => VlcPlayerPage(
+              playConfig: testPlayConfig,
+              title: 'VLC 播放器测试',
+            ),
           ),
         ).then((_) => windowController.ensureCorrectOrientation());
         break;
@@ -154,8 +166,11 @@ class _HomePageState extends State<HomePage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const SingleVideoTabPage(),
-                                ),
+            builder: (context) => SingleVideoTabPage(
+              playConfig: testPlayConfig,
+              title: 'VideoPlayer 播放器测试',
+            ),
+          ),
         ).then((_) => windowController.ensureCorrectOrientation());
         break;
     }

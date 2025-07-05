@@ -35,6 +35,8 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
   int numberOfCaptions = 0;
   int numberOfAudioTracks = 0;
   bool validPosition = false;
+  bool _initialPlay = true;
+  bool _userPaused = false;
 
   double recordingTextOpacity = 0;
   DateTime lastRecordingShowTime = DateTime.now();
@@ -107,6 +109,13 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
           widget.onStopRecording?.call(_controller.value.recordPath);
         }
       }
+      
+      // 检测视频是否开始播放，如果是首次播放则更新状态
+      if (_initialPlay && _controller.value.isPlaying) {
+        setState(() {
+          _initialPlay = false;
+        });
+      }
     }
   }
 
@@ -144,13 +153,19 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
           GestureDetector(
             onTap: () {
               _resetHideBarTimer();
+              // 记录用户暂停状态
+              if (_controller.value.isPlaying) {
+                _userPaused = true;
+              } else {
+                _userPaused = false;
+              }
               _togglePlaying();
             },
             child: Stack(
               alignment: Alignment.center,
               children: [
                 ColoredBox(
-                                  color: Colors.black,
+                  color: Colors.black,
                   child: SizedBox.expand(
                     child: FittedBox(
                       fit: BoxFit.cover,
@@ -169,19 +184,19 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                           return SizedBox(
                             width: screenWidth,
                             height: screenHeight,
-                  child: VlcPlayer(
-                    controller: _controller,
+                            child: VlcPlayer(
+                              controller: _controller,
                               aspectRatio: aspectRatio,
                               placeholder: const Center(child: CircularProgressIndicator()),
-                  ),
+                            ),
                           );
                         }
                       ),
                     ),
                   ),
                 ),
-                // 暂停时中央大暂停按钮
-                if (!_controller.value.isPlaying)
+                // 暂停时中央大暂停按钮 - 修改条件，只有用户暂停时才显示
+                if (_userPaused && !_controller.value.isPlaying)
                   Tapped(
                     onTap: _togglePlaying,
                     child: Container(
@@ -192,7 +207,7 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                         Icons.play_circle_outline,
                         size: 120,
                         color: Colors.white.withAlpha(102),
-                        ),
+                      ),
                     ),
                   ),
               ],

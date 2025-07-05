@@ -1,6 +1,6 @@
 // 模拟分类内容数据
 class CategoryContent {
-  static Map<String, dynamic> getMockData(String typeId) {
+  static Map<String, dynamic> getMockData(String typeId, {int page = 1}) {
     // 根据分类ID返回对应的数据
     switch (typeId) {
       case "0": // 主页

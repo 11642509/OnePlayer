@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'video_player_tab.dart';
 import '../window_controller.dart';
+import '../app/data_source.dart';
 
 class SingleVideoTabPage extends StatefulWidget {
-  const SingleVideoTabPage({super.key});
+  final VideoPlayConfig playConfig;
+  final String title;
+  
+  const SingleVideoTabPage({
+    super.key,
+    required this.playConfig,
+    required this.title,
+  });
 
   @override
   State<SingleVideoTabPage> createState() => _SingleVideoTabPageState();
@@ -71,6 +79,7 @@ class _SingleVideoTabPageState extends State<SingleVideoTabPage> with WidgetsBin
         children: [
           // 视频播放器，传递控制栏显示/隐藏回调
           SingleVideoTab(
+            playConfig: widget.playConfig,
             showBar: showBar,
             onUserInteraction: showBars,
             onRequestHideBar: hideBars,
@@ -93,11 +102,18 @@ class _SingleVideoTabPageState extends State<SingleVideoTabPage> with WidgetsBin
                     },
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'VideoPlayer 播放器测试',
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: Colors.white, 
+                        fontSize: 18, 
+                        fontWeight: FontWeight.bold,
                   ),
-                  const Spacer(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),

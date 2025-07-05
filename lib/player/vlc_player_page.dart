@@ -2,15 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'vlc_tab.dart';
 import '../window_controller.dart';
+import '../app/data_source.dart';
 
-class SingleTabPage extends StatefulWidget {
-  const SingleTabPage({super.key});
+class VlcPlayerPage extends StatefulWidget {
+  final VideoPlayConfig playConfig;
+  final String title;
+  
+  const VlcPlayerPage({
+    super.key,
+    required this.playConfig,
+    required this.title,
+  });
 
   @override
-  State<SingleTabPage> createState() => _SingleTabPageState();
+  State<VlcPlayerPage> createState() => _VlcPlayerPageState();
 }
 
-class _SingleTabPageState extends State<SingleTabPage> with WidgetsBindingObserver {
+class _VlcPlayerPageState extends State<VlcPlayerPage> with WidgetsBindingObserver {
   bool showBar = true;
   bool _isLandscape = false;
   final windowController = WindowController();
@@ -70,10 +78,9 @@ class _SingleTabPageState extends State<SingleTabPage> with WidgetsBindingObserv
       body: Stack(
         children: [
           // 视频播放器，传递控制栏显示/隐藏回调
-          SingleTab(
-            showBar: showBar,
-            onUserInteraction: showBars,
-            onRequestHideBar: hideBars,
+          SingleTabPage(
+            playConfig: widget.playConfig,
+            title: widget.title,
           ),
           // 悬浮标题栏
           AnimatedOpacity(
@@ -93,11 +100,18 @@ class _SingleTabPageState extends State<SingleTabPage> with WidgetsBindingObserv
                     },
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    '单标签播放器测试',
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: Colors.white, 
+                        fontSize: 18, 
+                        fontWeight: FontWeight.bold,
                   ),
-                  const Spacer(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),

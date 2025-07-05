@@ -31,6 +31,8 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
   String position = '';
   String duration = '';
   bool validPosition = false;
+  bool _initialPlay = true;
+  bool _userPaused = false;
 
   // 新增：接收url参数
 
@@ -63,6 +65,13 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
     //
     if (_controller.value.isInitialized) {
       _updatePosition();
+      
+      // 检测视频是否开始播放，如果是首次播放则更新状态
+      if (_initialPlay && _controller.value.isPlaying) {
+        setState(() {
+          _initialPlay = false;
+        });
+      }
     }
   }
   
@@ -125,6 +134,12 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
           GestureDetector(
             onTap: () {
               _resetHideBarTimer();
+              // 记录用户暂停状态
+              if (_controller.value.isPlaying) {
+                _userPaused = true;
+              } else {
+                _userPaused = false;
+              }
               _togglePlaying();
             },
             child: Stack(
@@ -160,8 +175,8 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
                     ),
                   ),
                 ),
-                // 暂停时中央大暂停按钮
-                if (!_controller.value.isPlaying)
+                // 暂停时中央大暂停按钮 - 修改条件，只有用户暂停时才显示
+                if (_userPaused && !_controller.value.isPlaying)
                   Tapped(
                     onTap: _togglePlaying,
                     child: Container(

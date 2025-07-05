@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
+import '../app/data_source.dart';
 import 'video_player_with_controls.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class SingleVideoTab extends StatefulWidget {
   final bool showBar;
+  final VideoPlayConfig playConfig;
   final VoidCallback? onUserInteraction;
   final VoidCallback? onRequestHideBar;
-  const SingleVideoTab({super.key, this.showBar = true, this.onUserInteraction, this.onRequestHideBar});
+  
+  const SingleVideoTab({
+    super.key, 
+    required this.playConfig,
+    this.showBar = true, 
+    this.onUserInteraction, 
+    this.onRequestHideBar,
+  });
 
   @override
   SingleVideoTabState createState() => SingleVideoTabState();
@@ -15,47 +26,60 @@ class SingleVideoTab extends StatefulWidget {
 class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObserver {
   final _key = GlobalKey<VideoPlayerWithControlsState>();
   late final VideoPlayerController _controller;
-  late final String _videoUrl;
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    // 添加观察者以监听设备方向变化
     WidgetsBinding.instance.addObserver(this);
-    // 保存视频url
-    _videoUrl = 'https://static.ybhospital.net/test-video-10.MP4';
-    // 默认播放第一个网络视频
+    
+    if (kDebugMode) {
+      print('VideoPlayer播放器配置：');
+      print('URL: ${widget.playConfig.url}');
+      print('Headers: ${widget.playConfig.headers}');
+    }
+    
     _controller = VideoPlayerController.networkUrl(
-      Uri.parse(_videoUrl),
+      Uri.parse(widget.playConfig.url),
+      httpHeaders: widget.playConfig.headers,
       videoPlayerOptions: VideoPlayerOptions(
         mixWithOthers: false,
         allowBackgroundPlayback: false,
       ),
     );
     
-    // 初始化控制器
     _controller.initialize().then((_) {
-      // 设置默认音量为100%
       _controller.setVolume(1);
       
-      // 开始播放
       _controller.play();
       
-      // 控制器初始化完成后，触发一次用户交互回调
       if (widget.onUserInteraction != null && mounted) {
         widget.onUserInteraction!();
       }
       
-      // 更新UI
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }).catchError((error) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _errorMessage = '视频加载失败: ${error.toString()}';
+        });
+      }
+      if (kDebugMode) {
+        print('视频加载失败: $error');
       }
     });
   }
   
   @override
   void didChangeMetrics() {
-    // 当设备尺寸、方向等变化时调用
     if (mounted) {
       setState(() {
         // 触发重建以适应新的屏幕方向
@@ -65,20 +89,141 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: VideoPlayerWithControls(
-        key: _key,
-        controller: _controller,
-        showBar: widget.showBar,
-        onUserInteraction: widget.onUserInteraction,
-        onRequestHideBar: widget.onRequestHideBar,
+    return Stack(
+      children: [
+        SizedBox.expand(
+          child: VideoPlayerWithControls(
+            key: _key,
+            controller: _controller,
+            showBar: widget.showBar,
+            onUserInteraction: widget.onUserInteraction,
+            onRequestHideBar: widget.onRequestHideBar,
+          ),
+        ),
+        
+        if (_isLoading)
+          _buildLoadingOverlay(),
+          
+        if (_hasError)
+          _buildErrorOverlay(),
+      ],
+    );
+  }
+  
+  Widget _buildLoadingOverlay() {
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Colors.blue,
+            Colors.green,
+          ],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          const SpinKitWave(
+            size: 36,
+            color: Colors.white70,
+          ),
+          Container(
+            padding: const EdgeInsets.all(50),
+            child: Text(
+              '视频加载中...',
+              style: TextStyle(
+                color: Colors.white.withAlpha(179),
+                fontSize: 14,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildErrorOverlay() {
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Colors.red,
+            Colors.orange,
+          ],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          const Icon(
+            Icons.error_outline,
+            color: Colors.white,
+            size: 60,
+          ),
+          Container(
+            padding: const EdgeInsets.all(50),
+            child: Text(
+              _errorMessage,
+              style: TextStyle(
+                color: Colors.white.withAlpha(179),
+                fontSize: 14,
+                fontWeight: FontWeight.normal,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _isLoading = true;
+                _hasError = false;
+              });
+              
+              _controller.initialize().then((_) {
+                _controller.setVolume(1);
+                _controller.play();
+                
+                if (mounted) {
+                  setState(() {
+                    _isLoading = false;
+                  });
+                }
+              }).catchError((error) {
+                if (mounted) {
+                  setState(() {
+                    _isLoading = false;
+                    _hasError = true;
+                    _errorMessage = '视频加载失败: ${error.toString()}';
+                  });
+                }
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white.withAlpha(51),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('重新加载'),
+          ),
+        ],
       ),
     );
   }
 
   @override
   void dispose() {
-    // 移除观察者
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();

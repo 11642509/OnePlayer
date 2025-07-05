@@ -1,16 +1,36 @@
 /// 应用配置类
 class AppConfig {
-  /// API基础URL
-  static const String apiBaseUrl = 'http://192.168.5.48:8080';
+  /// 是否强制使用mock数据
+  static bool forceMockData = false;
   
-  /// API版本
+  /// 服务器主机和端口配置（统一API和代理服务器）
+  static const String serverHost = '192.168.5.160';
+  static const int serverPort = 8080;
+  
+  /// API相关配置
   static const String apiVersion = 'v1';
+  static String get apiBaseUrl => 'http://$serverHost:$serverPort';
+  
+  /// 代理服务器相关配置
+  static const String proxyPath = '/proxy';
+  
+  /// 播放器内核选择
+  static PlayerKernel currentPlayerKernel = PlayerKernel.videoPlayer;
+  
+  /// 获取代理服务器URL
+  static String getProxyUrl(Map<String, String> queryParams) {
+    final uri = Uri(
+      scheme: 'http',
+      host: serverHost,
+      port: serverPort,
+      path: proxyPath,
+      queryParameters: queryParams,
+    );
+    return uri.toString();
+  }
   
   /// 是否使用模拟数据（当API不可用时）
   static const bool useMockData = true;
-  
-  /// 是否强制使用模拟数据（无论API是否可用）
-  static const bool forceMockData = false;
   
   /// 获取完整的API路径
   static String getApiPath(String endpoint) {
@@ -25,4 +45,10 @@ class AppConfig {
   
   /// 默认数据源
   static const String defaultDataSource = 'bilibili';
+}
+
+/// 播放器内核枚举
+enum PlayerKernel {
+  vlc,        // VLC内核
+  videoPlayer, // Flutter官方video_player内核
 } 

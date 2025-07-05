@@ -7,6 +7,7 @@ import '../mock/category_content.dart'; // 导入分类内容数据
 import '../window_controller.dart'; // 导入窗口控制器
 import '../app/data_source.dart'; // 导入数据源服务
 import '../app/config.dart'; // 导入配置
+import 'video_detail_page.dart'; // 导入视频详情页
 
 class VodPage extends StatefulWidget {
   const VodPage({super.key});
@@ -19,7 +20,6 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic>? _homeData;
   bool _isLoading = true;
-  bool _isTabControllerInitialized = false; // 添加标志来跟踪TabController是否已初始化
   
   // 添加主页分类
   final Map<String, dynamic> _homeCategory = {"type_id": "0", "type_name": "主页"};
@@ -36,69 +36,20 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
   // 分类数据缓存
   final Map<String, List<dynamic>> _categoryData = {};
   
-  // 是否正在加载更多数据
-  bool _isLoadingMore = false;
-  
-  // 是否还有更多数据可加载
-  final Map<String, bool> _hasMoreData = {};
-  
-  // 滚动控制器
-  final Map<String, ScrollController> _scrollControllers = {};
+  // 总页数
+  final Map<String, int> _totalPages = {};
   
   @override
   void initState() {
     super.initState();
-    _fetchHomeData().then((_) {
-      // 确保TabController只初始化一次，并且监听器只添加一次
-      if (_isTabControllerInitialized) {
-        _setupTabControllerListener();
-      }
-    });
-  }
-  
-  // 设置TabController监听器的单独方法
-  void _setupTabControllerListener() {
-    // 先移除可能存在的旧监听器，防止重复
-    _tabController.removeListener(_tabChangeListener);
-    // 添加新的监听器
-    _tabController.addListener(_tabChangeListener);
-  }
-  
-  // 标签变化的回调函数
-  void _tabChangeListener() {
-    if (_tabController.indexIsChanging) {
-      setState(() {
-        _isLoading = true;
-      });
-      
-      final tabIndex = _tabController.index;
-      if (tabIndex >= 0 && tabIndex < _classList.length) {
-        final category = _classList[tabIndex];
-        final typeName = category['type_name'] as String;
-
-        if (typeName == "主页") {
-          _refreshHomeData();
-        } else {
-          _refreshCategoryData(typeName);
-        }
-      }
-      
-      // 延迟加载，确保UI切换完成
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      });
-    }
+    _fetchHomeData();
   }
   
   // 获取首页数据
-  Future<void> _fetchHomeData({bool isRefresh = false}) async {
-    if (!isRefresh) {
-      setState(() => _isLoading = true);
-    }
+  Future<void> _fetchHomeData() async {
+    setState(() {
+      _isLoading = true;
+    });
     
     try {
       // 检查是否强制使用mock数据
@@ -113,15 +64,7 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
           for (var category in _classList) {
             final typeName = category['type_name'] as String;
             _currentPages[typeName] = 1;
-            _hasMoreData[typeName] = true;
-            
-            // 为每个分类创建滚动控制器
-            if (!_scrollControllers.containsKey(typeName)) {
-              _scrollControllers[typeName] = ScrollController()
-                ..addListener(() {
-                  _scrollListener(typeName);
-                });
-            }
+            _totalPages[typeName] = 1;
             
             // 初始化分类数据缓存
             if (!_categoryData.containsKey(typeName)) {
@@ -134,19 +77,37 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
             _categoryData["主页"] = _homeData!['list'] as List;
           }
           
-          // 确保TabController只初始化一次
-          if (!_isTabControllerInitialized) {
-            _tabController = TabController(length: _classList.length, vsync: this);
-            _setupTabControllerListener();
-            _isTabControllerInitialized = true;
-          } else if (_tabController.length != _classList.length) {
-            // 如果分类数量变化，需要重新创建TabController
-            _tabController.dispose();
-            _tabController = TabController(length: _classList.length, vsync: this);
-            _setupTabControllerListener();
-          }
-          
+          _tabController = TabController(length: _classList.length, vsync: this);
           _isLoading = false;
+        });
+        
+        // 监听标签变化
+        _tabController.addListener(() {
+          if (_tabController.indexIsChanging) {
+            setState(() {
+              _isLoading = true;
+            });
+            
+            // 延迟加载，确保UI切换完成
+            Future.delayed(const Duration(milliseconds: 300), () async {
+              if (mounted) {
+                // 获取当前选中的分类
+                final selectedCategory = _classList[_tabController.index];
+                final selectedTypeName = selectedCategory['type_name'] as String;
+                
+                // 如果不是主页，则重新加载该分类的数据
+                if (selectedTypeName != "主页") {
+                  await _fetchCategoryData(selectedTypeName, isInitialLoad: true);
+                }
+                
+                if (mounted) {
+                  setState(() {
+                    _isLoading = false;
+                  });
+                }
+              }
+            });
+          }
         });
         
         return;
@@ -162,15 +123,7 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
         for (var category in _classList) {
           final typeName = category['type_name'] as String;
           _currentPages[typeName] = 1;
-          _hasMoreData[typeName] = true;
-          
-          // 为每个分类创建滚动控制器
-          if (!_scrollControllers.containsKey(typeName)) {
-            _scrollControllers[typeName] = ScrollController()
-              ..addListener(() {
-                _scrollListener(typeName);
-              });
-          }
+          _totalPages[typeName] = 1;
           
           // 初始化分类数据缓存
           if (!_categoryData.containsKey(typeName)) {
@@ -183,19 +136,37 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
           _categoryData["主页"] = _homeData!['list'] as List;
         }
         
-        // 确保TabController只初始化一次
-        if (!_isTabControllerInitialized) {
-          _tabController = TabController(length: _classList.length, vsync: this);
-          _setupTabControllerListener();
-          _isTabControllerInitialized = true;
-        } else if (_tabController.length != _classList.length) {
-          // 如果分类数量变化，需要重新创建TabController
-          _tabController.dispose();
-          _tabController = TabController(length: _classList.length, vsync: this);
-          _setupTabControllerListener();
-        }
-        
+        _tabController = TabController(length: _classList.length, vsync: this);
         _isLoading = false;
+      });
+      
+      // 监听标签变化
+      _tabController.addListener(() {
+        if (_tabController.indexIsChanging) {
+          setState(() {
+            _isLoading = true;
+          });
+          
+          // 延迟加载，确保UI切换完成
+          Future.delayed(const Duration(milliseconds: 300), () async {
+            if (mounted) {
+              // 获取当前选中的分类
+              final selectedCategory = _classList[_tabController.index];
+              final selectedTypeName = selectedCategory['type_name'] as String;
+              
+              // 如果不是主页，则重新加载该分类的数据
+              if (selectedTypeName != "主页") {
+                await _fetchCategoryData(selectedTypeName, isInitialLoad: true);
+              }
+              
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+            }
+          });
+        }
       });
     } catch (e) {
       // 如果接口调用失败，回退到使用mock数据
@@ -211,15 +182,7 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
         for (var category in _classList) {
           final typeName = category['type_name'] as String;
           _currentPages[typeName] = 1;
-          _hasMoreData[typeName] = true;
-          
-          // 为每个分类创建滚动控制器
-          if (!_scrollControllers.containsKey(typeName)) {
-            _scrollControllers[typeName] = ScrollController()
-              ..addListener(() {
-                _scrollListener(typeName);
-              });
-          }
+          _totalPages[typeName] = 1;
           
           // 初始化分类数据缓存
           if (!_categoryData.containsKey(typeName)) {
@@ -232,40 +195,27 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
           _categoryData["主页"] = _homeData!['list'] as List;
         }
         
-        // 确保TabController只初始化一次
-        if (!_isTabControllerInitialized) {
-          _tabController = TabController(length: _classList.length, vsync: this);
-          _setupTabControllerListener();
-          _isTabControllerInitialized = true;
-        } else if (_tabController.length != _classList.length) {
-          // 如果分类数量变化，需要重新创建TabController
-          _tabController.dispose();
-          _tabController = TabController(length: _classList.length, vsync: this);
-          _setupTabControllerListener();
-        }
-        
+        _tabController = TabController(length: _classList.length, vsync: this);
         _isLoading = false;
       });
-    }
-  }
-  
-  // 滚动监听器
-  void _scrollListener(String typeName) {
-    final controller = _scrollControllers[typeName];
-    if (controller == null) return;
-    
-    // 如果是主页，不需要加载更多
-    if (typeName == "主页") return;
-    
-    // 如果没有更多数据，不需要加载
-    if (_hasMoreData[typeName] == false) return;
-    
-    // 如果正在加载，不需要重复加载
-    if (_isLoadingMore) return;
-    
-    // 如果滚动到接近底部，加载更多数据
-    if (controller.position.pixels >= controller.position.maxScrollExtent - 200) {
-      _loadMoreData(typeName);
+      
+      // 监听标签变化
+      _tabController.addListener(() {
+        if (_tabController.indexIsChanging) {
+          setState(() {
+            _isLoading = true;
+          });
+          
+          // 模拟加载延迟
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
+          });
+        }
+      });
     }
   }
 
@@ -276,17 +226,7 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    // 释放所有滚动控制器
-    for (var controller in _scrollControllers.values) {
-      controller.dispose();
-    }
-    
-    // 确保在销毁前移除监听器
-    if (_isTabControllerInitialized) {
-      _tabController.removeListener(_tabChangeListener);
-      _tabController.dispose();
-    }
-    
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -371,7 +311,6 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
       ),
       body: TabBarView(
         controller: _tabController,
-        physics: const ClampingScrollPhysics(), // 防止TabBarView拦截下拉手势
         children: _classList.map((category) {
           final typeId = category['type_id'] as String;
           final typeName = category['type_name'] as String;
@@ -441,92 +380,54 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
   
   // 获取分类数据，先尝试API，失败则使用mock
   Future<Map<String, dynamic>> _fetchCategoryData(String typeName, {bool isInitialLoad = false}) async {
+    final page = _currentPages[typeName] ?? 1;
+
     // 检查是否强制使用mock数据
     if (AppConfig.forceMockData) {
-      // 强制使用mock数据
       final typeId = _getTypeIdByName(typeName);
-      final mockData = CategoryContent.getMockData(typeId);
+      final mockData = CategoryContent.getMockData(typeId, page: page);
       
-      // 如果不是初始加载，将新数据添加到现有数据中
-      if (!isInitialLoad && _categoryData.containsKey(typeName)) {
-        final newList = mockData['list'] as List;
-        if (newList.isNotEmpty) {
-          _categoryData[typeName]!.addAll(newList);
-        } else {
-          // 如果返回的列表为空，表示没有更多数据了
-          _hasMoreData[typeName] = false;
-        }
-      } else {
-        // 初始加载，直接替换数据
-        if (mockData.containsKey('list')) {
-          _categoryData[typeName] = mockData['list'] as List;
-        } else {
-          _categoryData[typeName] = [];
-        }
-      }
-      
+      _updateDataAndPages(typeName, mockData);
       return mockData;
     }
     
     try {
-      // 如果是初始加载，重置页码为1
-      if (isInitialLoad) {
-        _currentPages[typeName] = 1;
-      }
-      
-      // 获取当前分类的页码
-      final page = _currentPages[typeName] ?? 1;
-      
       // 尝试从真实接口获取数据
       final data = await _dataSource.fetchCategoryData(typeName, page: page);
-      
-      // 如果不是初始加载，将新数据添加到现有数据中
-      if (!isInitialLoad && _categoryData.containsKey(typeName)) {
-        final newList = data['list'] as List;
-        if (newList.isNotEmpty) {
-          _categoryData[typeName]!.addAll(newList);
-        } else {
-          // 如果返回的列表为空，表示没有更多数据了
-          _hasMoreData[typeName] = false;
-        }
-      } else {
-        // 初始加载，直接替换数据
-        if (data.containsKey('list')) {
-          _categoryData[typeName] = data['list'] as List;
-        } else {
-          _categoryData[typeName] = [];
-        }
-      }
-      
+      _updateDataAndPages(typeName, data);
       return data;
     } catch (e) {
       if (kDebugMode) {
         print('分类API调用失败，使用mock数据: $e');
       }
       // 如果API调用失败，回退到使用mock数据
-      // 注意：这里我们仍然使用typeId，因为mock数据是按照typeId组织的
       final typeId = _getTypeIdByName(typeName);
-      final mockData = CategoryContent.getMockData(typeId);
-      
-      // 如果不是初始加载，将新数据添加到现有数据中
-      if (!isInitialLoad && _categoryData.containsKey(typeName)) {
-        final newList = mockData['list'] as List;
-        if (newList.isNotEmpty) {
-          _categoryData[typeName]!.addAll(newList);
-        } else {
-          // 如果返回的列表为空，表示没有更多数据了
-          _hasMoreData[typeName] = false;
-        }
-      } else {
-        // 初始加载，直接替换数据
-        if (mockData.containsKey('list')) {
-          _categoryData[typeName] = mockData['list'] as List;
-        } else {
-          _categoryData[typeName] = [];
-        }
-      }
-      
+      final mockData = CategoryContent.getMockData(typeId, page: page);
+      _updateDataAndPages(typeName, mockData);
       return mockData;
+    }
+  }
+
+  void _updateDataAndPages(String typeName, Map<String, dynamic> data) {
+    // 更新总页数
+    if (data.containsKey('pagecount')) {
+      final pageCountValue = data['pagecount'];
+      if (pageCountValue is int) {
+        _totalPages[typeName] = pageCountValue > 0 ? pageCountValue : 1;
+      } else if (pageCountValue is String) {
+        _totalPages[typeName] = int.tryParse(pageCountValue) ?? 1;
+      } else {
+        _totalPages[typeName] = 1;
+      }
+    } else {
+      _totalPages[typeName] = 1;
+    }
+
+    // 初始加载或翻页，直接替换数据
+    if (data.containsKey('list')) {
+      _categoryData[typeName] = data['list'] as List;
+    } else {
+      _categoryData[typeName] = [];
     }
   }
   
@@ -577,36 +478,39 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
   
   // 实际构建网格和RefreshIndicator的辅助方法
   Widget _buildGridWithLayout(List videoList, String typeName, bool isLandscapeLayout) {
-    return Column(
-      children: [
-        Expanded(
-          child: RefreshIndicator(
-            color: const Color(0xFFFF7BB0),
-            backgroundColor: Colors.grey[900],
-            displacement: 40.0, // 调整下拉触发距离，使其更容易触发
-            onRefresh: () async {
-              if (typeName == "主页") {
-                await _refreshHomeData();
-              } else {
-                await _refreshCategoryData(typeName);
-              }
-            },
+    final windowController = WindowController();
+    final isPortrait = windowController.isPortrait.value;
+    
+    return RefreshIndicator(
+      color: const Color(0xFFFF7BB0),
+      backgroundColor: Colors.grey[900],
+      onRefresh: () async {
+        // 刷新数据
+        if (typeName == "主页") {
+          await _fetchHomeData();
+        } else {
+          setState(() {
+            _isLoading = true;
+            _currentPages[typeName] = 1;
+          });
+          try {
+            await _fetchCategoryData(typeName, isInitialLoad: true);
+          } finally {
+            if (mounted) setState(() => _isLoading = false);
+          }
+        }
+      },
+      child: Column(
+        children: [
+          Expanded(
             child: _buildVideoGrid(videoList, typeName, isLandscapeLayout),
           ),
-        ),
-        if (_isLoadingMore && typeName != "主页")
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: const Center(
-              child: CircularProgressIndicator(color: Color(0xFFFF7BB0), strokeWidth: 3),
-            ),
-          ),
-        if (_hasMoreData[typeName] == false && typeName != "主页")
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            child: const Text('没有更多内容了', style: TextStyle(color: Colors.grey, fontSize: 14)),
-          ),
-      ],
+          if (typeName != "主页") 
+            isPortrait 
+              ? _buildPortraitPageNavigator(typeName) 
+              : _buildLandscapePageNavigator(typeName),
+        ],
+      ),
     );
   }
 
@@ -621,17 +525,14 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
     if (isPortrait) {
       // 竖屏模式，固定2列
       crossAxisCount = 2;
-      childAspectRatio = isLandscapeLayout ? 1.3 : 0.65;
+      childAspectRatio = isLandscapeLayout ? 1.3 : 0.65; // 恢复之前的比例
     } else {
       // 横屏模式，固定4列
       crossAxisCount = 4;
-      childAspectRatio = isLandscapeLayout ? 1.6 : 0.75;
+      childAspectRatio = isLandscapeLayout ? 1.6 : 0.75; // 恢复之前的比例
     }
 
     return GridView.builder(
-      controller: _scrollControllers[typeName],
-      physics: const AlwaysScrollableScrollPhysics(), // 确保GridView始终可以滚动以触发刷新
-      primary: false, // 确保不使用PrimaryScrollController，避免与RefreshIndicator冲突
       padding: EdgeInsets.all(isPortrait ? 12 : 15),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -654,162 +555,293 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
     final isPortrait = windowController.isPortrait.value;
 
     final String? remarks = video['vod_remarks'];
-    // 判断备注是否应该显示（长度小于等于15个字符）
-    final bool shouldShowRemarks = remarks != null && remarks.length <= 16;
+    // 判断备注是否应该显示（长度小于等于30个字符）
+    final bool shouldShowRemarks = remarks != null && remarks.length <= 30;
 
-    return InkWell(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('即将播放: ${video['vod_name']}'),
-            backgroundColor: const Color(0xFFFF7BB0),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Card(
+      elevation: isPortrait ? 2 : 1,
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
+      ),
+      color: isPortrait ? Colors.white : Colors.grey[900],
+      child: Stack(
         children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 3, offset: const Offset(0, 2)),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    _buildCoverImage(video['vod_pic'] as String, isLandscapeLayout),
-                    if (index < 10)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        child: Container(
-                          width: isPortrait ? 28 : 24,
-                          height: isPortrait ? 28 : 24,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: _getRankingColor(index),
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(isPortrait ? 8 : 6),
-                              bottomRight: Radius.circular(isPortrait ? 8 : 6),
-                            ),
-                          ),
-                          child: Text(
-                            '${index + 1}',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: isPortrait ? 14 : 12),
-                          ),
-                        ),
-                      ),
-                    
-                    // 根据判断结果决定是否显示备注
-                    if (shouldShowRemarks)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        left: 0,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isPortrait ? 8 : 6, 
-                            vertical: isPortrait ? 2.4 : 1.8, // 竖屏和横屏模式下都减少到原来的60%
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
-                            borderRadius: BorderRadius.only(
-                              bottomLeft: Radius.circular(isPortrait ? 8 : 6),
-                              bottomRight: Radius.circular(isPortrait ? 8 : 6),
-                            ),
-                          ),
-                          child: Text(
-                            remarks, // 此时 remarks 必不为 null
-                            style: TextStyle(
-                              fontSize: isPortrait ? 9 : 8, // 竖屏和横屏模式下都缩小字体
-                              color: Colors.white, 
-                              fontWeight: FontWeight.bold,
-                              height: isPortrait ? 1.0 : 1.0, // 行高都设为1.0以减小高度
-                            ),
-                            textAlign: TextAlign.right,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Container(
-            height: isPortrait ? 40 : 34,
-            padding: EdgeInsets.only(top: isPortrait ? 8 : 6, left: isPortrait ? 2 : 1, right: isPortrait ? 2 : 1),
-            child: Text(
-              video['vod_name'] as String,
-              style: TextStyle(fontSize: isPortrait ? 13 : 11, color: textColor, fontWeight: FontWeight.normal, height: 1.2),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          _buildImageWithInnerShadow(video['vod_pic'], isLandscapeLayout, isPortrait),
+          _buildTitle(video['vod_name'], textColor, isPortrait),
+          if (shouldShowRemarks) _buildRemarks(remarks, isPortrait),
+          _buildHoverAndSplash(video['vod_id']),
         ],
       ),
     );
   }
 
-  // 构建封面图片
-  Widget _buildCoverImage(String imageUrl, bool isLandscapeLayout) {
-    return Image.network(
-      imageUrl,
-      fit: BoxFit.fill, // 保持拉伸填充
-      width: double.infinity,
-      height: double.infinity,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: Colors.grey[800],
-          child: const Center(child: Icon(Icons.broken_image, color: Colors.white54, size: 20)),
-        );
-      },
+  // 提取图片和内部阴影为单独的Widget
+  Widget _buildImageWithInnerShadow(String imageUrl, bool isLandscape, bool isPortrait) {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(26),
+            spreadRadius: -10,
+            blurRadius: 10,
+            offset: const Offset(0, -10),
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: NetworkImage(imageUrl),
+                  fit: BoxFit.cover,
+                ),
+                borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withAlpha(51), blurRadius: 3, offset: const Offset(0, 2)),
+                ],
+              ),
+            ),
+          ),
+          // 仅在竖屏时显示标题下方的空间
+          if (isPortrait) 
+             SizedBox(height: isLandscape ? 40 : 60),
+        ],
+      ),
+    );
+  }
+
+  // 构建标题
+  Widget _buildTitle(String title, Color textColor, bool isPortrait) {
+    return Positioned(
+      bottom: isPortrait ? 4 : 8,
+      left: isPortrait ? 8 : 10,
+      right: isPortrait ? 8 : 10,
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: isPortrait ? 13 : 12,
+          fontWeight: isPortrait ? FontWeight.w500 : FontWeight.normal,
+          color: textColor,
+          height: 1.4,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  // 构建备注
+  Widget _buildRemarks(String? remarks, bool isPortrait) {
+    if (remarks == null || remarks.isEmpty) return const SizedBox.shrink();
+    return Positioned(
+      top: 0,
+      left: 0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.black.withAlpha(128),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(8),
+            bottomRight: Radius.circular(8),
+          ),
+        ),
+        child: Text(
+          remarks,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 构建悬停效果和点击效果
+  Widget _buildHoverAndSplash(String videoId) {
+    return Positioned.fill(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VideoDetailPage(videoId: videoId),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
   
-  // 获取排名颜色
-  Color _getRankingColor(int index) {
-    switch (index) {
-      case 0:
-        return Colors.orange; // 第一名
-      case 1:
-        return Colors.cyan; // 第二名
-      case 2:
-        return Colors.pink; // 第三名
-      default:
-        return Colors.grey.withValues(alpha: 0.8); // 其他名次
+  // 构建页面导航器
+  Widget _buildPortraitPageNavigator(String typeName) {
+    final currentPage = _currentPages[typeName] ?? 1;
+    final totalPages = _totalPages[typeName] ?? 1;
+
+    // 如果总页数小于等于1，则不显示分页器
+    if (totalPages <= 1) {
+      return const SizedBox.shrink();
     }
+    
+    // 创建页码列表
+    List<int> pageNumbers = _generatePageNumbers(currentPage, totalPages);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: pageNumbers.map((pageNum) {
+          if (pageNum == -1) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.0),
+              child: Text("..."),
+            );
+          }
+          
+          final bool isCurrentPage = pageNum == currentPage;
+
+          return GestureDetector(
+            onTap: () {
+              if (pageNum != currentPage) {
+                _onPageChanged(typeName, pageNum);
+              }
+            },
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isCurrentPage ? const Color(0xFFFF7BB0) : null,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isCurrentPage ? Colors.transparent : Colors.grey[300]!,
+                  ),
+                ),
+                child: Text(
+                  pageNum.toString(),
+                  style: TextStyle(
+                    color: isCurrentPage ? Colors.white : Colors.black,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
   
-  // 加载更多数据
-  Future<void> _loadMoreData(String typeName) async {
-    // 如果正在加载或没有更多数据，则不执行
-    if (_isLoadingMore || _hasMoreData[typeName] == false) return;
-    
+  // 构建横屏模式下的页面导航器
+  Widget _buildLandscapePageNavigator(String typeName) {
+    final currentPage = _currentPages[typeName] ?? 1;
+    final totalPages = _totalPages[typeName] ?? 1;
+
+    // 如果总页数小于等于1，则不显示分页器
+    if (totalPages <= 1) {
+      return const SizedBox.shrink();
+    }
+
+    List<int> pageNumbers = _generatePageNumbers(currentPage, totalPages);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: pageNumbers.map((pageNum) {
+          if (pageNum == -1) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.0),
+              child: Text("...", style: TextStyle(color: Colors.white)),
+            );
+          }
+
+          final isCurrentPage = pageNum == currentPage;
+
+          return InkWell(
+            onTap: () {
+              if (pageNum != currentPage) {
+                _onPageChanged(typeName, pageNum);
+              }
+            },
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                color: isCurrentPage ? const Color(0xFFFF7BB0) : Colors.grey[800],
+                border: Border.all(
+                  color: isCurrentPage ? Colors.transparent : Colors.grey[700]!,
+                ),
+                boxShadow: isCurrentPage
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFFFF7BB0).withAlpha(51),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : [],
+              ),
+              child: Text(
+                pageNum.toString(),
+                style: TextStyle(
+                  color: isCurrentPage ? Colors.white : Colors.grey[300],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+  
+  // 页面改变时的回调
+  void _onPageChanged(String typeName, int newPage) {
     setState(() {
-      _isLoadingMore = true;
-      
-      // 增加当前分类的页码
-      _currentPages[typeName] = (_currentPages[typeName] ?? 1) + 1;
+      _isLoading = true;
+      _currentPages[typeName] = newPage;
     });
     
-    try {
-      // 获取下一页数据
-      await _fetchCategoryData(typeName);
-    } finally {
+    // 延迟0.3秒以显示加载动画
+    Future.delayed(const Duration(milliseconds: 300), () async {
       if (mounted) {
-        setState(() {
-          _isLoadingMore = false;
-        });
+        try {
+          await _fetchCategoryData(typeName, isInitialLoad: false);
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
       }
+    });
+  }
+
+  // 生成页码列表
+  List<int> _generatePageNumbers(int currentPage, int totalPages) {
+    if (totalPages <= 7) {
+      return List.generate(totalPages, (index) => index + 1);
     }
+
+    List<int> pages = [];
+    if (currentPage <= 4) {
+      pages.addAll([1, 2, 3, 4, 5, -1, totalPages]);
+    } else if (currentPage > totalPages - 4) {
+      pages.addAll([1, -1, totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]);
+    } else {
+      pages.addAll([1, -1, currentPage - 1, currentPage, currentPage + 1, -1, totalPages]);
+    }
+    return pages;
   }
 
   // 重新引入获取图片信息的方法
@@ -830,28 +862,5 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
     );
     
     return completer.future;
-  }
-
-  // 刷新主页数据
-  Future<void> _refreshHomeData() async {
-    await _fetchHomeData(isRefresh: true);
-    // 确保在数据获取后刷新UI
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  // 刷新分类数据
-  Future<void> _refreshCategoryData(String typeName) async {
-    setState(() {
-      _currentPages[typeName] = 1;
-      _hasMoreData[typeName] = true;
-      _categoryData[typeName]?.clear();
-    });
-    await _fetchCategoryData(typeName, isInitialLoad: true);
-    // 确保在数据获取后刷新UI
-    if (mounted) {
-      setState(() {});
-    }
   }
 }
