@@ -12,6 +12,7 @@ class VlcPlayerWithControls extends StatefulWidget {
   final VoidCallback? onUserInteraction;
   final VoidCallback? onRequestHideBar;
   final OnStopRecordingCallback? onStopRecording;
+  final String? title; // 新增title属性
 
   const VlcPlayerWithControls({
     required this.controller,
@@ -20,6 +21,7 @@ class VlcPlayerWithControls extends StatefulWidget {
     this.onUserInteraction,
     this.onRequestHideBar,
     this.onStopRecording,
+    this.title, // 初始化title
     super.key,
   });
 
@@ -35,8 +37,6 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
   int numberOfCaptions = 0;
   int numberOfAudioTracks = 0;
   bool validPosition = false;
-  bool _initialPlay = true;
-  bool _userPaused = false;
 
   double recordingTextOpacity = 0;
   DateTime lastRecordingShowTime = DateTime.now();
@@ -109,13 +109,6 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
           widget.onStopRecording?.call(_controller.value.recordPath);
         }
       }
-      
-      // 检测视频是否开始播放，如果是首次播放则更新状态
-      if (_initialPlay && _controller.value.isPlaying) {
-        setState(() {
-          _initialPlay = false;
-        });
-      }
     }
   }
 
@@ -148,17 +141,11 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
     return _wrapWithInteraction(
       Stack(
         alignment: Alignment.bottomCenter,
-      children: [
+        children: [
           // 视频区域+点击控制
           GestureDetector(
             onTap: () {
               _resetHideBarTimer();
-              // 记录用户暂停状态
-              if (_controller.value.isPlaying) {
-                _userPaused = true;
-              } else {
-                _userPaused = false;
-              }
               _togglePlaying();
             },
             child: Stack(
@@ -178,8 +165,8 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                           
                           // 根据屏幕方向设置合适的宽高比
                           final aspectRatio = isLandscape
-                              ? screenWidth / screenHeight  // 横屏时使用屏幕宽高比
-                              : 16 / 9;  // 竖屏时使用16:9比例
+                              ? screenWidth / screenHeight
+                              : 16 / 9;
                           
                           return SizedBox(
                             width: screenWidth,
@@ -195,8 +182,8 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                     ),
                   ),
                 ),
-                // 暂停时中央大暂停按钮 - 修改条件，只有用户暂停时才显示
-                if (_userPaused && !_controller.value.isPlaying)
+                // 暂停时中央大暂停按钮
+                if (!_controller.value.isPlaying)
                   Tapped(
                     onTap: _togglePlaying,
                     child: Container(
@@ -211,6 +198,49 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                     ),
                   ),
               ],
+            ),
+          ),
+          // 新增的顶部标题栏
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AnimatedOpacity(
+              opacity: widget.showBar ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withAlpha(153),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.title ?? '',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           // 底部B站风格控制栏

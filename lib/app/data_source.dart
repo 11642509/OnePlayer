@@ -356,41 +356,20 @@ class DataSource {
     }
   }
   
-  /// 获取视频播放地址和配置
-  /// [videoId] 视频ID，从视频详情中获取
-  /// [flag] 播放源标志，如 "B站"
-  /// [quality] 可选参数，视频质量，如 "流畅 360P"、"清晰 480P" 等
-  Future<VideoPlayConfig> fetchVideoPlayUrl(String videoId, String flag, {String? quality}) async {
+  /// 获取视频播放地址
+  Future<VideoPlayConfig> fetchVideoPlayUrl(String id, String flag) async {
     try {
-      String endpoint = '';
-      Map<String, dynamic> queryParams = {
-        'flag': flag,
-        'id': videoId,
-      };
-      
-      // 如果指定了质量，添加到请求参数中
-      if (quality != null && quality.isNotEmpty) {
-        queryParams['quality'] = quality;
-      }
-      
-      // 根据数据源类型确定接口路径
-      switch (sourceType) {
-        case SourceType.bilibili:
-          endpoint = 'bilibili';
-          break;
-        case SourceType.other:
-          endpoint = 'other';
-          break;
-      }
-      
       if (kDebugMode) {
-        print('获取视频播放地址: ${AppConfig.getApiPath(endpoint)}');
-        print('参数: $queryParams');
+        print('获取视频播放地址: ${AppConfig.apiBaseUrl}/api/v1/bilibili');
+        print('参数: {flag: $flag, id: $id}');
       }
       
       final response = await _dio.get(
-        AppConfig.getApiPath(endpoint),
-        queryParameters: queryParams,
+        '${AppConfig.apiBaseUrl}/api/v1/bilibili',
+        queryParameters: {
+          'flag': flag,
+          'id': id,
+        },
       );
       
       if (kDebugMode) {
@@ -398,16 +377,48 @@ class DataSource {
       }
       
       if (response.data['code'] == 0) {
+        final Map<String, dynamic> data = response.data;
+        
+        // 提取HTTP头信息
+        Map<String, String> headers = {};
+        String? userAgent;
+        String? referer;
+        
+        if (data['header'] != null && data['header'] is Map) {
+          final headerData = data['header'] as Map;
+          headers = Map<String, String>.from(headerData.map((key, value) => 
+            MapEntry(key.toString(), value.toString())));
+            
+          // 提取特定的头信息
+          userAgent = headers['User-Agent'];
+          referer = headers['Referer'];
+        }
+        
         // 创建播放配置
-        return VideoPlayConfig.fromApiResponse(response.data);
+        final videoUrl = VideoPlayConfig.fromApiResponse(data);
+        
+        // 检测视频格式
+        final format = VideoPlayConfig.detectVideoFormat(videoUrl.url, data);
+        
+        return VideoPlayConfig(
+          url: videoUrl.url,
+          headers: headers,
+          userAgent: userAgent,
+          referer: referer,
+          format: format,
+          extra: {
+            'parse': data['parse'],
+            'from': data['from'],
+          },
+        );
       } else {
-        throw Exception('获取视频播放地址失败: ${response.data['msg'] ?? '未知错误'}');
+        throw Exception('获取播放地址失败: ${response.data['message'] ?? '未知错误'}');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('获取视频播放地址失败: $e');
+        print('获取视频播放地址出错: $e');
       }
-      throw Exception('获取视频播放地址失败: $e');
+      rethrow;
     }
   }
   

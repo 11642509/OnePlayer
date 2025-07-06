@@ -520,166 +520,166 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
     final isPortrait = windowController.isPortrait.value;
 
     int crossAxisCount;
-    double childAspectRatio;
 
     if (isPortrait) {
       // 竖屏模式，固定2列
       crossAxisCount = 2;
-      childAspectRatio = isLandscapeLayout ? 1.3 : 0.65; // 恢复之前的比例
     } else {
       // 横屏模式，固定4列
       crossAxisCount = 4;
-      childAspectRatio = isLandscapeLayout ? 1.6 : 0.75; // 恢复之前的比例
     }
 
+    // 标题高度 - 固定两行文本高度
+    final double titleHeight = 36;
+    // 图片与标题之间的间距
+    final double spacing = 2;
+    
+    // 计算每个网格项的宽度
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double itemWidth = isPortrait 
+        ? (screenWidth - 28) / 2 // 竖屏2列，减去边距和间距
+        : (screenWidth - 58) / 4; // 横屏4列，减去边距和间距
+    
+    // 根据16:9比例计算图片高度
+    final double imageHeight = itemWidth * 9 / 16;
+    
+    // 计算网格项总高度
+    final double itemHeight = imageHeight + spacing + titleHeight;
+    
+    // 计算网格项宽高比
+    final double childAspectRatio = itemWidth / itemHeight;
+
     return GridView.builder(
-      padding: EdgeInsets.all(isPortrait ? 12 : 15),
+      padding: EdgeInsets.all(isPortrait ? 10 : 12),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         childAspectRatio: childAspectRatio,
-        crossAxisSpacing: isPortrait ? 10 : 12,
-        mainAxisSpacing: isPortrait ? 12 : 15,
+        crossAxisSpacing: isPortrait ? 8 : 10,
+        mainAxisSpacing: isPortrait ? 12 : 16,
       ),
       itemCount: videoList.length,
       itemBuilder: (context, index) {
         final video = videoList[index];
-        return _buildVideoCard(video, index, isLandscapeLayout);
+        return _buildVideoCard(video, index, itemWidth, imageHeight, titleHeight, spacing);
       },
     );
   }
 
   // 构建视频卡片
-  Widget _buildVideoCard(dynamic video, int index, bool isLandscapeLayout) {
+  Widget _buildVideoCard(dynamic video, int index, double itemWidth, double imageHeight, double titleHeight, double spacing) {
     final windowController = WindowController();
     final textColor = !windowController.isPortrait.value ? Colors.white : Colors.black;
     final isPortrait = windowController.isPortrait.value;
+    final cardBgColor = isPortrait ? Colors.white : Colors.grey[900];
 
     final String? remarks = video['vod_remarks'];
     // 判断备注是否应该显示（长度小于等于30个字符）
     final bool shouldShowRemarks = remarks != null && remarks.length <= 30;
 
-    return Card(
-      elevation: isPortrait ? 2 : 1,
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
-      ),
-      color: isPortrait ? Colors.white : Colors.grey[900],
-      child: Stack(
-        children: [
-          _buildImageWithInnerShadow(video['vod_pic'], isLandscapeLayout, isPortrait),
-          _buildTitle(video['vod_name'], textColor, isPortrait),
-          if (shouldShowRemarks) _buildRemarks(remarks, isPortrait),
-          _buildHoverAndSplash(video['vod_id']),
-        ],
-      ),
-    );
-  }
-
-  // 提取图片和内部阴影为单独的Widget
-  Widget _buildImageWithInnerShadow(String imageUrl, bool isLandscape, bool isPortrait) {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(26),
-            spreadRadius: -10,
-            blurRadius: 10,
-            offset: const Offset(0, -10),
-          )
-        ],
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: NetworkImage(imageUrl),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 1. 图片卡片 - 固定16:9比例
+        Card(
+          elevation: isPortrait ? 2 : 1,
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
+          ),
+          color: cardBgColor,
+          child: SizedBox(
+            width: itemWidth,
+            height: imageHeight,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // 图片
+                Image.network(
+                  video['vod_pic'],
+                  width: itemWidth,
+                  height: imageHeight,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => 
+                    Container(color: Colors.grey[800]),
                 ),
-                borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withAlpha(51), blurRadius: 3, offset: const Offset(0, 2)),
-                ],
-              ),
+                // 备注（如果有）- 右下角，背景铺满整个宽度
+                if (shouldShowRemarks)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), // 从4减少到3，约为原来的75%
+                      decoration: BoxDecoration(
+                        // 增加透明度，使背景更加透明
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withAlpha(179), // 替换withOpacity(0.7)，179约等于0.7*255
+                            Colors.black.withAlpha(51),  // 替换withOpacity(0.2)，51约等于0.2*255
+                          ],
+                        ),
+                      ),
+                      child: Text(
+                        remarks,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right, // 文字靠右对齐
+                      ),
+                    ),
+                  ),
+                // 点击效果
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VideoDetailPage(videoId: video['vod_id']),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
-          // 仅在竖屏时显示标题下方的空间
-          if (isPortrait) 
-             SizedBox(height: isLandscape ? 40 : 60),
-        ],
-      ),
-    );
-  }
-
-  // 构建标题
-  Widget _buildTitle(String title, Color textColor, bool isPortrait) {
-    return Positioned(
-      bottom: isPortrait ? 4 : 8,
-      left: isPortrait ? 8 : 10,
-      right: isPortrait ? 8 : 10,
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: isPortrait ? 13 : 12,
-          fontWeight: isPortrait ? FontWeight.w500 : FontWeight.normal,
-          color: textColor,
-          height: 1.4,
         ),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
-
-  // 构建备注
-  Widget _buildRemarks(String? remarks, bool isPortrait) {
-    if (remarks == null || remarks.isEmpty) return const SizedBox.shrink();
-    return Positioned(
-      top: 0,
-      left: 0,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: Colors.black.withAlpha(128),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(8),
-            bottomRight: Radius.circular(8),
-          ),
-        ),
-        child: Text(
-          remarks,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 构建悬停效果和点击效果
-  Widget _buildHoverAndSplash(String videoId) {
-    return Positioned.fill(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => VideoDetailPage(videoId: videoId),
+        // 间距
+        SizedBox(height: spacing),
+        // 2. 标题 - 固定高度
+        SizedBox(
+          height: titleHeight,
+          width: itemWidth,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: isPortrait ? 4 : 6),
+            child: Text(
+              video['vod_name'],
+              style: TextStyle(
+                fontSize: isPortrait ? 13 : 12,
+                fontWeight: isPortrait ? FontWeight.w500 : FontWeight.normal,
+                color: textColor,
+                height: 1.4,
               ),
-            );
-          },
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
-  
+
   // 构建页面导航器
   Widget _buildPortraitPageNavigator(String typeName) {
     final currentPage = _currentPages[typeName] ?? 1;
