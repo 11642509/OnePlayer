@@ -209,19 +209,19 @@ class VideoPlayConfig {
       });
     }
     
-    // 提取User-Agent
-    String? userAgent = data['ua'] as String?;
+    // 提取User-Agent - 优先使用headers中的，然后是ua字段
+    String? userAgent = headers['User-Agent'] ?? data['ua'] as String?;
     
-    // 提取Referer
-    String? referer = data['referer'] as String?;
+    // 提取Referer - 优先使用headers中的，然后是referer字段
+    String? referer = headers['Referer'] ?? data['referer'] as String?;
     
-    // 如果headers中没有User-Agent但有单独的UA字段，添加到headers
-    if (userAgent != null && !headers.containsKey('User-Agent')) {
+    // 确保User-Agent在headers中
+    if (userAgent != null) {
       headers['User-Agent'] = userAgent;
     }
     
-    // 如果headers中没有Referer但有单独的referer字段，添加到headers
-    if (referer != null && !headers.containsKey('Referer')) {
+    // 确保Referer在headers中
+    if (referer != null) {
       headers['Referer'] = referer;
     }
     
@@ -379,37 +379,21 @@ class DataSource {
       if (response.data['code'] == 0) {
         final Map<String, dynamic> data = response.data;
         
-        // 提取HTTP头信息
-        Map<String, String> headers = {};
-        String? userAgent;
-        String? referer;
+        // 直接使用fromApiResponse方法，它已经处理了所有header逻辑
+        final playConfig = VideoPlayConfig.fromApiResponse(data);
         
-        if (data['header'] != null && data['header'] is Map) {
-          final headerData = data['header'] as Map;
-          headers = Map<String, String>.from(headerData.map((key, value) => 
-            MapEntry(key.toString(), value.toString())));
-            
-          // 提取特定的头信息
-          userAgent = headers['User-Agent'];
-          referer = headers['Referer'];
-        }
-        
-        // 创建播放配置
-        final videoUrl = VideoPlayConfig.fromApiResponse(data);
-        
-        // 检测视频格式
-        final format = VideoPlayConfig.detectVideoFormat(videoUrl.url, data);
+        // 添加额外信息
+        final updatedExtra = Map<String, dynamic>.from(playConfig.extra);
+        updatedExtra['parse'] = data['parse'];
+        updatedExtra['from'] = data['from'];
         
         return VideoPlayConfig(
-          url: videoUrl.url,
-          headers: headers,
-          userAgent: userAgent,
-          referer: referer,
-          format: format,
-          extra: {
-            'parse': data['parse'],
-            'from': data['from'],
-          },
+          url: playConfig.url,
+          headers: playConfig.headers,
+          userAgent: playConfig.userAgent,
+          referer: playConfig.referer,
+          format: playConfig.format,
+          extra: updatedExtra,
         );
       } else {
         throw Exception('获取播放地址失败: ${response.data['message'] ?? '未知错误'}');

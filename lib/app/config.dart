@@ -4,7 +4,7 @@ class AppConfig {
   static bool forceMockData = false;
   
   /// 服务器主机和端口配置（统一API和代理服务器）
-  static const String serverHost = '192.168.5.160';
+  static const String serverHost = '192.168.5.182';
   static const int serverPort = 8080;
   
   /// API相关配置

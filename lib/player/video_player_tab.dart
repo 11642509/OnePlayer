@@ -36,9 +36,18 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
     WidgetsBinding.instance.addObserver(this);
     
     if (kDebugMode) {
-      print('VideoPlayer播放器配置：');
+      print('=== VideoPlayer播放器配置 ===');
       print('URL: ${widget.playConfig.url}');
-      print('Headers: ${widget.playConfig.headers}');
+      print('Format: ${widget.playConfig.format}');
+      print('User-Agent: ${widget.playConfig.userAgent}');
+      print('Referer: ${widget.playConfig.referer}');
+      print('Headers Map:');
+      widget.playConfig.headers.forEach((key, value) {
+        if (kDebugMode) {
+          print('  $key: $value');
+        }
+      });
+      print('========================');
     }
     
     _controller = VideoPlayerController.networkUrl(
