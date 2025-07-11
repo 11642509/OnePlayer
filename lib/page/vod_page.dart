@@ -582,19 +582,19 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
       children: [
         // 1. 图片卡片 - 固定16:9比例
         Card(
-          elevation: isPortrait ? 2 : 1,
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
-          ),
+      elevation: isPortrait ? 2 : 1,
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isPortrait ? 8 : 6),
+      ),
           color: cardBgColor,
           child: SizedBox(
             width: itemWidth,
             height: imageHeight,
-            child: Stack(
+      child: Stack(
               fit: StackFit.expand,
-              children: [
+        children: [
                 // 图片
                 Image.network(
                   video['vod_pic'],
@@ -603,17 +603,17 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => 
                     Container(color: Colors.grey[800]),
-                ),
+      ),
                 // 备注（如果有）- 右下角，背景铺满整个宽度
                 if (shouldShowRemarks)
                   Positioned(
                     bottom: 0,
-                    left: 0,
+      left: 0,
                     right: 0,
-                    child: Container(
+      child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), // 从4减少到3，约为原来的75%
-                      decoration: BoxDecoration(
+        decoration: BoxDecoration(
                         // 增加透明度，使背景更加透明
                         gradient: LinearGradient(
                           begin: Alignment.bottomCenter,
@@ -622,35 +622,35 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
                             Colors.black.withAlpha(179), // 替换withOpacity(0.7)，179约等于0.7*255
                             Colors.black.withAlpha(51),  // 替换withOpacity(0.2)，51约等于0.2*255
                           ],
-                        ),
-                      ),
-                      child: Text(
-                        remarks,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
+          ),
+        ),
+        child: Text(
+          remarks,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right, // 文字靠右对齐
-                      ),
-                    ),
+        ),
+      ),
                   ),
                 // 点击效果
                 Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
                           builder: (context) => VideoDetailPage(videoId: video['vod_id']),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+              ),
+            );
+          },
+        ),
+      ),
               ],
             ),
           ),
@@ -679,7 +679,7 @@ class _VodPageState extends State<VodPage> with TickerProviderStateMixin {
       ],
     );
   }
-
+  
   // 构建页面导航器
   Widget _buildPortraitPageNavigator(String typeName) {
     final currentPage = _currentPages[typeName] ?? 1;

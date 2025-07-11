@@ -141,7 +141,7 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
     return _wrapWithInteraction(
       Stack(
         alignment: Alignment.bottomCenter,
-        children: [
+      children: [
           // 视频区域+点击控制
           GestureDetector(
             onTap: () {
@@ -152,7 +152,7 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
               alignment: Alignment.center,
               children: [
                 ColoredBox(
-                  color: Colors.black,
+                                  color: Colors.black,
                   child: SizedBox.expand(
                     child: FittedBox(
                       fit: BoxFit.cover,
@@ -171,11 +171,11 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                           return SizedBox(
                             width: screenWidth,
                             height: screenHeight,
-                            child: VlcPlayer(
-                              controller: _controller,
+                  child: VlcPlayer(
+                    controller: _controller,
                               aspectRatio: aspectRatio,
                               placeholder: const Center(child: CircularProgressIndicator()),
-                            ),
+                  ),
                           );
                         }
                       ),
@@ -194,7 +194,7 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                         Icons.play_circle_outline,
                         size: 120,
                         color: Colors.white.withAlpha(102),
-                      ),
+                        ),
                     ),
                   ),
               ],

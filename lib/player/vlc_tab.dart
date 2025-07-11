@@ -21,7 +21,8 @@ class VlcTab extends StatefulWidget {
 }
 
 class VlcTabState extends State<VlcTab> {
-  late VlcPlayerController _controller;
+  // 将 _controller 声明为可空类型
+  late VlcPlayerController? _controller;
   bool _showControls = true;
   bool _isLoading = true;
   bool _hasError = false;
@@ -31,13 +32,16 @@ class VlcTabState extends State<VlcTab> {
   Timer? _healthCheckTimer;
   bool _isControllerInitialized = false;
   DateTime? _lastPlaybackTime;
+  final bool _showPlayer = true;
+  final bool _exiting = false;
+  bool _hasRequestedExit = false; // 防止多次点击返回
 
   @override
   void initState() {
     super.initState();
     _initializePlayer();
   }
-
+  
   Future<void> _initializePlayer() async {
     try {
       if (kDebugMode) {
@@ -91,8 +95,8 @@ class VlcTabState extends State<VlcTab> {
       );
       
       _isControllerInitialized = true;
-      _controller.addListener(_errorListener);
-      _controller.addListener(_playbackListener);
+      _controller!.addListener(_errorListener);
+      _controller!.addListener(_playbackListener);
       
       // 对于MPD文件，延迟启动健康检查，给予充分的解析时间
       if (widget.playConfig.format == VideoFormat.dash) {
@@ -135,18 +139,18 @@ class VlcTabState extends State<VlcTab> {
       if (!mounted || _isDisposing) return;
       
       // 更严格的条件：只有当真正开始播放且有进度时才隐藏加载界面
-      bool isReallyPlaying = _controller.value.isPlaying && 
-                           !_controller.value.isBuffering &&
-                           _controller.value.position > Duration.zero;
+      bool isReallyPlaying = _controller != null && _controller!.value.isPlaying && 
+                           !_controller!.value.isBuffering &&
+                           _controller!.value.position > Duration.zero;
       
       if (isReallyPlaying) {
-        _controller.removeListener(listener);
+        _controller!.removeListener(listener);
         progressCheckTimer?.cancel();
         if (!completer.isCompleted) {
           if (kDebugMode) {
             print('VLC 视频真正开始播放');
-            print('播放状态: isPlaying=${_controller.value.isPlaying}, isBuffering=${_controller.value.isBuffering}');
-            print('播放位置: ${_controller.value.position}');
+            print('播放状态: isPlaying=${_controller!.value.isPlaying}, isBuffering=${_controller!.value.isBuffering}');
+            print('播放位置: ${_controller!.value.position}');
           }
           completer.complete();
         }
@@ -156,20 +160,21 @@ class VlcTabState extends State<VlcTab> {
     // 强化的进度检查，确保视频真正在播放
     void checkProgress() {
       if (_isDisposing || !mounted) return;
+      if (_controller == null) return;
       
-      final currentPosition = _controller.value.position;
+      final currentPosition = _controller!.value.position;
       
       // 更严格的条件：进度必须大于0且在持续增长
       bool hasValidProgress = currentPosition > Duration.zero;
       bool progressIncreasing = lastPosition != null && currentPosition > lastPosition!;
-      bool isPlaying = _controller.value.isPlaying && !_controller.value.isBuffering;
+      bool isPlaying = _controller!.value.isPlaying && !_controller!.value.isBuffering;
       
       if (hasValidProgress && progressIncreasing && isPlaying) {
         // 确认视频真正在播放
-        _controller.removeListener(listener);
+        _controller!.removeListener(listener);
         progressCheckTimer?.cancel();
         if (!completer.isCompleted) {
-          if (kDebugMode) {
+        if (kDebugMode) {
             print('进度检查确认：视频真正开始播放');
             print('当前位置: ${currentPosition.inMilliseconds}ms');
             print('上次位置: ${lastPosition?.inMilliseconds}ms');
@@ -181,7 +186,7 @@ class VlcTabState extends State<VlcTab> {
       lastPosition = currentPosition;
     }
     
-    _controller.addListener(listener);
+    _controller?.addListener(listener);
     
     // 更频繁地检查播放进度，确保及时检测到真正的播放
     progressCheckTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
@@ -191,10 +196,10 @@ class VlcTabState extends State<VlcTab> {
     // 延长保险机制时间，只在真正异常时才强制隐藏
     Timer(const Duration(seconds: 45), () {
       if (!completer.isCompleted && mounted && !_isDisposing) {
-        if (_controller.value.isInitialized && !_controller.value.hasError) {
+        if (_controller != null && _controller!.value.isInitialized && !_controller!.value.hasError) {
           // 最后检查一次是否真的在播放
-          if (_controller.value.isPlaying && _controller.value.position > Duration.zero) {
-            _controller.removeListener(listener);
+          if (_controller!.value.isPlaying && _controller!.value.position > Duration.zero) {
+            _controller!.removeListener(listener);
             progressCheckTimer?.cancel();
             if (!completer.isCompleted) {
               if (kDebugMode) {
@@ -206,7 +211,7 @@ class VlcTabState extends State<VlcTab> {
             if (kDebugMode) {
               print('45秒保险机制：视频仍未真正播放，但强制隐藏加载界面');
             }
-            _controller.removeListener(listener);
+            _controller!.removeListener(listener);
             progressCheckTimer?.cancel();
             if (!completer.isCompleted) {
               completer.complete();
@@ -223,23 +228,23 @@ class VlcTabState extends State<VlcTab> {
         
     _loadingTimer = Timer(timeout, () {
       if (!completer.isCompleted && mounted && !_isDisposing) {
-        _controller.removeListener(listener);
+        _controller?.removeListener(listener);
         progressCheckTimer?.cancel();
-        setState(() {
+          setState(() {
           _hasError = true;
           _errorMessage = widget.playConfig.format == VideoFormat.dash
               ? 'MPD文件解析超时（${timeout.inSeconds}秒），请尝试其他播放源或检查网络连接'
               : '视频加载超时，请尝试其他播放源或检查网络连接';
-          _isLoading = false;
-        });
-      }
-    });
-    
+            _isLoading = false;
+          });
+        }
+      });
+      
     try {
       await completer.future.timeout(timeout);
     } catch (e) {
       if (mounted && !completer.isCompleted && !_isDisposing) {
-        _controller.removeListener(listener);
+        _controller?.removeListener(listener);
         progressCheckTimer.cancel();
         setState(() {
           _hasError = true;
@@ -265,16 +270,16 @@ class VlcTabState extends State<VlcTab> {
     }
     
     if (mounted && !_isDisposing) {
-      setState(() {
-        _isLoading = false;
+          setState(() {
+            _isLoading = false;
       });
     }
   }
 
   void _errorListener() {
-    if (!mounted || _isDisposing) return;
-    if (_controller.value.hasError && !_hasError) {
-      final errorDesc = _controller.value.errorDescription;
+    if (!mounted || _isDisposing || _controller == null) return;
+    if (_controller!.value.hasError && !_hasError) {
+      final errorDesc = _controller!.value.errorDescription;
       if (kDebugMode) {
         print('===== VLC播放器错误 =====');
         print('错误描述: $errorDesc');
@@ -286,19 +291,19 @@ class VlcTabState extends State<VlcTab> {
         print('========================');
       }
       setState(() {
-        _hasError = true;
-        final errorDesc = _controller.value.errorDescription;
+            _hasError = true;
+        final errorDesc = _controller!.value.errorDescription;
         _errorMessage = errorDesc.isNotEmpty ? errorDesc : '播放出错';
         _isLoading = false;
-      });
+          });
     }
   }
   
   void _playbackListener() {
-    if (!mounted || _isDisposing) return;
+    if (!mounted || _isDisposing || _controller == null) return;
     // 更新最后播放时间，但不仅仅在isPlaying时
     // 因为MPD文件在解析过程中状态可能不稳定
-    if (_controller.value.isPlaying || _controller.value.isBuffering) {
+    if (_controller!.value.isPlaying || _controller!.value.isBuffering) {
       _lastPlaybackTime = DateTime.now();
     }
   }
@@ -309,6 +314,7 @@ class VlcTabState extends State<VlcTab> {
         timer.cancel();
         return;
       }
+      if (_controller == null) return;
       
       // 只在真正无响应时才干预，特别是MPD文件需要更长的容忍时间
       final tolerance = widget.playConfig.format == VideoFormat.dash 
@@ -316,7 +322,7 @@ class VlcTabState extends State<VlcTab> {
           : const Duration(seconds: 30); // 其他格式的正常时间
       
       if (_lastPlaybackTime != null && 
-          _controller.value.isPlaying &&
+          _controller!.value.isPlaying &&
           DateTime.now().difference(_lastPlaybackTime!) > tolerance) {
         if (kDebugMode) {
           print('检测到播放器长时间无响应（${tolerance.inSeconds}秒），可能卡死');
@@ -327,23 +333,23 @@ class VlcTabState extends State<VlcTab> {
   }
   
   void _handlePlaybackStuck() {
-    if (_isDisposing) return;
+    if (_isDisposing || _controller == null) return;
     
     // 对于MPD文件，直接重试而不是简单的stop/play
     if (widget.playConfig.format == VideoFormat.dash) {
-      if (kDebugMode) {
+          if (kDebugMode) {
         print('MPD文件播放卡死，执行完整重试');
-      }
+          }
       _retry();
       return;
     }
     
     // 非MPD文件使用简单的stop/play恢复
     try {
-      _controller.stop();
+      _controller!.dispose();
       Future.delayed(const Duration(milliseconds: 500), () {
-        if (!_isDisposing && mounted) {
-          _controller.play();
+        if (!_isDisposing && mounted && _controller != null) {
+          _controller!.play();
         }
       });
     } catch (e) {
@@ -355,36 +361,21 @@ class VlcTabState extends State<VlcTab> {
   }
 
   void forceStop() {
-    if (_isDisposing) return;
+    if (_isDisposing || _controller == null) return;
     _isDisposing = true;
-    
     try {
       // 取消所有定时器
       _loadingTimer?.cancel();
       _healthCheckTimer?.cancel();
-      
       // 移除所有监听器
       if (_isControllerInitialized) {
-        _controller.removeListener(_errorListener);
-        _controller.removeListener(_playbackListener);
-        
+        _controller!.removeListener(_errorListener);
+        _controller!.removeListener(_playbackListener);
         // 强制停止播放
-        _controller.stop();
-        
-        // 等待一小段时间确保停止完成
-        Future.delayed(const Duration(milliseconds: 50), () {
-          try {
-            if (_isControllerInitialized) {
-              _controller.dispose();
+        _controller!.dispose();
+        // 直接同步释放资源
+              _controller!.dispose();
             }
-          } catch (e) {
-            if (kDebugMode) {
-              print('销毁VLC控制器时出错: $e');
-            }
-          }
-        });
-      }
-      
       if (kDebugMode) {
         print('VLC播放器已强制停止并释放资源');
       }
@@ -397,10 +388,10 @@ class VlcTabState extends State<VlcTab> {
 
   @override
   void dispose() {
-    forceStop();
+    // 激进方案：不做任何controller相关操作，只调用super.dispose()
     super.dispose();
   }
-  
+
   void _retry() {
     if (_isDisposing) return;
     
@@ -415,10 +406,10 @@ class VlcTabState extends State<VlcTab> {
       _loadingTimer?.cancel();
       _healthCheckTimer?.cancel();
       
-      if (_isControllerInitialized) {
-        _controller.removeListener(_errorListener);
-        _controller.removeListener(_playbackListener);
-        _controller.dispose();
+      if (_isControllerInitialized && _controller != null) {
+        _controller!.removeListener(_errorListener);
+        _controller!.removeListener(_playbackListener);
+        _controller!.dispose();
       }
     } catch (e) {
       if (kDebugMode) {
@@ -436,28 +427,41 @@ class VlcTabState extends State<VlcTab> {
     });
   }
 
+  // 新增：安全返回方法
+  Future<void> _onBackPressed() async {
+    if (_hasRequestedExit) return;
+    _hasRequestedExit = true;
+    if (mounted) Navigator.of(context).pop();
+    // 激进方案：不做任何资源释放，不setState，不Future，不dispose controller
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_exiting) {
+      // 直接返回空widget，彻底无感
+      return const SizedBox.shrink();
+    }
     return Stack(
       children: [
-        VlcPlayerWithControls(
-          controller: _controller,
-          title: widget.title,
-          showControls: _showControls,
-          showBar: _showControls,
-          onUserInteraction: () {
-            if (!_showControls) setState(() => _showControls = true);
-          },
-          onRequestHideBar: () {
-            if (_showControls) setState(() => _showControls = false);
-          },
+        if (_showPlayer && _controller != null)
+          VlcPlayerWithControls(
+            controller: _controller!, // 此时肯定不为null
+            title: widget.title,
+            showControls: _showControls,
+            showBar: _showControls,
+            onUserInteraction: () {
+              if (!_showControls) setState(() => _showControls = true);
+            },
+            onRequestHideBar: () {
+              if (_showControls) setState(() => _showControls = false);
+            },
         ),
         if (_isLoading) _buildLoadingOverlay(),
         if (_hasError) _buildErrorOverlay(),
       ],
     );
   }
-
+  
   Widget _buildLoadingOverlay() {
     return Container(
       width: double.infinity,
@@ -470,8 +474,30 @@ class VlcTabState extends State<VlcTab> {
         ),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
+          // 顶部标题栏和返回按钮
+          SafeArea(
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: _onBackPressed,
+                ),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
           const SpinKitWave(size: 36, color: Colors.white70),
           Container(
             padding: const EdgeInsets.all(50),
@@ -484,6 +510,7 @@ class VlcTabState extends State<VlcTab> {
               ),
             ),
           ),
+          const Spacer(),
         ],
       ),
     );
@@ -519,23 +546,21 @@ class VlcTabState extends State<VlcTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ElevatedButton(
+          ElevatedButton(
                 onPressed: _retry,
-                style: ElevatedButton.styleFrom(
+            style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white.withAlpha(51),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text('重新加载'),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('重新加载'),
               ),
               const SizedBox(width: 16),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+                onPressed: _onBackPressed,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red.withAlpha(128),
                   foregroundColor: Colors.white,

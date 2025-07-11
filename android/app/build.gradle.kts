@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.oneplayer"
-    compileSdk = 34 // 明确指定SDK版本
+    compileSdk = 35 // 明确指定SDK版本
 
     // 移除ndkVersion，让Gradle使用默认版本
     // ndkVersion = "27.0.12077973"
@@ -24,7 +24,7 @@ android {
     defaultConfig {
         applicationId = "com.example.oneplayer"
         minSdk = 21 // 提高最低SDK版本
-        targetSdk = 34 // 明确指定目标SDK版本
+        targetSdk = 35 // 明确指定目标SDK版本
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true // 启用MultiDex

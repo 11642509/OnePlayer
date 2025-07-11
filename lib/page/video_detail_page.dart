@@ -134,7 +134,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
             print('使用VLC内核播放: ${playConfig.url}');
           }
           if (!mounted) return;
-          Navigator.push(
+          Navigator.pushReplacement(
             context,
             FadeRoute(page: VlcPlayerPage(
               playConfig: playConfig,
@@ -177,39 +177,42 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isPortrait = constraints.maxHeight > constraints.maxWidth;
-        final backgroundColor = isPortrait ? const Color(0xFFF6F7F8) : Colors.black;
-        final textColor = isPortrait ? Colors.black : Colors.white;
+    return KeyedSubtree(
+      key: UniqueKey(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isPortrait = constraints.maxHeight > constraints.maxWidth;
+          final backgroundColor = isPortrait ? const Color(0xFFF6F7F8) : Colors.black;
+          final textColor = isPortrait ? Colors.black : Colors.white;
 
-        return Scaffold(
-          backgroundColor: backgroundColor,
-          extendBodyBehindAppBar: true,
-          appBar: null, // 移除AppBar
-          body: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFFFF7BB0),
-                  ),
-                )
-              : _errorMessage != null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          _errorMessage!,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 16,
+          return Scaffold(
+            backgroundColor: backgroundColor,
+            extendBodyBehindAppBar: true,
+            appBar: null, // 移除AppBar
+            body: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFFF7BB0),
+                    ),
+                  )
+                : _errorMessage != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 16,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    )
-                  : _buildDetailContent(textColor, isPortrait),
-        );
-      },
+                      )
+                    : _buildDetailContent(textColor, isPortrait),
+          );
+        },
+      ),
     );
   }
   
