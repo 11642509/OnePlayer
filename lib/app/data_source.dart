@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'config.dart';
+import 'config/config.dart';
 
 /// 数据源类型枚举
 enum SourceType {

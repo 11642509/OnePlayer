@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'dart:io';
-import 'window_controller.dart';
-import 'short_video/vlc_video/vlc_short_video_player.dart';
-import 'short_video/pages/short_video.dart';
-import 'short_video/video_players/video_player_impl/video_player_factory.dart';
-import 'player/vlc_player_page.dart';
-import 'player/video_player_page.dart';
-import 'portrait_home_layout.dart';
-import 'landscape_home_layout.dart';
+import 'shared/controllers/window_controller.dart';
+import 'features/short_videos/players/vlc/vlc_short_video_player.dart';
+import 'features/short_videos/pages/short_videos_page.dart';
+import 'features/short_videos/players/media_kit/video_player_factory.dart';
+import 'features/media_player/vlc_player/pages/vlc_player_page.dart';
+import 'features/media_player/standard_player/pages/video_player_page.dart';
+import 'shared/widgets/layouts/portrait_home_layout.dart';
+import 'shared/widgets/layouts/landscape_home_layout.dart';
 import 'app/data_source.dart';
-
-// 全局窗口控制器
-final windowController = WindowController();
 
 // 测试视频URL
 const String testVideoUrl = 'https://static.ybhospital.net/test-video-10.MP4';
@@ -20,17 +18,8 @@ const String testVideoUrl = 'https://static.ybhospital.net/test-video-10.MP4';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 初始化窗口
-  if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-    await windowController.initialize();
-  } else if (Platform.isAndroid || Platform.isIOS) {
-    // 默认设置为横屏模式
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-    ]);
-    // 初始化为横屏状态
-    windowController.isPortrait.value = false;
-  }
+  // 初始化GetX依赖注入
+  Get.put(WindowController());
   
   // 初始化MediaKit视频播放器
   initMediaKitPlayer();
@@ -57,7 +46,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'Video Player Demo',
       theme: ThemeData(
         primarySwatch: Colors.pink,
@@ -74,35 +63,12 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  @override
-  void initState() {
-    super.initState();
-    
-    // 监听窗口方向变化
-    windowController.isPortrait.addListener(_updateLayout);
-    
-    // 初始化时设置系统UI模式
-    _updateSystemUIMode();
-  }
-
-  @override
-  void dispose() {
-    // 移除监听
-    windowController.isPortrait.removeListener(_updateLayout);
-    super.dispose();
-  }
-
   // 更新系统UI模式
-  void _updateSystemUIMode() {
-    if (!windowController.isPortrait.value && Platform.isAndroid) {
+  void _updateSystemUIMode(bool isPortrait) {
+    if (!isPortrait && Platform.isAndroid) {
       // 横屏模式下隐藏状态栏
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } else {
@@ -117,17 +83,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 更新布局
-  void _updateLayout() {
-    if (mounted) {
-      // 方向改变时更新系统UI模式
-      _updateSystemUIMode();
-      setState(() {});
-    }
-  }
-
   // 打开播放器页面，根据当前方向选择合适的播放器
   void _openPlayerPage(BuildContext context, PlayerType type) {
+    final windowController = Get.find<WindowController>();
+    
     // 创建测试用的播放配置
     final testPlayConfig = VideoPlayConfig(
       url: testVideoUrl,
@@ -136,61 +95,45 @@ class _HomePageState extends State<HomePage> {
     
     switch (type) {
       case PlayerType.vlc:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const VlcDemoShortVideoPlayer(),
-          ),
-        ).then((_) => windowController.ensureCorrectOrientation());
+        Get.to(() => const VlcDemoShortVideoPlayer())
+            ?.then((_) => windowController.ensureCorrectOrientation());
         break;
       case PlayerType.shortVideo:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ShortVideoPage(),
-          ),
-        ).then((_) => windowController.ensureCorrectOrientation());
+        Get.to(() => const ShortVideoPage())
+            ?.then((_) => windowController.ensureCorrectOrientation());
         break;
       case PlayerType.singleTab:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VlcPlayerPage(
+        Get.to(() => VlcPlayerPage(
               playConfig: testPlayConfig,
               title: 'VLC 播放器测试',
-            ),
-          ),
-        ).then((_) => windowController.ensureCorrectOrientation());
+            ))?.then((_) => windowController.ensureCorrectOrientation());
         break;
       case PlayerType.singleVideoTab:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SingleVideoTabPage(
+        Get.to(() => SingleVideoTabPage(
               playConfig: testPlayConfig,
               title: 'VideoPlayer 播放器测试',
-            ),
-          ),
-        ).then((_) => windowController.ensureCorrectOrientation());
+            ))?.then((_) => windowController.ensureCorrectOrientation());
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: windowController.isPortrait,
-      builder: (context, isPortrait, _) {
-        return Scaffold(
-          backgroundColor: isPortrait ? Colors.white : Colors.black, // 竖屏白色背景，横屏黑色背景
-          // 竖屏和横屏模式都不显示AppBar，让自定义标签栏显示在顶部
-          appBar: null,
-          body: isPortrait 
-            ? SafeArea(child: PortraitHomeLayout(onPlayerSelected: _openPlayerPage))
-            : LandscapeHomeLayout(onPlayerSelected: _openPlayerPage),
-                  );
-                },
-            );
+    return Obx(() {
+      final windowController = Get.find<WindowController>();
+      final isPortrait = windowController.isPortrait.value;
+      _updateSystemUIMode(isPortrait);
+      
+      
+      return Scaffold(
+        backgroundColor: isPortrait ? Colors.white : Colors.black, // 竖屏白色背景，横屏黑色背景
+        // 竖屏和横屏模式都不显示AppBar，让自定义标签栏显示在顶部
+        appBar: null,
+        body: isPortrait 
+          ? SafeArea(child: PortraitHomeLayout(onPlayerSelected: _openPlayerPage))
+          : LandscapeHomeLayout(onPlayerSelected: _openPlayerPage),
+      );
+    });
   }
 }
 
