@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'typography.dart';
 
 class AppTheme {
   // 预定义颜色常量
@@ -13,12 +14,16 @@ class AppTheme {
   static const overlayMedium = Color(0x4DFFFFFF); // 30% 白色
   static const overlayDark = Color(0x80FFFFFF); // 50% 白色
 
+
   static final ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     primaryColor: primaryColor,
     scaffoldBackgroundColor: backgroundColor,
     cardColor: cardColor,
+    
+    // 字体配置 - 参考主流视频app
+    fontFamily: AppTypography.systemFont,
 
     // AppBar 主题
     appBarTheme: const AppBarTheme(
@@ -33,26 +38,21 @@ class AppTheme {
       margin: EdgeInsets.zero,
     ),
 
-    // 文本主题
-    textTheme: const TextTheme(
-      titleLarge: TextStyle(
-        color: Colors.white,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-      ),
-      titleMedium: TextStyle(
-        color: Colors.white,
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-      ),
-      bodyMedium: TextStyle(
-        color: Colors.white,
-        fontSize: 14,
-      ),
-      bodySmall: TextStyle(
-        color: Color(0xB3FFFFFF), // 70% 白色
-        fontSize: 12,
-      ),
+    // 文本主题 - 使用统一的字体系统
+    textTheme: TextTheme(
+      displayLarge: AppTypography.displayLarge,
+      displayMedium: AppTypography.displayMedium,
+      headlineLarge: AppTypography.headlineLarge,
+      headlineMedium: AppTypography.headlineMedium,
+      titleLarge: AppTypography.titleLarge,
+      titleMedium: AppTypography.titleMedium,
+      titleSmall: AppTypography.titleSmall,
+      bodyLarge: AppTypography.bodyLarge,
+      bodyMedium: AppTypography.bodyMedium,
+      bodySmall: AppTypography.bodySmall,
+      labelLarge: AppTypography.labelLarge,
+      labelMedium: AppTypography.labelMedium,
+      labelSmall: AppTypography.labelSmall,
     ),
 
     // 图标主题
