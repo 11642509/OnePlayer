@@ -23,10 +23,10 @@ class PerformanceManager extends GetxController {
   // 特效开关 - 修复：用户手动设置应该优先于设备检测
   bool get enableBackgroundEffects {
     if (visualQuality == 3) {
-      // 智能模式：根据设备性能自动调整
-      return visualQuality >= 2 && !isLowEndDevice;
+      // 智能模式：根据设备性能自动调整，高端设备才启用完整背景特效
+      return !isLowEndDevice;
     } else {
-      // 手动模式：尊重用户选择
+      // 手动模式：尊重用户选择，只有高性能模式(2)才启用
       return visualQuality >= 2;
     }
   }
@@ -34,12 +34,21 @@ class PerformanceManager extends GetxController {
   bool get enableAnimations => visualQuality >= 1;
   bool get enableBlurEffects {
     if (visualQuality == 3) {
-      return visualQuality >= 2 && currentFPS > 45;
+      // 智能模式：根据设备性能和FPS自动调整
+      return !isLowEndDevice && currentFPS > 45;
     } else {
       return visualQuality >= 2;
     }
   }
-  bool get enableGradientEffects => visualQuality >= 1;
+  bool get enableGradientEffects {
+    if (visualQuality == 3) {
+      // 智能模式：低端设备也可以有渐变效果
+      return true;
+    } else {
+      // 手动模式：平衡模式及以上才有渐变效果
+      return visualQuality >= 1;
+    }
+  }
   
   @override
   void onInit() {
@@ -170,7 +179,7 @@ class PerformanceManager extends GetxController {
     _currentFPS.value = fps;
   }
   
-  /// 获取推荐的背景组件
+  /// 获取推荐的背景组件（横屏宇宙暗色）
   Widget getOptimizedBackground({required Widget child}) {
     if (kDebugMode) {
       print('getOptimizedBackground: visualQuality=$visualQuality, enableBackgroundEffects=$enableBackgroundEffects, enableGradientEffects=$enableGradientEffects');
@@ -196,6 +205,33 @@ class PerformanceManager extends GetxController {
       return _buildSolidBackground(child);
     }
   }
+
+  /// 获取推荐的清新背景组件（竖屏亮色）
+  Widget getOptimizedFreshBackground({required Widget child}) {
+    if (kDebugMode) {
+      print('getOptimizedFreshBackground: visualQuality=$visualQuality, enableBackgroundEffects=$enableBackgroundEffects, enableGradientEffects=$enableGradientEffects');
+    }
+    
+    if (enableBackgroundEffects) {
+      // 高质量：使用简化版清新背景+完整微光效果
+      if (kDebugMode) {
+        print('使用完整清新背景（微光效果）');
+      }
+      return _buildFullFreshBackground(child);
+    } else if (enableGradientEffects) {
+      // 中质量：简单清新渐变背景
+      if (kDebugMode) {
+        print('使用清新渐变背景');
+      }
+      return _buildFreshGradientBackground(child);
+    } else {
+      // 低质量：纯色清新背景
+      if (kDebugMode) {
+        print('使用纯色清新背景');
+      }
+      return _buildFreshSolidBackground(child);
+    }
+  }
   
   
   /// 渐变背景
@@ -219,6 +255,113 @@ class PerformanceManager extends GetxController {
   Widget _buildSolidBackground(Widget child) {
     return Container(
       color: const Color(0xFF0F0F23),
+      child: child,
+    );
+  }
+
+  /// 完整清新背景（高性能模式）
+  Widget _buildFullFreshBackground(Widget child) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFF8FFFE), // 清晨天空白
+            Color(0xFFE8F4FD), // 晨曦浅蓝
+            Color(0xFFF0F8FF), // 爱丽丝蓝（偏白）
+          ],
+          stops: [0.0, 0.6, 1.0],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // 主要的金色微光照射效果
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topLeft,
+                  radius: 1.0,
+                  colors: [
+                    const Color(0xFFFFE135).withValues(alpha: 0.25),
+                    const Color(0xFFFFB347).withValues(alpha: 0.18),
+                    const Color(0xFFFF8C00).withValues(alpha: 0.12),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.4, 0.7, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // 聚焦强光效果
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topLeft,
+                  radius: 0.4,
+                  colors: [
+                    const Color(0xFFFFF700).withValues(alpha: 0.2),
+                    const Color(0xFFFFE135).withValues(alpha: 0.15),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.6, 1.0],
+                ),
+              ),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+
+  /// 清新渐变背景（平衡模式）
+  Widget _buildFreshGradientBackground(Widget child) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFF8FFFE), // 清晨天空白
+            Color(0xFFE8F4FD), // 晨曦浅蓝
+            Color(0xFFF0F8FF), // 爱丽丝蓝（偏白）
+          ],
+          stops: [0.0, 0.6, 1.0],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // 微弱的金光照射效果
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topLeft,
+                  radius: 1.0,
+                  colors: [
+                    const Color(0xFFFFE135).withValues(alpha: 0.15),
+                    const Color(0xFFFFB347).withValues(alpha: 0.12),
+                    const Color(0xFFFF8C00).withValues(alpha: 0.08),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.3, 0.6, 1.0],
+                ),
+              ),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+
+  /// 纯色清新背景（节能模式）
+  Widget _buildFreshSolidBackground(Widget child) {
+    return Container(
+      color: const Color(0xFFF8FFFE), // 清晨天空白
       child: child,
     );
   }

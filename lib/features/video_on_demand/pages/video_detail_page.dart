@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../shared/widgets/backgrounds/cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background.dart';
+import '../../../shared/widgets/backgrounds/fresh_cosmic_background.dart';
+import '../../../shared/widgets/backgrounds/optimized_fresh_background.dart';
 import '../../../shared/utils/performance_manager.dart';
 import '../controllers/video_detail_controller.dart';
 
@@ -26,11 +28,11 @@ class VideoDetailPage extends GetView<VideoDetailController> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isPortrait = constraints.maxHeight > constraints.maxWidth;
-          final backgroundColor = isPortrait ? const Color(0xFFF6F7F8) : Colors.transparent;
-          final textColor = isPortrait ? Colors.black : Colors.white;
+          // 竖屏模式文字颜色需要适配背景，横屏模式使用白色
+          final textColor = isPortrait ? Colors.grey[800]! : Colors.white;
 
           Widget content = Scaffold(
-            backgroundColor: isPortrait ? backgroundColor : Colors.transparent,
+            backgroundColor: Colors.transparent, // 统一透明，让背景组件生效
             extendBodyBehindAppBar: true,
             appBar: null, // 移除AppBar
             body: Obx(() => controller.isLoading.value
@@ -57,22 +59,30 @@ class VideoDetailPage extends GetView<VideoDetailController> {
           );
           
           // 横屏模式下使用性能优化的宇宙背景，与主页保持一致
-          if (!isPortrait) {
-            // 使背景选择响应性能设置变化
-            return Obx(() {
-              final performance = Get.find<PerformanceManager>();
-              // 高性能模式使用原始效果，中低性能模式与主页保持一致
-              if (performance.enableBackgroundEffects && performance.visualQuality == 2) {
+          // 使背景选择响应性能设置变化
+          return Obx(() {
+            final performance = Get.find<PerformanceManager>();
+            
+            if (isPortrait) {
+              // 竖屏模式：使用清新亮色背景，对应性能等级
+              if (performance.enableBackgroundEffects) {
+                // 高性能：使用完整清新背景（微光效果）
+                return FreshCosmicBackground(child: content);
+              } else {
+                // 中低性能：使用性能优化清新背景
+                return OptimizedFreshBackground(child: content);
+              }
+            } else {
+              // 横屏模式：使用宇宙暗色背景，对应性能等级
+              if (performance.enableBackgroundEffects) {
                 // 高性能：使用原始宇宙背景（用户喜欢的微光效果）
                 return CosmicBackground(child: content);
               } else {
                 // 中低性能：使用性能优化背景，与主页保持一致
                 return OptimizedCosmicBackground(child: content);
               }
-            });
-          }
-          
-          return content;
+            }
+          });
         },
       ),
     );

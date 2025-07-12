@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'dart:ui';
 import '../../controllers/window_controller.dart';
+import '../common/glass_container.dart';
+import '../../../app/theme/typography.dart';
 
 // 横屏导航栏组件
 class NavigationBar extends StatefulWidget {
@@ -229,7 +232,7 @@ class PortraitNavigationBar extends StatefulWidget {
 
 class _PortraitNavigationBarState extends State<PortraitNavigationBar> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _tabs = ['测试', '影视', '频道', '精选', '动态'];
+  final List<String> _tabs = ['测试', '影视', '番剧', '排行榜', '动态', '我的']; // 与横屏导航完全一致
   
   @override
   void initState() {
@@ -268,13 +271,13 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar> with Sing
     _updateStatusBarStyle();
   }
   
-  // 更新状态栏样式
+  // 更新状态栏样式 - 适配清新亮色背景
   void _updateStatusBarStyle() {
-    // 竖屏模式下设置状态栏图标为深色
+    // 竖屏模式下设置状态栏图标为深色（适配亮色清新背景）
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      statusBarBrightness: Brightness.light, // iOS
+      statusBarIconBrightness: Brightness.dark, // 改为深色图标
+      statusBarBrightness: Brightness.light, // iOS 适配亮色背景
     ));
   }
   
@@ -289,102 +292,158 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar> with Sing
     // 确保状态栏样式正确
     _updateStatusBarStyle();
     
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white, // 确保标签栏为白色背景
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFEEEEEE), // 使用更浅的灰色作为分隔线
-            width: 0.5, // 更细的线条
-          ),
+    return SafeArea(
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
-      ),
-      child: Column(
-        children: [
-          // 搜索栏
-          Padding(
-            padding: const EdgeInsets.fromLTRB(15, 6, 15, 8),
-            child: Row(
-              children: [
-                // 头像
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.pink.withAlpha(60), width: 2),
-                    image: const DecorationImage(
-                      image: NetworkImage('https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            decoration: BoxDecoration(
+              // 使用与横屏导航相同的毛玻璃效果
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
+                width: 0.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  spreadRadius: -5,
+                  offset: const Offset(0, 8),
                 ),
-                
-                const SizedBox(width: 12),
-                
-                // 搜索框
-                Expanded(
-                  child: Container(
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withAlpha(15),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 12),
-                        Icon(Icons.search, color: Colors.grey[400], size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          '搜索视频、番剧、UP主',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 13,
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  blurRadius: 1,
+                  spreadRadius: 0,
+                  offset: const Offset(0, -0.3),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // 搜索栏
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(15, 6, 15, 8),
+                  child: Row(
+                    children: [
+                      // 头像 - 适配毛玻璃背景
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.grey.withValues(alpha: 0.6), // 适配亮色背景
+                            width: 2
+                          ),
+                          image: const DecorationImage(
+                            image: NetworkImage('https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif'),
+                            fit: BoxFit.cover,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      
+                      const SizedBox(width: 12),
+                      
+                      // 搜索框 - 毛玻璃风格
+                      Expanded(
+                        child: Container(
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.15), // 适配亮色背景
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.grey.withValues(alpha: 0.25),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 12),
+                              Icon(Icons.search, 
+                                color: Colors.grey[600], // 适配亮色背景
+                                size: 20
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '搜索视频、番剧、UP主',
+                                style: TextStyle(
+                                  color: Colors.grey[600], // 适配亮色背景
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 12),
+                      
+                      // 消息图标 - 适配亮色背景
+                      Icon(Icons.notifications_none, 
+                        color: Colors.grey[600], 
+                        size: 24
+                      ),
+                      
+                      // 屏幕旋转按钮 - 使用GlassContainer
+                      const SizedBox(width: 10),
+                      GlassContainer(
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: Get.find<WindowController>().toggleOrientation,
+                            child: Icon(
+                              Icons.screen_rotation_rounded,
+                              color: Colors.grey[700], // 适配亮色背景
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 
-                const SizedBox(width: 12),
-                
-                // 消息图标
-                Icon(Icons.notifications_none, color: Colors.grey[500], size: 24),
-                
-                // 屏幕旋转按钮
-                const SizedBox(width: 10),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.screen_lock_rotation, size: 24),
-                  color: Colors.grey[500],
-                  onPressed: Get.find<WindowController>().toggleOrientation,
+                // 标签页 - 适配毛玻璃背景并使用统一字体
+                TabBar(
+                  controller: _tabController,
+                  isScrollable: true, // 恢复滚动，6个标签需要滚动
+                  labelColor: Colors.grey[800], // 深色选中文字
+                  unselectedLabelColor: Colors.grey[600], // 浅色未选中文字
+                  indicatorColor: Colors.grey[800], // 深色指示器
+                  indicatorSize: TabBarIndicatorSize.label,
+                  indicatorWeight: 3,
+                  dividerColor: Colors.transparent, // 移除底部横线
+                  labelStyle: TextStyle(
+                    fontFamily: AppTypography.systemFont, // 使用统一字体
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.1,
+                  ),
+                  unselectedLabelStyle: TextStyle(
+                    fontFamily: AppTypography.systemFont, // 使用统一字体
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.1,
+                  ),
+                  tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
                 ),
               ],
             ),
           ),
-          
-          // 标签页
-          TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            labelColor: const Color(0xFFFF7BB0), // B站风格的粉色
-            unselectedLabelColor: Colors.grey[600], 
-            indicatorColor: const Color(0xFFFF7BB0),
-            indicatorSize: TabBarIndicatorSize.label,
-            indicatorWeight: 3,
-            labelStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.normal,
-            ),
-            tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../../../shared/controllers/window_controller.dart';
 import '../controllers/vod_controller.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../shared/utils/performance_manager.dart';
+import '../../../app/theme/typography.dart';
 
 class VideoOnDemandPage extends StatelessWidget {
   const VideoOnDemandPage({super.key});
@@ -23,7 +24,8 @@ class VideoOnDemandPage extends StatelessWidget {
         preferredSize: const Size.fromHeight(kToolbarHeight),
         child: Obx(() {
           final isPortrait = windowController.isPortrait.value;
-          final backgroundColor = !isPortrait ? Colors.transparent : const Color(0xFFF6F7F8);
+          // AppBar背景也改为透明，与横屏一致
+          const backgroundColor = Colors.transparent;
           
           return AppBar(
             backgroundColor: backgroundColor,
@@ -60,9 +62,8 @@ class VideoOnDemandPage extends StatelessWidget {
     }
     
     return Obx(() {
-      final backgroundColor = !windowController.isPortrait.value 
-          ? Colors.transparent 
-          : const Color(0xFFF6F7F8);
+      // 影视页背景始终透明，与横屏一致
+      const backgroundColor = Colors.transparent;
           
       // 如果数据正在加载中，显示加载指示器
       if (controller.isLoading.value && controller.homeData.isEmpty) {
@@ -97,20 +98,22 @@ class VideoOnDemandPage extends StatelessWidget {
           child: Text(
             item['type_name'] as String,
             style: TextStyle(
-              fontWeight: FontWeight.bold,
+              fontFamily: AppTypography.systemFont, // 使用统一字体
+              fontWeight: FontWeight.w600,
               fontSize: isPortrait ? 15 : 16,
+              letterSpacing: 0.1,
             ),
           ),
         );
       }).toList(),
-      labelColor: const Color(0xFFFF7BB0),
-      unselectedLabelColor: Colors.grey,
-      indicatorColor: const Color(0xFFFF7BB0),
+      labelColor: isPortrait ? Colors.grey[800] : Colors.white, // 根据背景调整
+      unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7), // 根据背景调整
+      indicatorColor: isPortrait ? Colors.grey[800] : Colors.white, // 根据背景调整
       indicatorSize: TabBarIndicatorSize.label,
       dividerColor: Colors.transparent,
       indicator: UnderlineTabIndicator(
-        borderSide: const BorderSide(
-          color: Color(0xFFFF7BB0),
+        borderSide: BorderSide(
+          color: isPortrait ? Colors.grey[800]! : Colors.white, // 根据背景调整
           width: 3,
         ),
         insets: EdgeInsets.symmetric(
@@ -473,8 +476,15 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
   }
   
   Widget _buildVideoCard(dynamic video, int index, double itemWidth, double imageHeight, double titleHeight, double spacing, bool isPortrait) {
-    final textColor = !isPortrait ? Colors.white : Colors.black;
-    final cardBgColor = isPortrait ? Colors.white : Colors.black.withValues(alpha: 0.15);
+    final windowController = Get.find<WindowController>();
+    final isPortraitMode = windowController.isPortrait.value;
+    
+    // 根据屏幕方向调整文字颜色：竖屏用深色，横屏用白色
+    final textColor = isPortraitMode ? Colors.grey[800]! : Colors.white;
+    // 卡片背景也根据模式调整
+    final cardBgColor = isPortraitMode 
+        ? Colors.white.withValues(alpha: 0.15) 
+        : Colors.black.withValues(alpha: 0.15);
     final performance = PerformanceManager.to;
 
     final String? remarks = video['vod_remarks'];
@@ -536,10 +546,10 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
                       ),
                       child: Text(
                         remarks,
-                        style: const TextStyle(
+                        style: AppTypography.labelSmall.copyWith(
                           color: Colors.white,
                           fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -570,15 +580,14 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
             padding: EdgeInsets.symmetric(horizontal: isPortrait ? 4 : 6),
             child: Text(
               video['vod_name'],
-              style: TextStyle(
-                fontSize: isPortrait ? 16 : 15, // 进一步增大字体，与大尺寸卡片更协调
-                fontWeight: FontWeight.w500, // 统一使用中等粗细
+              style: AppTypography.videoTitle.copyWith(
+                fontSize: isPortrait ? 13 : 14,
                 color: textColor,
-                height: 1.3, // 减小行高以更好地适应两行文本
+                height: 1.3,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.start, // 文本左对齐
+              textAlign: TextAlign.start,
             ),
           ),
         ),

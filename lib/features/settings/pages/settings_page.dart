@@ -18,6 +18,9 @@ class SettingsPage extends GetView<SettingsController> {
       if (!Get.isRegistered<SettingsController>()) {
         Get.put(SettingsController());
       }
+      
+      // 检测屏幕方向，调整文字颜色
+      final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
         return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -26,10 +29,11 @@ class SettingsPage extends GetView<SettingsController> {
               // 页面标题
               GlassContainer(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: const Text(
+                isPortrait: isPortrait,
+                child: Text(
                   '⚙️ 设置',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: isPortrait ? Colors.grey[800] : Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -41,12 +45,14 @@ class SettingsPage extends GetView<SettingsController> {
               // 性能设置区域
               GlassSection(
                 title: '性能设置',
+                isPortrait: isPortrait,
                 children: [
                   GlassOption(
                     title: '视觉质量',
                     subtitle: _getQualityDescription(performance.visualQuality),
-                    trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                    trailing: Icon(Icons.chevron_right, color: isPortrait ? Colors.grey[600] : Colors.white54),
                     onTap: () => _showPerformanceSettings(context),
+                    isPortrait: isPortrait,
                   ),
                 ],
               ),
@@ -54,6 +60,7 @@ class SettingsPage extends GetView<SettingsController> {
               // 播放设置区域
               GlassSection(
                 title: '播放设置',
+                isPortrait: isPortrait,
                 children: [
                   Obx(() => GlassOption(
                     title: '播放内核',
@@ -63,16 +70,17 @@ class SettingsPage extends GetView<SettingsController> {
                       children: [
                         Text(
                           controller.currentPlayerKernel.value == PlayerKernel.vlc ? 'VLC' : 'VideoPlayer',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: isPortrait ? Colors.grey[700] : Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Icon(Icons.chevron_right, color: Colors.white54),
+                        Icon(Icons.chevron_right, color: isPortrait ? Colors.grey[600] : Colors.white54),
                       ],
                     ),
                     onTap: () => _showPlayerKernelDialog(context, controller),
+                    isPortrait: isPortrait,
                   )),
                 ],
               ),
@@ -80,6 +88,7 @@ class SettingsPage extends GetView<SettingsController> {
               // 数据设置区域
               GlassSection(
                 title: '数据设置',
+                isPortrait: isPortrait,
                 children: [
                   Obx(() => GlassOption(
                     title: '数据源',
@@ -90,7 +99,7 @@ class SettingsPage extends GetView<SettingsController> {
                         controller.toggleMockData(value);
                         _showSettingToast(value ? '已切换到模拟数据' : '已切换到在线数据');
                       },
-                      activeColor: Colors.white,
+                      activeColor: isPortrait ? Colors.grey[700] : Colors.white,
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     onTap: () {
@@ -98,11 +107,13 @@ class SettingsPage extends GetView<SettingsController> {
                       controller.toggleMockData(newValue);
                       _showSettingToast(newValue ? '已切换到模拟数据' : '已切换到在线数据');
                     },
+                    isPortrait: isPortrait,
                   )),
                   
                   GlassOption(
                     title: '数据源说明',
                     subtitle: '模拟数据：无需网络，用于测试\n在线数据：需要网络连接',
+                    isPortrait: isPortrait,
                   ),
                 ],
               ),
@@ -110,24 +121,27 @@ class SettingsPage extends GetView<SettingsController> {
               // 关于设置区域
               GlassSection(
                 title: '关于',
+                isPortrait: isPortrait,
                 children: [
                   GlassOption(
                     title: '应用版本',
                     subtitle: '1.0.0',
-                    trailing: const Text(
+                    trailing: Text(
                       'Beta',
                       style: TextStyle(
-                        color: Colors.white54,
+                        color: isPortrait ? Colors.grey[600] : Colors.white54,
                         fontSize: 14,
                       ),
                     ),
+                    isPortrait: isPortrait,
                   ),
                   
                   GlassOption(
                     title: '使用帮助',
                     subtitle: '查看使用说明和常见问题',
-                    trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                    trailing: Icon(Icons.chevron_right, color: isPortrait ? Colors.grey[600] : Colors.white54),
                     onTap: () => _showHelpDialog(context),
+                    isPortrait: isPortrait,
                   ),
                 ],
               ),
@@ -161,6 +175,7 @@ class SettingsPage extends GetView<SettingsController> {
   
   void _showPerformanceSettings(BuildContext context) {
     final performance = Get.find<PerformanceManager>();
+    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
     
     showDialog(
       context: context,
@@ -169,13 +184,14 @@ class SettingsPage extends GetView<SettingsController> {
         child: GlassContainer(
           width: 240,
           padding: const EdgeInsets.all(16),
+          isPortrait: isPortrait,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 '视觉质量',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: isPortrait ? Colors.grey[800] : Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -185,10 +201,10 @@ class SettingsPage extends GetView<SettingsController> {
               
               Column(
                 children: [
-                  _buildCompactOption('高性能', 2, performance, context),
-                  _buildCompactOption('平衡', 1, performance, context),
-                  _buildCompactOption('节能', 0, performance, context),
-                  _buildCompactOption('智能', 3, performance, context),
+                  _buildCompactOption('高性能', 2, performance, context, isPortrait),
+                  _buildCompactOption('平衡', 1, performance, context, isPortrait),
+                  _buildCompactOption('节能', 0, performance, context, isPortrait),
+                  _buildCompactOption('智能', 3, performance, context, isPortrait),
                 ],
               ),
             ],
@@ -199,6 +215,8 @@ class SettingsPage extends GetView<SettingsController> {
   }
   
   void _showPlayerKernelDialog(BuildContext context, SettingsController controller) {
+    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.6),
@@ -206,13 +224,14 @@ class SettingsPage extends GetView<SettingsController> {
         child: GlassContainer(
           width: 220,
           padding: const EdgeInsets.all(16),
+          isPortrait: isPortrait,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 '播放内核',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: isPortrait ? Colors.grey[800] : Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -222,8 +241,8 @@ class SettingsPage extends GetView<SettingsController> {
               
               Column(
                 children: [
-                  _buildCompactKernelOption('VLC', PlayerKernel.vlc, controller, context),
-                  _buildCompactKernelOption('VideoPlayer', PlayerKernel.videoPlayer, controller, context),
+                  _buildCompactKernelOption('VLC', PlayerKernel.vlc, controller, context, isPortrait),
+                  _buildCompactKernelOption('VideoPlayer', PlayerKernel.videoPlayer, controller, context, isPortrait),
                 ],
               ),
             ],
@@ -235,27 +254,38 @@ class SettingsPage extends GetView<SettingsController> {
   
   /// 通用设置提示 - 毛玻璃风格
   void _showSettingToast(String message) {
+    final context = Get.context;
+    if (context == null) return;
+    
+    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    
     Get.snackbar(
       '',
       message,
-      backgroundColor: Colors.white.withValues(alpha: 0.08), // 与导航栏一致的毛玻璃背景
-      colorText: Colors.white,
+      backgroundColor: isPortrait 
+          ? Colors.white.withValues(alpha: 0.85) // 竖屏：半透明白色
+          : Colors.white.withValues(alpha: 0.08), // 横屏：原有样式
+      colorText: isPortrait ? Colors.grey[800] : Colors.white,
       duration: const Duration(seconds: 1),
       margin: const EdgeInsets.all(16),
-      borderRadius: 16, // 与GlassContainer一致的圆角
-      borderColor: Colors.white.withValues(alpha: 0.15), // 极细的玻璃边框
+      borderRadius: 16,
+      borderColor: isPortrait 
+          ? Colors.grey.withValues(alpha: 0.25) // 竖屏：灰色边框
+          : Colors.white.withValues(alpha: 0.15), // 横屏：白色边框
       borderWidth: 0.2,
       boxShadows: [
-        // 极轻的玻璃投影
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
+          color: isPortrait 
+              ? Colors.grey.withValues(alpha: 0.15) // 竖屏：灰色投影
+              : Colors.black.withValues(alpha: 0.05), // 横屏：黑色投影
           blurRadius: 20,
           spreadRadius: -5,
           offset: const Offset(0, 8),
         ),
-        // 玻璃的内部高光
         BoxShadow(
-          color: Colors.white.withValues(alpha: 0.15),
+          color: isPortrait 
+              ? Colors.white.withValues(alpha: 0.8) // 竖屏：明显白色高光
+              : Colors.white.withValues(alpha: 0.15), // 横屏：原有高光
           blurRadius: 1,
           spreadRadius: 0,
           offset: const Offset(0, -0.3),
@@ -266,8 +296,16 @@ class SettingsPage extends GetView<SettingsController> {
   }
 
   /// 紧凑的性能选项 - 防止溢出
-  Widget _buildCompactOption(String title, int value, PerformanceManager performance, BuildContext context) {
+  Widget _buildCompactOption(String title, int value, PerformanceManager performance, BuildContext context, bool isPortrait) {
     final isSelected = performance.visualQuality == value;
+    final textColor = isPortrait ? Colors.grey[800]! : Colors.white;
+    final borderColor = isPortrait ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.6);
+    final selectedBgColor = isPortrait 
+        ? Colors.grey.withValues(alpha: 0.15) 
+        : Colors.white.withValues(alpha: 0.15);
+    final selectedBorderColor = isPortrait 
+        ? Colors.grey.withValues(alpha: 0.4) 
+        : Colors.white.withValues(alpha: 0.3);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -283,12 +321,10 @@ class SettingsPage extends GetView<SettingsController> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             decoration: BoxDecoration(
-              color: isSelected 
-                ? Colors.white.withValues(alpha: 0.15)
-                : Colors.transparent,
+              color: isSelected ? selectedBgColor : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
               border: isSelected 
-                ? Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1)
+                ? Border.all(color: selectedBorderColor, width: 1)
                 : null,
             ),
             child: Row(
@@ -299,7 +335,7 @@ class SettingsPage extends GetView<SettingsController> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: borderColor,
                       width: 1.5,
                     ),
                   ),
@@ -308,9 +344,9 @@ class SettingsPage extends GetView<SettingsController> {
                         child: Container(
                           width: 6,
                           height: 6,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white,
+                            color: textColor,
                           ),
                         ),
                       )
@@ -319,8 +355,8 @@ class SettingsPage extends GetView<SettingsController> {
                 const SizedBox(width: 10),
                 Text(
                   title, 
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: textColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -334,9 +370,17 @@ class SettingsPage extends GetView<SettingsController> {
   }
 
   /// 紧凑的播放器内核选项
-  Widget _buildCompactKernelOption(String title, PlayerKernel kernel, SettingsController controller, BuildContext context) {
+  Widget _buildCompactKernelOption(String title, PlayerKernel kernel, SettingsController controller, BuildContext context, bool isPortrait) {
     return Obx(() {
       final isSelected = controller.currentPlayerKernel.value == kernel;
+      final textColor = isPortrait ? Colors.grey[800]! : Colors.white;
+      final borderColor = isPortrait ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.6);
+      final selectedBgColor = isPortrait 
+          ? Colors.grey.withValues(alpha: 0.15) 
+          : Colors.white.withValues(alpha: 0.15);
+      final selectedBorderColor = isPortrait 
+          ? Colors.grey.withValues(alpha: 0.4) 
+          : Colors.white.withValues(alpha: 0.3);
       
       return Container(
         margin: const EdgeInsets.only(bottom: 6),
@@ -352,12 +396,10 @@ class SettingsPage extends GetView<SettingsController> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
               decoration: BoxDecoration(
-                color: isSelected 
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : Colors.transparent,
+                color: isSelected ? selectedBgColor : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
                 border: isSelected 
-                  ? Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1)
+                  ? Border.all(color: selectedBorderColor, width: 1)
                   : null,
               ),
               child: Row(
@@ -368,7 +410,7 @@ class SettingsPage extends GetView<SettingsController> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: borderColor,
                         width: 1.5,
                       ),
                     ),
@@ -377,9 +419,9 @@ class SettingsPage extends GetView<SettingsController> {
                           child: Container(
                             width: 6,
                             height: 6,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white,
+                              color: textColor,
                             ),
                           ),
                         )
@@ -388,8 +430,8 @@ class SettingsPage extends GetView<SettingsController> {
                   const SizedBox(width: 10),
                   Text(
                     title, 
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: textColor,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),

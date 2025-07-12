@@ -183,7 +183,7 @@ class AppTypography {
 
   /// 视频标题 - 视频卡片标题
   static TextStyle get videoTitle => createTextStyle(
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.4,
     letterSpacing: 0.1,
