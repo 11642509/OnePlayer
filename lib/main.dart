@@ -11,15 +11,14 @@ import 'features/media_player/standard_player/pages/video_player_page.dart';
 import 'shared/widgets/layouts/portrait_home_layout.dart';
 import 'shared/widgets/layouts/landscape_home_layout.dart';
 import 'app/data_source.dart';
+import 'app/routes/app_pages.dart';
+import 'app/bindings/initial_binding.dart';
 
 // 测试视频URL
 const String testVideoUrl = 'https://static.ybhospital.net/test-video-10.MP4';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 初始化GetX依赖注入
-  Get.put(WindowController());
   
   // 初始化MediaKit视频播放器
   initMediaKitPlayer();
@@ -58,6 +57,8 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
+      initialBinding: InitialBinding(),
+      getPages: AppPages.routes,
       home: const HomePage(),
     );
   }

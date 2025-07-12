@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../../../app/config/config.dart';
-import '../../../app/data_source.dart';
-import '../../media_player/vlc_player/pages/vlc_player_page.dart';
-import '../../media_player/standard_player/pages/video_player_page.dart';
-import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import '../../../shared/widgets/backgrounds/cosmic_background.dart';
+import '../controllers/video_detail_controller.dart';
 
-class VideoDetailPage extends StatefulWidget {
+class VideoDetailPage extends GetView<VideoDetailController> {
   final String videoId;
   
   const VideoDetailPage({
@@ -17,167 +12,13 @@ class VideoDetailPage extends StatefulWidget {
   });
 
   @override
-  State<VideoDetailPage> createState() => _VideoDetailPageState();
-}
-
-class _VideoDetailPageState extends State<VideoDetailPage> {
-  bool _isLoading = true;
-  Map<String, dynamic>? _videoDetail;
-  String? _errorMessage;
-  String _currentPlaySource = '';
-  final DataSource _dataSource = DataSource();
-  
-  @override
-  void initState() {
-    super.initState();
-    _fetchVideoDetail();
-  }
-  
-  Future<void> _fetchVideoDetail() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    
-    try {
-      final url = '${AppConfig.apiBaseUrl}/api/v1/bilibili?ids=${widget.videoId}';
-      final response = await http.get(Uri.parse(url));
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['code'] == 0 && data['list'] != null && data['list'].isNotEmpty) {
-          setState(() {
-            _videoDetail = data['list'][0];
-            _isLoading = false;
-            
-            // 解析播放源
-            final playFrom = _videoDetail!['vod_play_from']?.toString().split('\$\$\$') ?? [];
-            
-            // 查找第一个非"相关"的播放源
-            String defaultSource = '';
-            for (final source in playFrom) {
-              if (source != '相关') {
-                defaultSource = source;
-                break;
-              }
-            }
-            
-            // 如果没有找到非"相关"的播放源，则使用第一个播放源（可能是"相关"）
-            _currentPlaySource = defaultSource.isNotEmpty ? defaultSource : (playFrom.isNotEmpty ? playFrom.first : '');
-            
-            if (kDebugMode) {
-              print('设置默认播放源: $_currentPlaySource');
-              print('所有播放源: $playFrom');
-            }
-          });
-        } else {
-          setState(() {
-            _errorMessage = '获取视频详情失败: ${data['message'] ?? '未知错误'}';
-            _isLoading = false;
-          });
-        }
-      } else {
-        setState(() {
-          _errorMessage = '网络请求失败，状态码: ${response.statusCode}';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('获取视频详情失败: $e');
-      }
-      setState(() {
-        _errorMessage = '发生错误: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
-  // 播放视频
-  Future<void> _playVideo(String episodeUrl, String episodeName, {String? playSource}) async {
-    final source = playSource ?? _currentPlaySource;
-    if (_videoDetail == null || source.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('无法播放视频，缺少必要信息'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    try {
-      // 获取视频播放地址
-      final playConfig = await _dataSource.fetchVideoPlayUrl(
-        episodeUrl,
-        source,
-      );
-
-      if (!mounted) return;
-
-      if (playConfig.url.isNotEmpty) {
-        final String title = '${_videoDetail!['vod_name']} - $episodeName';
-
-        // 智能选择播放器内核
-        bool useVlc = AppConfig.currentPlayerKernel == PlayerKernel.vlc;
-        
-        // 对于MPD格式，如果配置为VLC但可能存在兼容性问题，提供选择
-        if (useVlc && playConfig.format == VideoFormat.dash) {
-          if (kDebugMode) {
-            print('检测到MPD格式，使用VLC播放器（如遇问题可切换到video_player）');
-          }
-        }
-        
-        if (useVlc) {
-          // 使用 VLC 播放器
-          if (kDebugMode) {
-            print('使用VLC内核播放: ${playConfig.url}');
-          }
-          if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
-            FadeRoute(page: VlcPlayerPage(
-              playConfig: playConfig,
-              title: title,
-            )),
-          );
-        } else {
-          // 使用 video_player 播放器
-          if (kDebugMode) {
-            print('使用video_player内核播放: ${playConfig.url}');
-          }
-          if (!mounted) return;
-          Navigator.push(
-            context,
-            FadeRoute(page: SingleVideoTabPage(
-              playConfig: playConfig,
-              title: title,
-            )),
-          );
-        }
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('获取播放地址失败: 返回的URL为空'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('获取播放地址失败: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
+  String? get tag => videoId;
 
   @override
   Widget build(BuildContext context) {
+    // 通过GetView自动获取控制器（由路由绑定管理）
+    controller.initWithVideoId(videoId);
+    
     return KeyedSubtree(
       key: UniqueKey(),
       child: LayoutBuilder(
@@ -190,18 +31,18 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
             backgroundColor: isPortrait ? backgroundColor : Colors.transparent,
             extendBodyBehindAppBar: true,
             appBar: null, // 移除AppBar
-            body: _isLoading
+            body: Obx(() => controller.isLoading.value
                 ? const Center(
                     child: CircularProgressIndicator(
                       color: Color(0xFFFF7BB0),
                     ),
                   )
-                : _errorMessage != null
+                : controller.errorMessage.value.isNotEmpty
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Text(
-                            _errorMessage!,
+                            controller.errorMessage.value,
                             style: TextStyle(
                               color: textColor,
                               fontSize: 16,
@@ -210,7 +51,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                           ),
                         ),
                       )
-                    : _buildDetailContent(textColor, isPortrait),
+                    : _buildDetailContent(controller, textColor, isPortrait)),
           );
           
           // 横屏模式下使用宇宙背景作为整体背景
@@ -224,113 +65,89 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
     );
   }
   
-  Widget _buildDetailContent(Color textColor, bool isPortrait) {
-    if (_videoDetail == null) {
-      return Center(
-        child: Text(
-          '没有找到视频信息',
-          style: TextStyle(color: textColor, fontSize: 16),
-        ),
-      );
-    }
-    
-    // 解析播放源和播放地址
-    final playFrom = _videoDetail!['vod_play_from']?.toString().split(r'$$$') ?? [];
-    final playUrl = _videoDetail!['vod_play_url']?.toString().split(r'$$$') ?? [];
-    
-    // 将播放源和地址组合成Map
-    final Map<String, List<Map<String, String>>> playOptions = {};
-    for (int i = 0; i < playFrom.length && i < playUrl.length; i++) {
-      final source = playFrom[i];
-      final urls = playUrl[i].split('#');
-      
-      final List<Map<String, String>> episodes = [];
-      for (final url in urls) {
-        final parts = url.split('\$');
-        if (parts.length >= 2) {
-          episodes.add({'name': parts[0], 'url': parts[1]});
-        }
+  Widget _buildDetailContent(VideoDetailController controller, Color textColor, bool isPortrait) {
+    return Obx(() {
+      if (controller.videoDetail.value == null) {
+        return Center(
+          child: Text(
+            '没有找到视频信息',
+            style: TextStyle(color: textColor, fontSize: 16),
+          ),
+        );
       }
-      playOptions[source] = episodes;
-    }
-    
-    // 分离播放源和相关推荐
-    final List<String> allPlaySources = playFrom;
-    
-    final horizontalPadding = isPortrait ? 16.0 : 30.0;
-    
-    // 统一使用SingleChildScrollView和Column，解决横屏割裂感
-    return Stack( // 将内容包裹在Stack中
-      children: [
-        SingleChildScrollView(
-          key: PageStorageKey(widget.videoId),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. 全新的Hero Section
-              _buildHeroSection(isPortrait),
-              
-              // 减小竖屏和横屏模式下的间距
-              SizedBox(height: isPortrait ? 24 : 4),
+      
+      final videoDetail = controller.videoDetail.value!;
+      final playOptions = controller.playOptions;
+      final allPlaySources = controller.allPlaySources;
+      
+      final horizontalPadding = isPortrait ? 16.0 : 30.0;
+      
+      // 统一使用SingleChildScrollView和Column，解决横屏割裂感
+      return Stack( // 将内容包裹在Stack中
+        children: [
+          SingleChildScrollView(
+            key: PageStorageKey(videoId),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. 全新的Hero Section
+                _buildHeroSection(controller, isPortrait),
+                
+                // 减小竖屏和横屏模式下的间距
+                SizedBox(height: isPortrait ? 24 : 4),
 
-              // 2. 简介区域 - 横屏模式下跳过显示，避免溢出
-              if (isPortrait && _videoDetail!['vod_content'] != null && _videoDetail!['vod_content'].toString().isNotEmpty)
+                // 2. 简介区域 - 横屏模式下跳过显示，避免溢出
+                if (isPortrait && videoDetail['vod_content'] != null && videoDetail['vod_content'].toString().isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                    child: _buildDescriptionSection(videoDetail, textColor, isPortrait),
+                  ),
+                
+                // 减小竖屏和横屏模式下的间距
+                if (isPortrait) SizedBox(height: isPortrait ? 24 : 4),
+
+                // 3. 播放列表区域
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                  child: _buildDescriptionSection(textColor, isPortrait),
-                ),
-              
-              // 减小竖屏和横屏模式下的间距
-              if (isPortrait) SizedBox(height: isPortrait ? 24 : 4),
-
-              // 3. 播放列表区域
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (allPlaySources.isNotEmpty)
-                      _buildPlaySourceSelector(allPlaySources, textColor, isPortrait),
-                    
-                    if (_currentPlaySource.isNotEmpty && playOptions.containsKey(_currentPlaySource) && playOptions[_currentPlaySource]!.isNotEmpty) ...[
-                      SizedBox(height: isPortrait ? 12 : 8), // 横屏模式下进一步减小间距
-                      _buildTiledPlayList(playOptions[_currentPlaySource]!, textColor, isPortrait: isPortrait),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (allPlaySources.isNotEmpty)
+                        _buildPlaySourceSelector(controller, allPlaySources, textColor, isPortrait),
+                      
+                      if (controller.currentPlaySource.value.isNotEmpty && 
+                          playOptions.containsKey(controller.currentPlaySource.value) && 
+                          playOptions[controller.currentPlaySource.value]!.isNotEmpty) ...[
+                        SizedBox(height: isPortrait ? 12 : 8), // 横屏模式下进一步减小间距
+                        _buildTiledPlayList(controller, playOptions[controller.currentPlaySource.value]!, textColor, isPortrait: isPortrait),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
 
-              // 减小底部间距
-              SizedBox(height: isPortrait ? 32 : 4),
-            ],
+                // 减小底部间距
+                SizedBox(height: isPortrait ? 32 : 4),
+              ],
+            ),
           ),
-        ),
-        // 将返回按钮作为独立的层放置在顶部，并使用动画平滑过渡
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          top: MediaQuery.of(context).padding.top,
-          left: 10,
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () async {
-              // 如果当前有正在加载的播放器相关操作，先取消
-              if (_isLoading) {
-                setState(() {
-                  _isLoading = false;
-                });
-                // 给一个短暂的延迟确保状态更新
-                await Future.delayed(const Duration(milliseconds: 50));
-              }
-              if (!mounted) return;
-              Navigator.of(context).pop();
-            },
-            splashColor: Colors.transparent,
-            highlightColor: Colors.white.withValues(alpha: 51/255.0),
+          // 将返回按钮作为独立的层放置在顶部，并使用动画平滑过渡
+          Builder(
+            builder: (context) => AnimatedPositioned(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              top: MediaQuery.of(context).padding.top,
+              left: 10,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Get.back(),
+                splashColor: Colors.transparent,
+                highlightColor: Colors.white.withValues(alpha: 51/255.0),
+              ),
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    });
   }
 
   // 构建竖屏布局 - 此方法已被移除
@@ -344,7 +161,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   */
   
   // 为横屏构建平铺的剧集列表
-  Widget _buildTiledPlayList(List<Map<String, String>> episodes, Color textColor, {bool isPortrait = false}) {
+  Widget _buildTiledPlayList(VideoDetailController controller, List<Map<String, String>> episodes, Color textColor, {bool isPortrait = false}) {
     // 竖屏时使用更紧凑、更适合竖向浏览的GridView
     if (isPortrait) {
       return GridView.builder(
@@ -359,7 +176,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         ),
         itemBuilder: (context, index) {
           final episode = episodes[index];
-          return _buildPortraitEpisodeCard(episode, index, textColor);
+          return _buildPortraitEpisodeCard(controller, episode, index, textColor);
         },
       );
     }
@@ -371,13 +188,13 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
       children: episodes.asMap().entries.map((entry) {
         final index = entry.key;
         final episode = entry.value;
-        return _buildLandscapeEpisodeCard(episode, index, textColor);
+        return _buildLandscapeEpisodeCard(controller, episode, index, textColor);
       }).toList(),
     );
   }
   
   // 竖屏剧集卡片
-  Widget _buildPortraitEpisodeCard(Map<String, String> episode, int index, Color textColor) {
+  Widget _buildPortraitEpisodeCard(VideoDetailController controller, Map<String, String> episode, int index, Color textColor) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: AnimatedContainer(
@@ -385,7 +202,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         child: InkWell(
           onTap: () {
             if (episode['url'] != null && episode['name'] != null) {
-              _playVideo(episode['url']!, episode['name']!);
+              controller.playVideo(episode['url']!, episode['name']!);
             }
           },
           borderRadius: BorderRadius.circular(8),
@@ -445,7 +262,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   }
   
   // 横屏剧集卡片（电视盒子风格）
-  Widget _buildLandscapeEpisodeCard(Map<String, String> episode, int index, Color textColor) {
+  Widget _buildLandscapeEpisodeCard(VideoDetailController controller, Map<String, String> episode, int index, Color textColor) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: AnimatedContainer(
@@ -453,7 +270,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         child: InkWell(
           onTap: () {
             if (episode['url'] != null && episode['name'] != null) {
-              _playVideo(episode['url']!, episode['name']!);
+              controller.playVideo(episode['url']!, episode['name']!);
             }
           },
           borderRadius: BorderRadius.circular(10),
@@ -515,26 +332,29 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   }
   
   // 重构封面英雄区域 - 参考电视盒子设计
-  Widget _buildHeroSection(bool isPortrait) {
-    final coverUrl = _videoDetail!['vod_pic'] ?? '';
-    final String title = _videoDetail!['vod_name'] ?? '未知标题';
-    final String? type = _videoDetail!['type_name'];
-    final String? year = _videoDetail!['vod_year'];
-    final String? area = _videoDetail!['vod_area'];
-    final String? remarks = _videoDetail!['vod_remarks'];
-    final String? actors = _videoDetail!['vod_actor'];
-    final String? director = _videoDetail!['vod_director'];
-    final String? content = _videoDetail!['vod_content'];
+  Widget _buildHeroSection(VideoDetailController controller, bool isPortrait) {
+    return Obx(() {
+      final videoDetail = controller.videoDetail.value!;
+      final coverUrl = videoDetail['vod_pic'] ?? '';
+      final String title = videoDetail['vod_name'] ?? '未知标题';
+      final String? type = videoDetail['type_name'];
+      final String? year = videoDetail['vod_year'];
+      final String? area = videoDetail['vod_area'];
+      final String? remarks = videoDetail['vod_remarks'];
+      final String? actors = videoDetail['vod_actor'];
+      final String? director = videoDetail['vod_director'];
+      final String? content = videoDetail['vod_content'];
 
-    if (isPortrait) {
-      return _buildPortraitHeroSection(coverUrl, title, type, year, area, remarks, actors, director);
-    } else {
-      return _buildLandscapeHeroSection(coverUrl, title, type, year, area, remarks, actors, director, content);
-    }
+      if (isPortrait) {
+        return _buildPortraitHeroSection(controller, coverUrl, title, type, year, area, remarks, actors, director);
+      } else {
+        return _buildLandscapeHeroSection(controller, coverUrl, title, type, year, area, remarks, actors, director, content);
+      }
+    });
   }
   
   // 竖屏英雄区域（保持原有设计）
-  Widget _buildPortraitHeroSection(String coverUrl, String title, String? type, String? year, 
+  Widget _buildPortraitHeroSection(VideoDetailController controller, String coverUrl, String title, String? type, String? year, 
       String? area, String? remarks, String? actors, String? director) {
     const double heroHeight = 300;
     
@@ -581,7 +401,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _buildPlayableCover(coverUrl, false),
+                _buildPlayableCover(controller, coverUrl, false),
                 const SizedBox(width: 18),
                 Expanded(
                   child: Column(
@@ -621,7 +441,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   }
   
   // 横屏英雄区域（电视盒子风格）
-  Widget _buildLandscapeHeroSection(String coverUrl, String title, String? type, String? year, 
+  Widget _buildLandscapeHeroSection(VideoDetailController controller, String coverUrl, String title, String? type, String? year, 
       String? area, String? remarks, String? actors, String? director, String? content) {
     return SizedBox(
       height: 300, // 适当增加高度以适应调整后的布局
@@ -660,7 +480,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.end, // 改为底部对齐
               children: [
                 // 左侧封面
-                _buildLandscapeCover(coverUrl),
+                _buildLandscapeCover(controller, coverUrl),
                 const SizedBox(width: 20), // 进一步减小间距
                 // 右侧信息
                 Expanded(
@@ -715,7 +535,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   }
 
   // 横屏专用封面组件
-  Widget _buildLandscapeCover(String coverUrl) {
+  Widget _buildLandscapeCover(VideoDetailController controller, String coverUrl) {
     return Container(
       width: 170, // 进一步增加宽度
       height: 250, // 进一步增加高度
@@ -754,7 +574,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                 ),
               ),
               child: InkWell(
-                onTap: _playFirstEpisode,
+                onTap: () => controller.playFirstEpisode(),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.all(16),
@@ -919,7 +739,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         .trim();
     
     return Container(
-      height: 85, // 稍微增加高度以容纳完整行
+      height: 80, // 适中的简介高度，避免溢出
       padding: const EdgeInsets.all(10), // 进一步减小内边距
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.3),
@@ -968,14 +788,14 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   // 电视盒子风格播放按钮
   
   // 构建可点击的封面
-  Widget _buildPlayableCover(String coverUrl, bool isLandscape) {
+  Widget _buildPlayableCover(VideoDetailController controller, String coverUrl, bool isLandscape) {
     final size = isLandscape ? 180.0 : 100.0;
     final height = isLandscape ? 240.0 : 140.0;
     
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: _playFirstEpisode,
+        onTap: () => controller.playFirstEpisode(),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -1089,30 +909,8 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
     );
   }
 
-  // 自动播放第一集
-  void _playFirstEpisode() {
-    final playFrom = _videoDetail!['vod_play_from']?.toString().split(r'$$$') ?? [];
-    final playUrl = _videoDetail!['vod_play_url']?.toString().split(r'$$$') ?? [];
-    final sourceIndex = playFrom.indexOf(_currentPlaySource);
-    if (sourceIndex != -1 && sourceIndex < playUrl.length) {
-      final urls = playUrl[sourceIndex].split('#');
-      if (urls.isNotEmpty) {
-        final parts = urls.first.split('\$');
-        if (parts.length >= 2) {
-          if (!mounted) return;
-          _playVideo(parts[1], parts[0]);
-        } else {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('无法解析播放地址')),
-          );
-        }
-      }
-    }
-  }
-
   // 构建视频简介区域的容器
-  Widget _buildDescriptionSection(Color textColor, bool isPortrait) {
+  Widget _buildDescriptionSection(Map<String, dynamic> videoDetail, Color textColor, bool isPortrait) {
     // 移除双重内边距，防止溢出
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1138,16 +936,16 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         SizedBox(height: isPortrait ? 12 : 8),
         // 横屏模式下限制简介的行数
         isPortrait 
-            ? _buildDescriptionSectionContent(textColor)
-            : _buildCompactDescriptionContent(textColor),
+            ? _buildDescriptionSectionContent(videoDetail, textColor)
+            : _buildCompactDescriptionContent(videoDetail, textColor),
       ],
     );
   }
   
   // 横屏模式下的简洁简介内容
-  Widget _buildCompactDescriptionContent(Color textColor) {
+  Widget _buildCompactDescriptionContent(Map<String, dynamic> videoDetail, Color textColor) {
     // 移除HTML标签并整理文本
-    final content = _videoDetail!['vod_content']
+    final content = videoDetail['vod_content']
             ?.toString()
             .trim()
             .replaceAll(RegExp(r'<[^>]*>'), '') ??
@@ -1165,8 +963,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   }
 
   // 构建播放源选择器
-  Widget _buildPlaySourceSelector(
-      List<String> sources, Color textColor, bool isPortrait) {
+  Widget _buildPlaySourceSelector(VideoDetailController controller, List<String> sources, Color textColor, bool isPortrait) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1189,31 +986,27 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
           ],
         ),
         const SizedBox(height: 16),
-        Wrap(
+        Obx(() => Wrap(
           spacing: 12.0,
           runSpacing: 12.0,
           children: sources.map((source) {
-            final bool isSelected = source == _currentPlaySource;
-            return _buildPlaySourceChip(source, isSelected, textColor, isPortrait);
+            final bool isSelected = source == controller.currentPlaySource.value;
+            return _buildPlaySourceChip(controller, source, isSelected, textColor, isPortrait);
           }).toList(),
-        ),
+        )),
       ],
     );
   }
   
   // 构建播放源选择芯片
-  Widget _buildPlaySourceChip(String source, bool isSelected, Color textColor, bool isPortrait) {
+  Widget _buildPlaySourceChip(VideoDetailController controller, String source, bool isSelected, Color textColor, bool isPortrait) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
         child: InkWell(
-          onTap: () {
-            setState(() {
-              _currentPlaySource = source;
-            });
-          },
+          onTap: () => controller.changePlaySource(source),
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1283,9 +1076,9 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   }
 
   // 构建简介区域内容的组件
-  Widget _buildDescriptionSectionContent(Color textColor) {
+  Widget _buildDescriptionSectionContent(Map<String, dynamic> videoDetail, Color textColor) {
     // 移除HTML标签并整理文本
-    final content = _videoDetail!['vod_content']
+    final content = videoDetail['vod_content']
             ?.toString()
             .trim()
             .replaceAll(RegExp(r'<[^>]*>'), '') ??
@@ -1299,8 +1092,6 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
       ),
     );
   }
-  
-  // 构建平铺的剧集列表（用于竖屏）
 }
 
 // 自定义路由，实现淡入淡出过渡效果

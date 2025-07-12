@@ -42,6 +42,9 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
   // TabController
   TabController? tabController;
   
+  // 当前选中的标签索引 - 响应式变量
+  final RxInt selectedTabIndex = 0.obs;
+  
   // 数据源
   final DataSource _dataSource = DataSource();
   
@@ -53,8 +56,43 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     super.onInit();
     if (!_isInitialized) {
       _isInitialized = true;
+      _setupWorkers();
       _fetchHomeData();
     }
+  }
+  
+  /// 设置GetX Workers进行自动化操作
+  void _setupWorkers() {
+    // 监听选中标签变化，自动加载对应分类数据
+    ever(selectedTabIndex, (int index) {
+      if (classList.isNotEmpty && index < classList.length) {
+        final selectedCategory = classList[index];
+        final categoryName = selectedCategory['type_name'] as String;
+        
+        // 防止重复处理相同的标签变化
+        if (!_isProcessingTabChange) {
+          _isProcessingTabChange = true;
+          
+          // 延迟处理，避免快速切换时的重复请求
+          debounce(selectedTabIndex, (_) async {
+            ensureCategoryDataLoaded(categoryName);
+            _isProcessingTabChange = false;
+          }, time: const Duration(milliseconds: 300));
+        }
+      }
+    });
+    
+    // 监听分类列表变化，自动更新TabController
+    ever(classList, (List<dynamic> newClassList) {
+      _updateTabController();
+    });
+    
+    // 监听加载状态，自动清理过期的缓存
+    ever(isLoading, (bool loading) {
+      if (!loading) {
+        _cleanupExpiredCache();
+      }
+    });
   }
   
   @override
@@ -72,6 +110,40 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     _imageFutures.clear();
     
     super.onClose();
+  }
+  
+  /// 更新TabController
+  void _updateTabController() {
+    if (tabController == null || tabController!.length != classList.length) {
+      tabController?.dispose();
+      tabController = TabController(length: classList.length, vsync: this);
+      
+      // 监听TabController变化，同步到响应式变量
+      tabController?.addListener(() {
+        if (tabController!.indexIsChanging) {
+          selectedTabIndex.value = tabController!.index;
+        }
+      });
+    }
+  }
+  
+  /// 清理过期的缓存
+  void _cleanupExpiredCache() {
+    // 清理图片缓存（保留最近使用的10个）
+    if (_imageFutures.length > 10) {
+      final keysToRemove = _imageFutures.keys.take(_imageFutures.length - 10).toList();
+      for (final key in keysToRemove) {
+        _imageFutures.remove(key);
+      }
+    }
+    
+    // 清理分类数据缓存（保留最近使用的5个）
+    if (_categoryFutures.length > 5) {
+      final keysToRemove = _categoryFutures.keys.take(_categoryFutures.length - 5).toList();
+      for (final key in keysToRemove) {
+        _categoryFutures.remove(key);
+      }
+    }
   }
   
   // 获取首页数据

@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 import 'dart:async';
 import '../../../shared/controllers/window_controller.dart';
 import '../controllers/vod_controller.dart';
-import 'video_detail_page.dart';
+import '../../../app/routes/app_routes.dart';
 
 class VideoOnDemandPage extends StatelessWidget {
   const VideoOnDemandPage({super.key});
@@ -555,7 +555,10 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
-                      Get.to(() => VideoDetailPage(videoId: video['vod_id']));
+                      Get.toNamed(
+                        AppRoutes.videoDetail,
+                        parameters: {'videoId': video['vod_id']},
+                      );
                     },
                   ),
                 ),
