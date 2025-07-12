@@ -44,17 +44,16 @@ class WindowController extends GetxController {
         debugPrint('窗口初始化失败: $e');
       }
     } else {
-      // 移动设备根据屏幕真实尺寸判断初始方向
-      // 暂时先设置为竖屏，然后根据实际屏幕尺寸调整
-      isPortrait.value = true;
+      // 移动设备默认启动横屏模式
+      isPortrait.value = false;
       
-      // 先允许所有方向，然后根据实际情况调整
+      // 设置默认为横屏方向
       SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
       ]);
       
       // 应用系统UI设置
-      _updateSystemUIOverlays(true);
+      _updateSystemUIOverlays(false);
     }
     
     isInitialized.value = true;

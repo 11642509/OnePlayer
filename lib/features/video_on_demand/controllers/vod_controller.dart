@@ -20,6 +20,16 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
   // 每个分类的加载状态
   final RxMap<String, bool> categoryLoadingStates = <String, bool>{}.obs;
   
+  // 滚动加载相关状态
+  final RxMap<String, bool> loadingMoreStates = <String, bool>{}.obs;
+  final RxMap<String, bool> hasMoreStates = <String, bool>{}.obs;
+  
+  // ScrollController 管理
+  final Map<String, ScrollController> _scrollControllers = {};
+  
+  // 缓存 FutureBuilder 的 Future
+  final Map<String, Future<ui.Image>> _imageFutures = {};
+  
   // 防止重复初始化的标志
   bool _isInitialized = false;
   
@@ -51,6 +61,16 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
   void onClose() {
     tabController?.removeListener(_onTabChanged);
     tabController?.dispose();
+    
+    // 清理 ScrollController
+    for (var controller in _scrollControllers.values) {
+      controller.dispose();
+    }
+    _scrollControllers.clear();
+    
+    // 清理缓存的 Future
+    _imageFutures.clear();
+    
     super.onClose();
   }
   
@@ -96,6 +116,10 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
       if (!categoryData.containsKey(typeName)) {
         categoryData[typeName] = [];
       }
+      
+      // 初始化滚动加载状态
+      loadingMoreStates[typeName] = false;
+      hasMoreStates[typeName] = true;
     }
     
     // 缓存首页数据
@@ -149,11 +173,14 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     if (!categoryData.containsKey(typeName) || categoryData[typeName]!.isEmpty) {
       final isCurrentlyLoading = categoryLoadingStates[typeName] ?? false;
       if (!isCurrentlyLoading) {
-        categoryLoadingStates[typeName] = true;
-        fetchCategoryData(typeName, isInitialLoad: true).then((_) {
-          categoryLoadingStates[typeName] = false;
-        }).catchError((error) {
-          categoryLoadingStates[typeName] = false;
+        // 延迟执行避免在build期间触发状态更新
+        Future.microtask(() {
+          categoryLoadingStates[typeName] = true;
+          fetchCategoryData(typeName, isInitialLoad: true).then((_) {
+            categoryLoadingStates[typeName] = false;
+          }).catchError((error) {
+            categoryLoadingStates[typeName] = false;
+          });
         });
       }
     }
@@ -183,14 +210,14 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
       final typeId = _getTypeIdByName(typeName);
       final mockData = CategoryContent.getMockData(typeId, page: page);
       
-      _updateDataAndPages(typeName, mockData);
+      _updateDataAndPages(typeName, mockData, isLoadMore: page > 1);
       return mockData;
     }
     
     try {
       // 尝试从真实接口获取数据
       final data = await _dataSource.fetchCategoryData(typeName, page: page);
-      _updateDataAndPages(typeName, data);
+      _updateDataAndPages(typeName, data, isLoadMore: page > 1);
       return data;
     } catch (e) {
       if (kDebugMode) {
@@ -199,13 +226,30 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
       // 如果API调用失败，回退到使用mock数据
       final typeId = _getTypeIdByName(typeName);
       final mockData = CategoryContent.getMockData(typeId, page: page);
-      _updateDataAndPages(typeName, mockData);
+      _updateDataAndPages(typeName, mockData, isLoadMore: page > 1);
       return mockData;
     }
   }
   
-  // 更新数据和页码
-  void _updateDataAndPages(String typeName, Map<String, dynamic> data) {
+  // 获取或创建 ScrollController
+  ScrollController getScrollController(String typeName) {
+    if (!_scrollControllers.containsKey(typeName)) {
+      _scrollControllers[typeName] = ScrollController();
+    }
+    return _scrollControllers[typeName]!;
+  }
+  
+  // 获取或创建缓存的 Future
+  Future<ui.Image> getCachedImageFuture(String typeName, String imageUrl) {
+    final cacheKey = '${typeName}_$imageUrl';
+    if (!_imageFutures.containsKey(cacheKey)) {
+      _imageFutures[cacheKey] = getImageInfo(imageUrl);
+    }
+    return _imageFutures[cacheKey]!;
+  }
+  
+  // 更新数据和页码（优化版本，避免build期间更新）
+  void _updateDataAndPages(String typeName, Map<String, dynamic> data, {bool isLoadMore = false}) {
     // 更新总页数
     if (data.containsKey('pagecount')) {
       final pageCountValue = data['pagecount'];
@@ -220,11 +264,29 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
       totalPages[typeName] = 1;
     }
 
-    // 初始加载或翻页，直接替换数据
+    // 更新是否有更多数据的状态
+    final currentPage = currentPages[typeName] ?? 1;
+    final totalPage = totalPages[typeName] ?? 1;
+    hasMoreStates[typeName] = currentPage < totalPage;
+
+    // 处理数据 - 使用调度器避免在build期间更新
     if (data.containsKey('list')) {
-      categoryData[typeName] = data['list'] as List;
+      final newList = data['list'] as List;
+      
+      if (isLoadMore) {
+        // 加载更多：使用调度器延迟追加数据
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final existingData = categoryData[typeName] ?? [];
+          categoryData[typeName] = [...existingData, ...newList];
+        });
+      } else {
+        // 初始加载或刷新：直接替换数据
+        categoryData[typeName] = newList;
+      }
     } else {
-      categoryData[typeName] = [];
+      if (!isLoadMore) {
+        categoryData[typeName] = [];
+      }
     }
   }
   
@@ -245,6 +307,7 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     } else {
       categoryLoadingStates[typeName] = true;
       currentPages[typeName] = 1;
+      hasMoreStates[typeName] = true;
       
       // 清除缓存的Future
       final page = currentPages[typeName] ?? 1;
@@ -259,23 +322,29 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     }
   }
   
-  // 页面改变时的回调
-  void onPageChanged(String typeName, int newPage) {
-    categoryLoadingStates[typeName] = true;
-    currentPages[typeName] = newPage;
+  // 加载更多数据
+  Future<void> loadMoreData(String typeName) async {
+    // 如果已经在加载或者没有更多数据，则不执行
+    if (loadingMoreStates[typeName] == true || hasMoreStates[typeName] == false) {
+      return;
+    }
     
-    // 清除缓存的Future
-    final cacheKey = '${typeName}_$newPage';
-    _categoryFutures.remove(cacheKey);
+    loadingMoreStates[typeName] = true;
     
-    // 延迟0.3秒以显示加载动画
-    Future.delayed(const Duration(milliseconds: 300), () async {
-      try {
-        await fetchCategoryData(typeName, isInitialLoad: false);
-      } finally {
-        categoryLoadingStates[typeName] = false;
-      }
-    });
+    try {
+      // 计算下一页
+      final nextPage = (currentPages[typeName] ?? 1) + 1;
+      currentPages[typeName] = nextPage;
+      
+      // 清除缓存的Future
+      final cacheKey = '${typeName}_$nextPage';
+      _categoryFutures.remove(cacheKey);
+      
+      // 获取下一页数据
+      await fetchCategoryData(typeName, isInitialLoad: false);
+    } finally {
+      loadingMoreStates[typeName] = false;
+    }
   }
   
   // 生成页码列表

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:ui';
+import 'dart:math' as math;
 import '../navigation/navigation_components.dart' as nav; // 使用前缀导入以避免命名冲突
 import '../../../main.dart' show PlayerType; // 引入PlayerType枚举
 import '../../controllers/window_controller.dart';
 import '../../../features/home/pages/home_selection_page.dart'; // 导入HomeTest页面
 import '../../../features/video_on_demand/pages/video_on_demand_page.dart'; // 导入VodPage页面
+import '../backgrounds/cosmic_background.dart'; // 导入共用背景组件
 
 /// 横屏主页布局
 class LandscapeHomeLayout extends StatefulWidget {
@@ -69,48 +72,175 @@ class _LandscapeHomeLayoutState extends State<LandscapeHomeLayout> {
       final navBarOffset = navBarHeight / 3; // 下移标签栏高度的1/3
       final contentTopOffset = navBarOffset * 2; // 内容区域顶部偏移量为导航栏偏移量的2倍
 
-      return Stack(
-        children: [
-          // 主内容区域
-          Positioned(
-            top: navBarHeight + contentTopOffset, // 使用新的偏移量
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _getContent(),
-          ),
-          
-          // 导航栏 - 从屏幕顶部下移1/3的导航栏高度
-          Positioned(
-            top: navBarOffset, // 下移1/3导航栏高度
-            left: 0,
-            right: 0,
-            child: nav.NavigationBar(
-              key: _navBarKey,
-              currentTab: _currentTab,
-              onTabChanged: _handleTabChanged,
-            ),
-          ),
-          
-          // 横竖屏切换按钮 - 右上角，与导航栏对齐
-          Positioned(
-            top: navBarOffset + 5, // 下移1/3导航栏高度后再加5像素的偏移
-            right: 10,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(100),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.screen_lock_portrait),
-                tooltip: '切换为竖屏',
-                onPressed: () => windowController.toggleOrientation(),
-                color: Colors.white,
+      return CosmicBackground(
+        child: Stack(
+          children: [
+            
+            // 主内容区域
+            Positioned(
+              top: navBarHeight + contentTopOffset,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                decoration: BoxDecoration(
+                  // 苹果风格内容区域毛玻璃
+                  color: Colors.black.withValues(alpha: 0.05), // 极轻透明度
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16), // 苹果风格圆角
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8), // 苹果风格模糊
+                    child: _getContent(),
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+            
+            // 导航栏 - 从屏幕顶部下移1/3的导航栏高度
+            Positioned(
+              top: navBarOffset,
+              left: 0,
+              right: 0,
+              child: nav.NavigationBar(
+                key: _navBarKey,
+                currentTab: _currentTab,
+                onTabChanged: _handleTabChanged,
+              ),
+            ),
+            
+            // 简洁协调的切换按钮
+            Positioned(
+              top: navBarOffset + 8,
+              right: 15,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), // 与导航栏一致的毛玻璃
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      // 与导航栏相同的毛玻璃风格
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        width: 0.5,
+                      ),
+                      boxShadow: [
+                        // 简洁的阴影效果
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                        // 轻微的高光
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          blurRadius: 1,
+                          offset: const Offset(0, -1),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () => windowController.toggleOrientation(),
+                        child: CustomPaint(
+                          size: const Size(20, 20),
+                          painter: RotationIconPainter(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     });
   }
-} 
+}
+
+// 自定义绘制的旋转图标
+class RotationIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width * 0.35;
+
+    // 画手机轮廓 (竖屏状态)
+    final phoneRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: center,
+        width: size.width * 0.4,
+        height: size.height * 0.7,
+      ),
+      const Radius.circular(2),
+    );
+    canvas.drawRRect(phoneRect, paint);
+
+    // 画旋转箭头
+    final arrowPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+
+    // 圆弧箭头
+    final arcRect = Rect.fromCenter(
+      center: center,
+      width: size.width * 0.8,
+      height: size.height * 0.8,
+    );
+    
+    // 画圆弧
+    canvas.drawArc(
+      arcRect,
+      -math.pi / 2, // 从顶部开始
+      math.pi * 1.2, // 画3/4圆
+      false,
+      arrowPaint,
+    );
+
+    // 画箭头头部
+    final arrowSize = size.width * 0.08;
+    final arrowEnd = Offset(
+      center.dx + radius * math.cos(math.pi * 0.7),
+      center.dy + radius * math.sin(math.pi * 0.7),
+    );
+    
+    final arrowHead1 = Offset(
+      arrowEnd.dx - arrowSize * math.cos(math.pi * 0.7 - 0.3),
+      arrowEnd.dy - arrowSize * math.sin(math.pi * 0.7 - 0.3),
+    );
+    
+    final arrowHead2 = Offset(
+      arrowEnd.dx - arrowSize * math.cos(math.pi * 0.7 + 0.3),
+      arrowEnd.dy - arrowSize * math.sin(math.pi * 0.7 + 0.3),
+    );
+
+    // 画箭头头部
+    canvas.drawLine(arrowEnd, arrowHead1, arrowPaint);
+    canvas.drawLine(arrowEnd, arrowHead2, arrowPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

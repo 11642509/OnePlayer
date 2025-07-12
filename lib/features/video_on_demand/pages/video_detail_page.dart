@@ -6,6 +6,7 @@ import '../../../app/data_source.dart';
 import '../../media_player/vlc_player/pages/vlc_player_page.dart';
 import '../../media_player/standard_player/pages/video_player_page.dart';
 import 'package:flutter/foundation.dart';
+import '../../../shared/widgets/backgrounds/cosmic_background.dart';
 
 class VideoDetailPage extends StatefulWidget {
   final String videoId;
@@ -182,11 +183,11 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isPortrait = constraints.maxHeight > constraints.maxWidth;
-          final backgroundColor = isPortrait ? const Color(0xFFF6F7F8) : Colors.black;
+          final backgroundColor = isPortrait ? const Color(0xFFF6F7F8) : Colors.transparent;
           final textColor = isPortrait ? Colors.black : Colors.white;
 
-          return Scaffold(
-            backgroundColor: backgroundColor,
+          Widget content = Scaffold(
+            backgroundColor: isPortrait ? backgroundColor : Colors.transparent,
             extendBodyBehindAppBar: true,
             appBar: null, // 移除AppBar
             body: _isLoading
@@ -211,6 +212,13 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                       )
                     : _buildDetailContent(textColor, isPortrait),
           );
+          
+          // 横屏模式下使用宇宙背景作为整体背景
+          if (!isPortrait) {
+            return CosmicBackground(child: content);
+          }
+          
+          return content;
         },
       ),
     );
@@ -263,7 +271,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
               _buildHeroSection(isPortrait),
               
               // 减小竖屏和横屏模式下的间距
-              SizedBox(height: isPortrait ? 24 : 8),
+              SizedBox(height: isPortrait ? 24 : 4),
 
               // 2. 简介区域 - 横屏模式下跳过显示，避免溢出
               if (isPortrait && _videoDetail!['vod_content'] != null && _videoDetail!['vod_content'].toString().isNotEmpty)
@@ -273,7 +281,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                 ),
               
               // 减小竖屏和横屏模式下的间距
-              if (isPortrait) SizedBox(height: isPortrait ? 24 : 8),
+              if (isPortrait) SizedBox(height: isPortrait ? 24 : 4),
 
               // 3. 播放列表区域
               Padding(
@@ -285,7 +293,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                       _buildPlaySourceSelector(allPlaySources, textColor, isPortrait),
                     
                     if (_currentPlaySource.isNotEmpty && playOptions.containsKey(_currentPlaySource) && playOptions[_currentPlaySource]!.isNotEmpty) ...[
-                      const SizedBox(height: 12), // 减小间距
+                      SizedBox(height: isPortrait ? 12 : 8), // 横屏模式下进一步减小间距
                       _buildTiledPlayList(playOptions[_currentPlaySource]!, textColor, isPortrait: isPortrait),
                     ],
                   ],
@@ -293,7 +301,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
               ),
 
               // 减小底部间距
-              SizedBox(height: isPortrait ? 32 : 8),
+              SizedBox(height: isPortrait ? 32 : 4),
             ],
           ),
         ),
@@ -344,10 +352,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         physics: const NeverScrollableScrollPhysics(),
         itemCount: episodes.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 5,
-          childAspectRatio: 1.5,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
+          crossAxisCount: 4, // 减少列数，让每个卡片更宽
+          childAspectRatio: 1.1, // 调整高宽比，增加高度
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
         ),
         itemBuilder: (context, index) {
           final episode = episodes[index];
@@ -412,18 +420,18 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   child: Center(
                     child: Text(
                       episode['name'] ?? '未知',
                       style: TextStyle(
                         color: textColor,
-                        fontSize: 12,
-                        height: 1.3,
+                        fontSize: 13, // 增加字体大小
+                        height: 1.2, // 减少行高，节省空间
                         fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
-                      maxLines: 2,
+                      maxLines: 3, // 增加最大行数
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -615,77 +623,87 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   // 横屏英雄区域（电视盒子风格）
   Widget _buildLandscapeHeroSection(String coverUrl, String title, String? type, String? year, 
       String? area, String? remarks, String? actors, String? director, String? content) {
-    return Container(
-      height: 320, // 减小高度以适应横屏
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF1a1a1a),
-            const Color(0xFF2d2d2d),
-            Colors.grey[900]!,
-          ],
-        ),
-      ),
+    return SizedBox(
+      height: 300, // 适当增加高度以适应调整后的布局
       child: Stack(
         children: [
-          // 背景模糊效果
+          // 背景图片，让宇宙光线透射进来
           Positioned.fill(
-            child: Image.network(
-              coverUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(),
-            ),
-          ),
-          // 模糊遮罩
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.75),
-                backgroundBlendMode: BlendMode.darken,
-              ),
+            child: Stack(
+              children: [
+                // 背景图片
+                Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: NetworkImage(coverUrl),
+                      fit: BoxFit.cover,
+                      colorFilter: ColorFilter.mode(
+                        Colors.white.withValues(alpha: 0.85), // 让图片稍微透明，允许宇宙光线透射
+                        BlendMode.modulate,
+                      ),
+                    ),
+                  ),
+                ),
+                // 轻微的黑色遮罩确保文字可读性
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.25),
+                  ),
+                ),
+              ],
             ),
           ),
           // 主要内容
           Padding(
-            padding: const EdgeInsets.all(24), // 减小内边距
+            padding: const EdgeInsets.only(left: 20, right: 20, top: 40, bottom: 7), // 减小底部边距到一半
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end, // 改为底部对齐
               children: [
                 // 左侧封面
                 _buildLandscapeCover(coverUrl),
-                const SizedBox(width: 24), // 减小间距
+                const SizedBox(width: 20), // 进一步减小间距
                 // 右侧信息
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // 标题
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24, // 减小字体
-                          fontWeight: FontWeight.bold,
-                          height: 1.2,
+                  child: SizedBox(
+                    height: 250, // 与封面图高度一致
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end, // 底部对齐
+                      children: [
+                        // 使用Flexible让内容能够适应空间
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              // 标题
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24, // 减小字体
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.2,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8), // 进一步减小间距
+                              // 基本信息
+                              _buildLandscapeMetadata(year, area, type, remarks),
+                              const SizedBox(height: 8), // 进一步减小间距
+                              // 演员导演信息
+                              if ((actors != null && actors.isNotEmpty) || (director != null && director.isNotEmpty))
+                                _buildLandscapeCrewInfo(actors, director),
+                              const SizedBox(height: 8), // 进一步减小间距
+                              // 简介（横屏显示）- 固定高度
+                              if (content != null && content.isNotEmpty)
+                                _buildLandscapeDescription(content),
+                            ],
+                          ),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 12), // 减小间距
-                      // 基本信息
-                      _buildLandscapeMetadata(year, area, type, remarks),
-                      const SizedBox(height: 12), // 减小间距
-                      // 演员导演信息
-                      if ((actors != null && actors.isNotEmpty) || (director != null && director.isNotEmpty))
-                        _buildLandscapeCrewInfo(actors, director),
-                      const SizedBox(height: 12), // 减小间距
-                      // 简介（横屏显示）
-                      if (content != null && content.isNotEmpty)
-                        _buildLandscapeDescription(content),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -699,8 +717,8 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   // 横屏专用封面组件
   Widget _buildLandscapeCover(String coverUrl) {
     return Container(
-      width: 160, // 减小宽度
-      height: 220, // 减小高度
+      width: 170, // 进一步增加宽度
+      height: 250, // 进一步增加高度
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -717,8 +735,8 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
           Image.network(
             coverUrl,
             fit: BoxFit.cover,
-            width: 160,
-            height: 220,
+            width: 170,
+            height: 250,
             errorBuilder: (context, error, stackTrace) =>
                 Container(color: Colors.grey[800]),
           ),
@@ -901,7 +919,8 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         .trim();
     
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 85, // 稍微增加高度以容纳完整行
+      padding: const EdgeInsets.all(10), // 进一步减小内边距
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
@@ -915,29 +934,31 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
               Icon(
                 Icons.description,
                 color: Colors.white70,
-                size: 16,
+                size: 12, // 进一步减小图标尺寸
               ),
-              SizedBox(width: 8),
+              SizedBox(width: 4), // 进一步减小间距
               Text(
                 '简介',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: 12, // 进一步减小字体
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            cleanContent.isNotEmpty ? cleanContent : '暂无简介',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              height: 1.5,
+          const SizedBox(height: 4), // 进一步减小间距
+          Expanded( // 使用Expanded确保文本不会溢出
+            child: Text(
+              cleanContent.isNotEmpty ? cleanContent : '暂无简介',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13, // 保持字体大小
+                height: 1.3, // 紧凑的行高，确保完整显示
+              ),
+              maxLines: 2, // 只显示2行完整文本
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1195,7 +1216,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               gradient: isSelected
                   ? const LinearGradient(
@@ -1208,15 +1229,15 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                   ? null
                   : isPortrait
                       ? Colors.white
-                      : Colors.grey[800]?.withValues(alpha: 0.8),
+                      : Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
                     ? const Color(0xFFFF7BB0)
                     : isPortrait
                         ? Colors.grey[300]!
-                        : Colors.white.withValues(alpha: 0.2),
-                width: isSelected ? 2 : 1,
+                        : Colors.white30,
+                width: 1,
               ),
               boxShadow: isSelected
                   ? [
@@ -1226,33 +1247,30 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                         offset: const Offset(0, 4),
                       ),
                     ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                  : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (isSelected)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Icon(
-                      Icons.check_circle,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
+                Icon(
+                  isSelected ? Icons.check_circle : Icons.play_circle_outline,
+                  color: isSelected
+                      ? Colors.white
+                      : isPortrait
+                          ? textColor
+                          : Colors.white70,
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
                 Text(
                   source,
                   style: TextStyle(
                     color: isSelected
                         ? Colors.white
-                        : textColor,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                        : isPortrait
+                            ? textColor
+                            : Colors.white70,
+                    fontWeight: FontWeight.w500,
                     fontSize: 14,
                   ),
                 ),

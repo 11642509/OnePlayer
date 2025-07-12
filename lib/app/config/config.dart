@@ -15,7 +15,7 @@ class AppConfig {
   static const String proxyPath = '/proxy';
   
   /// 播放器内核选择
-  static PlayerKernel currentPlayerKernel = PlayerKernel.vlc;
+  static PlayerKernel currentPlayerKernel = PlayerKernel.videoPlayer;
   
   /// 获取代理服务器URL
   static String getProxyUrl(Map<String, String> queryParams) {
