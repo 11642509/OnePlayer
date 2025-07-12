@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'dart:io';
 import '../widgets/backgrounds/cosmic_background.dart';
+import '../widgets/backgrounds/optimized_cosmic_background_v2.dart';
 
 /// 性能管理器 - 根据设备性能动态调整特效质量
 class PerformanceManager extends GetxController {
@@ -186,11 +187,20 @@ class PerformanceManager extends GetxController {
     }
     
     if (enableBackgroundEffects) {
-      // 高质量：使用与视频详情页完全相同的原始宇宙背景
-      if (kDebugMode) {
-        print('使用原始宇宙背景（与视频详情页相同的微光效果）');
+      // 高质量：智能选择优化版本
+      if (isLowEndDevice || visualQuality == 3) {
+        // 低端设备或智能模式：使用性能优化版本，保持视觉效果
+        if (kDebugMode) {
+          print('使用性能优化宇宙背景（保持原有视觉效果）');
+        }
+        return OptimizedCosmicBackgroundV2(intensity: 0.9, child: child);
+      } else {
+        // 高端设备手动高性能：使用原始版本
+        if (kDebugMode) {
+          print('使用原始宇宙背景（完整效果）');
+        }
+        return CosmicBackground(intensity: 0.8, child: child);
       }
-      return CosmicBackground(intensity: 0.8, child: child); // 轻微降低强度以优化性能
     } else if (enableGradientEffects) {
       // 中质量：简单渐变背景
       if (kDebugMode) {

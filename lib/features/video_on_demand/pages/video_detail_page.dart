@@ -4,6 +4,7 @@ import '../../../shared/widgets/backgrounds/cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/fresh_cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/optimized_fresh_background.dart';
+import '../../../shared/widgets/backgrounds/optimized_cosmic_background_v2.dart';
 import '../../../shared/utils/performance_manager.dart';
 import '../controllers/video_detail_controller.dart';
 
@@ -73,12 +74,17 @@ class VideoDetailPage extends GetView<VideoDetailController> {
                 return OptimizedFreshBackground(child: content);
               }
             } else {
-              // 横屏模式：使用宇宙暗色背景，对应性能等级
+              // 横屏模式：使用宇宙暗色背景，智能选择优化版本
               if (performance.enableBackgroundEffects) {
-                // 高性能：使用原始宇宙背景（用户喜欢的微光效果）
-                return CosmicBackground(child: content);
+                if (performance.isLowEndDevice || performance.visualQuality == 3) {
+                  // 低端设备或智能模式：使用V2优化版本，保持视觉效果
+                  return OptimizedCosmicBackgroundV2(intensity: 0.9, child: content);
+                } else {
+                  // 高端设备手动高性能：使用原始版本
+                  return CosmicBackground(child: content);
+                }
               } else {
-                // 中低性能：使用性能优化背景，与主页保持一致
+                // 中低性能：使用性能优化背景
                 return OptimizedCosmicBackground(child: content);
               }
             }
