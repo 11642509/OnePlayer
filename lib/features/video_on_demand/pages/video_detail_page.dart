@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../shared/widgets/backgrounds/cosmic_background.dart';
+import '../../../shared/widgets/backgrounds/optimized_cosmic_background.dart';
+import '../../../shared/utils/performance_manager.dart';
 import '../controllers/video_detail_controller.dart';
 
 class VideoDetailPage extends GetView<VideoDetailController> {
@@ -54,9 +56,20 @@ class VideoDetailPage extends GetView<VideoDetailController> {
                     : _buildDetailContent(controller, textColor, isPortrait)),
           );
           
-          // 横屏模式下使用宇宙背景作为整体背景
+          // 横屏模式下使用性能优化的宇宙背景，与主页保持一致
           if (!isPortrait) {
-            return CosmicBackground(child: content);
+            // 使背景选择响应性能设置变化
+            return Obx(() {
+              final performance = Get.find<PerformanceManager>();
+              // 高性能模式使用原始效果，中低性能模式与主页保持一致
+              if (performance.enableBackgroundEffects && performance.visualQuality == 2) {
+                // 高性能：使用原始宇宙背景（用户喜欢的微光效果）
+                return CosmicBackground(child: content);
+              } else {
+                // 中低性能：使用性能优化背景，与主页保持一致
+                return OptimizedCosmicBackground(child: content);
+              }
+            });
           }
           
           return content;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import '../../../shared/models/home_content.dart';
 import '../../../shared/models/category_content.dart';
 import '../../../app/data_source.dart';
@@ -61,38 +62,30 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     }
   }
   
-  /// 设置GetX Workers进行自动化操作
+  /// 设置GetX Workers进行自动化操作（优化版本）
   void _setupWorkers() {
-    // 监听选中标签变化，自动加载对应分类数据
-    ever(selectedTabIndex, (int index) {
-      if (classList.isNotEmpty && index < classList.length) {
+    // 优化：使用debounce直接监听标签变化，避免重复处理
+    debounce(selectedTabIndex, (int index) {
+      if (classList.isNotEmpty && index < classList.length && !_isProcessingTabChange) {
         final selectedCategory = classList[index];
         final categoryName = selectedCategory['type_name'] as String;
-        
-        // 防止重复处理相同的标签变化
-        if (!_isProcessingTabChange) {
-          _isProcessingTabChange = true;
-          
-          // 延迟处理，避免快速切换时的重复请求
-          debounce(selectedTabIndex, (_) async {
-            ensureCategoryDataLoaded(categoryName);
-            _isProcessingTabChange = false;
-          }, time: const Duration(milliseconds: 300));
-        }
+        ensureCategoryDataLoaded(categoryName);
       }
-    });
+    }, time: const Duration(milliseconds: 300));
     
-    // 监听分类列表变化，自动更新TabController
-    ever(classList, (List<dynamic> newClassList) {
-      _updateTabController();
-    });
+    // 优化：减少TabController更新频率，只在必要时更新
+    debounce(classList, (List<dynamic> newClassList) {
+      if (tabController == null || tabController!.length != newClassList.length) {
+        _updateTabController();
+      }
+    }, time: const Duration(milliseconds: 100));
     
-    // 监听加载状态，自动清理过期的缓存
-    ever(isLoading, (bool loading) {
-      if (!loading) {
+    // 优化：使用interval定期清理缓存，而不是监听每次加载状态变化
+    interval(isLoading, (_) {
+      if (!isLoading.value) {
         _cleanupExpiredCache();
       }
-    });
+    }, time: const Duration(minutes: 2)); // 每2分钟检查一次
   }
   
   @override
@@ -320,46 +313,80 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     return _imageFutures[cacheKey]!;
   }
   
-  // 更新数据和页码（优化版本，避免build期间更新）
+  // 更新数据和页码（高性能优化版本）
   void _updateDataAndPages(String typeName, Map<String, dynamic> data, {bool isLoadMore = false}) {
     // 更新总页数
     if (data.containsKey('pagecount')) {
       final pageCountValue = data['pagecount'];
+      int newTotalPages;
       if (pageCountValue is int) {
-        totalPages[typeName] = pageCountValue > 0 ? pageCountValue : 1;
+        newTotalPages = pageCountValue > 0 ? pageCountValue : 1;
       } else if (pageCountValue is String) {
-        totalPages[typeName] = int.tryParse(pageCountValue) ?? 1;
+        newTotalPages = int.tryParse(pageCountValue) ?? 1;
       } else {
-        totalPages[typeName] = 1;
+        newTotalPages = 1;
       }
-    } else {
+      
+      // 只有值改变时才更新
+      if (totalPages[typeName] != newTotalPages) {
+        totalPages[typeName] = newTotalPages;
+      }
+    } else if (!totalPages.containsKey(typeName)) {
       totalPages[typeName] = 1;
     }
 
     // 更新是否有更多数据的状态
     final currentPage = currentPages[typeName] ?? 1;
     final totalPage = totalPages[typeName] ?? 1;
-    hasMoreStates[typeName] = currentPage < totalPage;
+    final newHasMore = currentPage < totalPage;
+    
+    // 只有值改变时才更新
+    if (hasMoreStates[typeName] != newHasMore) {
+      hasMoreStates[typeName] = newHasMore;
+    }
 
-    // 处理数据 - 使用调度器避免在build期间更新
+    // 处理数据 - 优化数据更新逻辑
     if (data.containsKey('list')) {
       final newList = data['list'] as List;
       
       if (isLoadMore) {
-        // 加载更多：使用调度器延迟追加数据
+        // 加载更多：延迟追加数据以避免阻塞UI
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final existingData = categoryData[typeName] ?? [];
-          categoryData[typeName] = [...existingData, ...newList];
+          // 使用List.from创建新列表，避免引用问题
+          categoryData[typeName] = List.from(existingData)..addAll(newList);
         });
       } else {
-        // 初始加载或刷新：直接替换数据
-        categoryData[typeName] = newList;
+        // 初始加载或刷新：只有数据真正改变时才更新
+        final currentData = categoryData[typeName] ?? [];
+        if (currentData.length != newList.length || 
+            !_listsAreEqual(currentData, newList)) {
+          categoryData[typeName] = List.from(newList);
+        }
       }
-    } else {
-      if (!isLoadMore) {
+    } else if (!isLoadMore && categoryData.containsKey(typeName)) {
+      // 只有非空数据才清空
+      if (categoryData[typeName]?.isNotEmpty == true) {
         categoryData[typeName] = [];
       }
     }
+  }
+  
+  // 辅助方法：比较列表是否相等（浅比较）
+  bool _listsAreEqual(List? list1, List? list2) {
+    if (list1 == null || list2 == null) return list1 == list2;
+    if (list1.length != list2.length) return false;
+    
+    // 只比较前几个元素的ID，避免深度比较影响性能
+    final checkCount = math.min(5, list1.length);
+    for (int i = 0; i < checkCount; i++) {
+      final item1 = list1[i];
+      final item2 = list2[i];
+      if (item1['vod_id'] != item2['vod_id']) {
+        return false;
+      }
+    }
+    return true;
   }
   
   // 根据分类名称获取分类ID

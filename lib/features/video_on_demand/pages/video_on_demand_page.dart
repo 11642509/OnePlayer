@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'dart:ui' as ui;
 import 'dart:async';
 import '../../../shared/controllers/window_controller.dart';
 import '../controllers/vod_controller.dart';
 import '../../../app/routes/app_routes.dart';
+import '../../../shared/utils/performance_manager.dart';
 
 class VideoOnDemandPage extends StatelessWidget {
   const VideoOnDemandPage({super.key});
@@ -16,11 +16,53 @@ class VideoOnDemandPage extends StatelessWidget {
     final controller = Get.put(VodController(), permanent: true);
     final windowController = Get.find<WindowController>();
     
+    
+    // 分离AppBar构建，减少重建范围
+    PreferredSizeWidget buildAppBar() {
+      return PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Obx(() {
+          final isPortrait = windowController.isPortrait.value;
+          final backgroundColor = !isPortrait ? Colors.transparent : const Color(0xFFF6F7F8);
+          
+          return AppBar(
+            backgroundColor: backgroundColor,
+            elevation: 0,
+            toolbarHeight: isPortrait ? 48 : null,
+            title: SizedBox(
+              height: isPortrait ? 36 : 40,
+              width: double.infinity,
+              child: controller.tabController != null ? _buildOptimizedTabBar(isPortrait) : const SizedBox(),
+            ),
+            titleSpacing: isPortrait ? 0 : null,
+            centerTitle: !isPortrait,
+          );
+        }),
+      );
+    }
+    
+    // 主体内容构建，避免嵌套Obx
+    Widget buildBody() {
+      return controller.tabController != null ? TabBarView(
+        controller: controller.tabController,
+        children: controller.classList.map((category) {
+          final typeId = category['type_id'] as String;
+          final typeName = category['type_name'] as String;
+          
+          return VideoScrollPage(
+            key: ValueKey(typeName),
+            controller: controller,
+            typeName: typeName,
+            typeId: typeId,
+          );
+        }).toList(),
+      ) : const SizedBox();
+    }
+    
     return Obx(() {
-      // 根据窗口方向设置背景色：横屏透明，竖屏浅灰色(与PortraitHomeLayout一致)
       final backgroundColor = !windowController.isPortrait.value 
-          ? Colors.transparent // 横屏透明，让主背景透过
-          : const Color(0xFFF6F7F8); // 与PortraitHomeLayout一致的浅灰色背景
+          ? Colors.transparent 
+          : const Color(0xFFF6F7F8);
           
       // 如果数据正在加载中，显示加载指示器
       if (controller.isLoading.value && controller.homeData.isEmpty) {
@@ -28,7 +70,7 @@ class VideoOnDemandPage extends StatelessWidget {
           backgroundColor: backgroundColor,
           body: const Center(
             child: CircularProgressIndicator(
-              color: Color(0xFFFF7BB0), // B站粉色
+              color: Color(0xFFFF7BB0),
             ),
           ),
         );
@@ -36,79 +78,51 @@ class VideoOnDemandPage extends StatelessWidget {
       
       return Scaffold(
         backgroundColor: backgroundColor,
-        appBar: AppBar(
-          backgroundColor: backgroundColor,
-          elevation: 0,
-          // 根据屏幕方向调整AppBar样式
-          toolbarHeight: windowController.isPortrait.value ? 48 : null, // 竖屏模式下调整高度
-          // 使用B站风格的顶部导航，但内容是我们自己的分类
-          title: SizedBox(
-            height: windowController.isPortrait.value ? 36 : 40, // 竖屏模式下高度稍小
-            width: double.infinity, // 确保宽度占满
-            child: controller.tabController != null ? TabBar(
-              controller: controller.tabController,
-              isScrollable: true,
-              tabs: controller.classList.map((item) {
-                return Tab(
-                  height: windowController.isPortrait.value ? 36 : 40, // 竖屏模式下高度稍小
-                  child: Text(
-                    item['type_name'] as String,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: windowController.isPortrait.value ? 15 : 16, // 竖屏模式下字体稍小
-                    ),
-                  ),
-                );
-              }).toList(),
-              labelColor: const Color(0xFFFF7BB0), // B站粉色
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: const Color(0xFFFF7BB0), // B站粉色
-              indicatorSize: TabBarIndicatorSize.label,
-              dividerColor: Colors.transparent,
-              indicator: UnderlineTabIndicator(
-                borderSide: const BorderSide(
-                  color: Color(0xFFFF7BB0),
-                  width: 3,
-                ),
-                insets: EdgeInsets.symmetric(
-                  horizontal: windowController.isPortrait.value ? 12 : 16, // 竖屏模式下指示器宽度稍小
-                ),
-              ),
-              // 竖屏模式下靠左对齐
-              padding: windowController.isPortrait.value 
-                  ? const EdgeInsets.only(left: 16) 
-                  : null,
-              // 确保标签可以滚动
-              tabAlignment: windowController.isPortrait.value 
-                  ? TabAlignment.start  // 竖屏模式下靠左对齐
-                  : TabAlignment.center, // 横屏模式下居中对齐
-              // 调整标签间距
-              labelPadding: EdgeInsets.symmetric(
-                horizontal: windowController.isPortrait.value ? 12 : 16, // 竖屏模式下标签间距稍小
-              ),
-            ) : const SizedBox(),
-          ),
-          // 竖屏模式下让标题居左对齐
-          titleSpacing: windowController.isPortrait.value ? 0 : null,
-          centerTitle: !windowController.isPortrait.value, // 横屏居中，竖屏靠左
-        ),
-        body: controller.tabController != null ? TabBarView(
-          controller: controller.tabController,
-          children: controller.classList.map((category) {
-            final typeId = category['type_id'] as String;
-            final typeName = category['type_name'] as String;
-            
-            // 使用 VideoScrollPage 来包装每个分类页面，保持状态
-            return VideoScrollPage(
-              key: ValueKey(typeName), // 使用稳定的key
-              controller: controller,
-              typeName: typeName,
-              typeId: typeId,
-            );
-          }).toList(),
-        ) : const SizedBox(),
+        appBar: buildAppBar(),
+        body: buildBody(),
       );
     });
+  }
+  
+  // 提取TabBar构建逻辑，避免重复计算
+  Widget _buildOptimizedTabBar(bool isPortrait) {
+    final controller = Get.find<VodController>();
+    
+    return TabBar(
+      controller: controller.tabController,
+      isScrollable: true,
+      tabs: controller.classList.map((item) {
+        return Tab(
+          height: isPortrait ? 36 : 40,
+          child: Text(
+            item['type_name'] as String,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isPortrait ? 15 : 16,
+            ),
+          ),
+        );
+      }).toList(),
+      labelColor: const Color(0xFFFF7BB0),
+      unselectedLabelColor: Colors.grey,
+      indicatorColor: const Color(0xFFFF7BB0),
+      indicatorSize: TabBarIndicatorSize.label,
+      dividerColor: Colors.transparent,
+      indicator: UnderlineTabIndicator(
+        borderSide: const BorderSide(
+          color: Color(0xFFFF7BB0),
+          width: 3,
+        ),
+        insets: EdgeInsets.symmetric(
+          horizontal: isPortrait ? 12 : 16,
+        ),
+      ),
+      padding: isPortrait ? const EdgeInsets.only(left: 16) : null,
+      tabAlignment: isPortrait ? TabAlignment.start : TabAlignment.center,
+      labelPadding: EdgeInsets.symmetric(
+        horizontal: isPortrait ? 12 : 16,
+      ),
+    );
   }
   
 }
@@ -166,7 +180,7 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
     });
   }
   
-  /// 检测第一个视频封面图的方向，决定使用横向或纵向卡片布局
+  /// 优化的图片方向检测机制，使用缓存避免重复检测
   Future<void> _checkFirstImageOrientation(List<dynamic> videoList) async {
     if (videoList.isEmpty) return;
     
@@ -174,9 +188,9 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
     final imageUrl = firstVideo['vod_pic'];
     if (imageUrl == null || imageUrl.isEmpty) return;
     
+    // 使用controller的缓存获取图片信息，避免重复网络请求
     try {
-      // 获取图片信息
-      final image = await _loadImageFromNetwork(imageUrl);
+      final image = await widget.controller.getCachedImageFuture(widget.typeName, imageUrl);
       final isHorizontal = image.width > image.height;
       
       if (mounted && _isHorizontalLayout != isHorizontal) {
@@ -190,22 +204,6 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
         print('检测图片方向失败: $e');
       }
     }
-  }
-  
-  /// 从网络加载图片并获取尺寸信息
-  Future<ui.Image> _loadImageFromNetwork(String url) async {
-    final completer = Completer<ui.Image>();
-    final image = NetworkImage(url);
-    
-    image.resolve(const ImageConfiguration()).addListener(
-      ImageStreamListener((ImageInfo info, bool _) {
-        completer.complete(info.image);
-      }, onError: (exception, stackTrace) {
-        completer.completeError(exception);
-      }),
-    );
-    
-    return completer.future;
   }
 
   @override
@@ -330,13 +328,27 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
           mainAxisSpacing: isPortrait ? 12 : 16,
         ),
         itemCount: videoList.length + (widget.typeName != "主页" ? 1 : 0),
+        // 性能优化：减少滚动时的重建
+        cacheExtent: 1000, // 预缓存1000像素范围内的item
+        addAutomaticKeepAlives: true,
+        addRepaintBoundaries: true,
+        addSemanticIndexes: false, // 在不需要语义索引的情况下禁用
         itemBuilder: (context, index) {
           if (index == videoList.length && widget.typeName != "主页") {
             return _buildLoadMoreIndicator();
           }
           
           final video = videoList[index];
-          return _buildVideoCard(video, index, itemWidth, imageHeight, titleHeight, spacing, isPortrait);
+          // 使用稳定的key来优化widget复用
+          return _buildOptimizedVideoCard(
+            video, 
+            index, 
+            itemWidth, 
+            imageHeight, 
+            titleHeight, 
+            spacing, 
+            isPortrait,
+          );
         },
       );
     });
@@ -370,13 +382,27 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
           mainAxisSpacing: isPortrait ? 12 : 16,
         ),
         itemCount: videoList.length + (widget.typeName != "主页" ? 1 : 0),
+        // 性能优化：减少滚动时的重建
+        cacheExtent: 1000, // 预缓存1000像素范围内的item
+        addAutomaticKeepAlives: true,
+        addRepaintBoundaries: true,
+        addSemanticIndexes: false, // 在不需要语义索引的情况下禁用
         itemBuilder: (context, index) {
           if (index == videoList.length && widget.typeName != "主页") {
             return _buildLoadMoreIndicator();
           }
           
           final video = videoList[index];
-          return _buildVideoCard(video, index, itemWidth, imageHeight, titleHeight, spacing, isPortrait);
+          // 使用稳定的key来优化widget复用
+          return _buildOptimizedVideoCard(
+            video, 
+            index, 
+            itemWidth, 
+            imageHeight, 
+            titleHeight, 
+            spacing, 
+            isPortrait,
+          );
         },
       );
     });
@@ -435,9 +461,21 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
     });
   }
   
+  // 优化的VideoCard构建方法，减少不必要的重建
+  Widget _buildOptimizedVideoCard(dynamic video, int index, double itemWidth, double imageHeight, double titleHeight, double spacing, bool isPortrait) {
+    // 使用稳定的key提高复用性能
+    final videoId = video['vod_id']?.toString() ?? index.toString();
+    
+    return RepaintBoundary(
+      key: ValueKey(videoId),
+      child: _buildVideoCard(video, index, itemWidth, imageHeight, titleHeight, spacing, isPortrait),
+    );
+  }
+  
   Widget _buildVideoCard(dynamic video, int index, double itemWidth, double imageHeight, double titleHeight, double spacing, bool isPortrait) {
     final textColor = !isPortrait ? Colors.white : Colors.black;
     final cardBgColor = isPortrait ? Colors.white : Colors.black.withValues(alpha: 0.15);
+    final performance = PerformanceManager.to;
 
     final String? remarks = video['vod_remarks'];
     final bool shouldShowRemarks = remarks != null && remarks.length <= 30;
@@ -463,61 +501,19 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
                 color: Colors.white.withValues(alpha: 0.12),
                 width: 0.3,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 5,
-                  offset: const Offset(0, 1),
-                ),
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  blurRadius: 6,
-                  offset: const Offset(0, -0.5),
-                ),
-                BoxShadow(
-                  color: Colors.grey.withValues(alpha: 0.03),
-                  blurRadius: 8,
-                  spreadRadius: -2,
-                  offset: const Offset(0, 0),
-                ),
-                BoxShadow(
-                  color: Colors.orange.withValues(alpha: 0.06),
-                  blurRadius: 15,
-                  spreadRadius: -3,
-                  offset: const Offset(1, 1),
-                ),
-                BoxShadow(
-                  color: Colors.yellow.withValues(alpha: 0.04),
-                  blurRadius: 18,
-                  spreadRadius: -5,
-                  offset: const Offset(2, 2),
-                ),
-              ],
+              // 使用性能管理器优化阴影
+              boxShadow: performance.getOptimizedShadow(isCard: true),
             ) : null,
             child: Stack(
               fit: StackFit.expand,
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(isPortrait ? 8 : 12),
-                  child: Image.network(
+                  child: _buildOptimizedImage(
                     video['vod_pic'],
-                    width: itemWidth,
-                    height: imageHeight,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => 
-                      Container(
-                        color: Colors.grey[800],
-                        child: Icon(
-                          Icons.image_not_supported,
-                          color: Colors.grey[600],
-                          size: 40,
-                        ),
-                      ),
+                    itemWidth,
+                    imageHeight,
+                    isPortrait,
                   ),
                 ),
                 if (shouldShowRemarks)
@@ -587,6 +583,58 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
           ),
         ),
       ],
+    );
+  }
+  
+  // 构建优化的图片组件，减少重复加载
+  Widget _buildOptimizedImage(String imageUrl, double width, double height, bool isPortrait) {
+    // 使用Image.network的原生缓存机制，并优化加载参数
+    return Image.network(
+      imageUrl,
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+      // 启用缓存，减少网络请求
+      cacheWidth: (width * 2).round(), // 2倍像素密度
+      cacheHeight: (height * 2).round(),
+      // 优化加载性能
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          width: width,
+          height: height,
+          color: Colors.grey[850],
+          child: const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7BB0)),
+              ),
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) => Container(
+        width: width,
+        height: height,
+        color: Colors.grey[800],
+        child: Icon(
+          Icons.image_not_supported,
+          color: Colors.grey[600],
+          size: 24, // 减小图标尺寸
+        ),
+      ),
+      // 设置内存缓存限制，避免内存过载
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded) return child;
+        return AnimatedOpacity(
+          opacity: frame == null ? 0 : 1,
+          duration: const Duration(milliseconds: 200),
+          child: child,
+        );
+      },
     );
   }
 }

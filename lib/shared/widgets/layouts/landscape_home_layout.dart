@@ -7,7 +7,9 @@ import '../../../main.dart' show PlayerType; // 引入PlayerType枚举
 import '../../controllers/window_controller.dart';
 import '../../../features/home/pages/home_selection_page.dart'; // 导入HomeTest页面
 import '../../../features/video_on_demand/pages/video_on_demand_page.dart'; // 导入VodPage页面
-import '../backgrounds/cosmic_background.dart'; // 导入共用背景组件
+import '../../../features/settings/pages/settings_page.dart'; // 导入设置页面
+import '../backgrounds/optimized_cosmic_background.dart'; // 导入优化背景组件
+import '../common/glass_container.dart'; // 导入通用毛玻璃组件
 
 /// 横屏主页布局
 class LandscapeHomeLayout extends StatefulWidget {
@@ -42,6 +44,8 @@ class _LandscapeHomeLayoutState extends State<LandscapeHomeLayout> {
         );
       case '影视':
         return const VideoOnDemandPage();
+      case '我的':
+        return const SettingsPage();
       default:
         return Center(
           child: Text(
@@ -72,7 +76,7 @@ class _LandscapeHomeLayoutState extends State<LandscapeHomeLayout> {
       final navBarOffset = navBarHeight / 3; // 下移标签栏高度的1/3
       final contentTopOffset = navBarOffset * 2; // 内容区域顶部偏移量为导航栏偏移量的2倍
 
-      return CosmicBackground(
+      return OptimizedCosmicBackground(
         child: Stack(
           children: [
             
@@ -116,49 +120,23 @@ class _LandscapeHomeLayoutState extends State<LandscapeHomeLayout> {
               ),
             ),
             
-            // 简洁协调的切换按钮
+            // 横竖屏切换按钮 - 使用统一毛玻璃效果
             Positioned(
               top: navBarOffset + 8,
               right: 15,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), // 与导航栏一致的毛玻璃
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      // 与导航栏相同的毛玻璃风格
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 0.5,
-                      ),
-                      boxShadow: [
-                        // 简洁的阴影效果
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                        // 轻微的高光
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          blurRadius: 1,
-                          offset: const Offset(0, -1),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(18),
-                        onTap: () => windowController.toggleOrientation(),
-                        child: CustomPaint(
-                          size: const Size(20, 20),
-                          painter: RotationIconPainter(),
-                        ),
+              child: GlassContainer(
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: () => windowController.toggleOrientation(),
+                    child: Center(
+                      child: CustomPaint(
+                        size: const Size(20, 20),
+                        painter: RotationIconPainter(),
                       ),
                     ),
                   ),
