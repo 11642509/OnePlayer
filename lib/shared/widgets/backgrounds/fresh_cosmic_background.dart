@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../utils/performance_manager.dart';
+import '../../constants/app_colors.dart';
 
 /// 竖屏清新亮色系宇宙背景 - 支持性能模式调节
 class FreshCosmicBackground extends StatefulWidget {
@@ -52,7 +53,7 @@ class _FreshCosmicBackgroundState extends State<FreshCosmicBackground> {
   Widget _buildSolidBackground() {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFFF8FFFE), // 清晨天空白
+        color: AppColors.freshSkyWhite,
       ),
       child: widget.child,
     );
@@ -66,9 +67,9 @@ class _FreshCosmicBackgroundState extends State<FreshCosmicBackground> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFF8FFFE), // 清晨天空白
-            Color(0xFFE8F4FD), // 晨曦浅蓝
-            Color(0xFFF0F8FF), // 爱丽丝蓝（偏白）
+            AppColors.freshSkyWhite,
+            AppColors.freshMorningBlue,
+            AppColors.freshAliceBlue,
           ],
           stops: [0.0, 0.6, 1.0],
         ),
@@ -83,9 +84,9 @@ class _FreshCosmicBackgroundState extends State<FreshCosmicBackground> {
                   center: Alignment.topLeft, // 光源位置
                   radius: 1.0,
                   colors: [
-                    const Color(0xFFFFE135).withValues(alpha: 0.15), // 明显金光
-                    const Color(0xFFFFB347).withValues(alpha: 0.12), // 橙光
-                    const Color(0xFFFF8C00).withValues(alpha: 0.08), // 深橙
+                    AppColors.goldWithAlpha(0.15), // 明显金光
+                    AppColors.goldWithAlpha(0.12, baseColor: AppColors.goldOrange), // 橙光
+                    AppColors.goldWithAlpha(0.08, baseColor: AppColors.goldDeepOrange), // 深橙
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.3, 0.6, 1.0],
@@ -107,9 +108,9 @@ class _FreshCosmicBackgroundState extends State<FreshCosmicBackground> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFF8FFFE), // 清晨天空白
-            Color(0xFFE8F4FD), // 晨曦浅蓝
-            Color(0xFFF0F8FF), // 爱丽丝蓝（偏白）
+            AppColors.freshSkyWhite,
+            AppColors.freshMorningBlue,
+            AppColors.freshAliceBlue,
           ],
           stops: [0.0, 0.6, 1.0],
         ),
@@ -124,10 +125,10 @@ class _FreshCosmicBackgroundState extends State<FreshCosmicBackground> {
                   center: Alignment.topLeft, // 光源位置
                   radius: 1.0,
                   colors: [
-                    const Color(0xFFFFE135).withValues(alpha: 0.25), // 强烈金光
-                    const Color(0xFFFFB347).withValues(alpha: 0.18), // 明显橙光
-                    const Color(0xFFFF8C00).withValues(alpha: 0.12), // 深橙
-                    const Color(0xFFFFA500).withValues(alpha: 0.06), // 扩散橙
+                    AppColors.goldWithAlpha(0.25), // 强烈金光
+                    AppColors.goldWithAlpha(0.18, baseColor: AppColors.goldOrange), // 明显橙光
+                    AppColors.goldWithAlpha(0.12, baseColor: AppColors.goldDeepOrange), // 深橙
+                    AppColors.goldWithAlpha(0.06, baseColor: AppColors.goldSpreadOrange), // 扩散橙
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
@@ -144,8 +145,8 @@ class _FreshCosmicBackgroundState extends State<FreshCosmicBackground> {
                   center: Alignment.topLeft,
                   radius: 0.4, // 更小半径，更聚焦
                   colors: [
-                    const Color(0xFFFFF700).withValues(alpha: 0.2), // 强烈黄光
-                    const Color(0xFFFFE135).withValues(alpha: 0.15), // 金光
+                    AppColors.goldWithAlpha(0.2, baseColor: AppColors.goldBrightYellow), // 强烈黄光
+                    AppColors.goldWithAlpha(0.15), // 金光
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.6, 1.0],

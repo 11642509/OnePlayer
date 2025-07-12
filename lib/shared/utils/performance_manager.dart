@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'dart:io';
 import '../widgets/backgrounds/cosmic_background.dart';
 import '../widgets/backgrounds/optimized_cosmic_background_v2.dart';
+import 'background_factory.dart';
 
 /// 性能管理器 - 根据设备性能动态调整特效质量
 class PerformanceManager extends GetxController {
@@ -206,13 +207,13 @@ class PerformanceManager extends GetxController {
       if (kDebugMode) {
         print('使用渐变背景');
       }
-      return _buildGradientBackground(child);
+      return BackgroundFactory.createCosmicGradientBackground(child);
     } else {
       // 低质量：纯色背景
       if (kDebugMode) {
         print('使用纯色背景');
       }
-      return _buildSolidBackground(child);
+      return BackgroundFactory.createCosmicSolidBackground(child);
     }
   }
 
@@ -227,153 +228,20 @@ class PerformanceManager extends GetxController {
       if (kDebugMode) {
         print('使用完整清新背景（微光效果）');
       }
-      return _buildFullFreshBackground(child);
+      return BackgroundFactory.createFullFreshBackground(child);
     } else if (enableGradientEffects) {
       // 中质量：简单清新渐变背景
       if (kDebugMode) {
         print('使用清新渐变背景');
       }
-      return _buildFreshGradientBackground(child);
+      return BackgroundFactory.createFreshGradientBackground(child);
     } else {
       // 低质量：纯色清新背景
       if (kDebugMode) {
         print('使用纯色清新背景');
       }
-      return _buildFreshSolidBackground(child);
+      return BackgroundFactory.createFreshSolidBackground(child);
     }
-  }
-  
-  
-  /// 渐变背景
-  Widget _buildGradientBackground(Widget child) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF1A1A3E),
-            Color(0xFF0F0F23),
-          ],
-        ),
-      ),
-      child: child,
-    );
-  }
-  
-  /// 纯色背景
-  Widget _buildSolidBackground(Widget child) {
-    return Container(
-      color: const Color(0xFF0F0F23),
-      child: child,
-    );
-  }
-
-  /// 完整清新背景（高性能模式）
-  Widget _buildFullFreshBackground(Widget child) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFF8FFFE), // 清晨天空白
-            Color(0xFFE8F4FD), // 晨曦浅蓝
-            Color(0xFFF0F8FF), // 爱丽丝蓝（偏白）
-          ],
-          stops: [0.0, 0.6, 1.0],
-        ),
-      ),
-      child: Stack(
-        children: [
-          // 主要的金色微光照射效果
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.topLeft,
-                  radius: 1.0,
-                  colors: [
-                    const Color(0xFFFFE135).withValues(alpha: 0.25),
-                    const Color(0xFFFFB347).withValues(alpha: 0.18),
-                    const Color(0xFFFF8C00).withValues(alpha: 0.12),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.4, 0.7, 1.0],
-                ),
-              ),
-            ),
-          ),
-          // 聚焦强光效果
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.topLeft,
-                  radius: 0.4,
-                  colors: [
-                    const Color(0xFFFFF700).withValues(alpha: 0.2),
-                    const Color(0xFFFFE135).withValues(alpha: 0.15),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.6, 1.0],
-                ),
-              ),
-            ),
-          ),
-          child,
-        ],
-      ),
-    );
-  }
-
-  /// 清新渐变背景（平衡模式）
-  Widget _buildFreshGradientBackground(Widget child) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFF8FFFE), // 清晨天空白
-            Color(0xFFE8F4FD), // 晨曦浅蓝
-            Color(0xFFF0F8FF), // 爱丽丝蓝（偏白）
-          ],
-          stops: [0.0, 0.6, 1.0],
-        ),
-      ),
-      child: Stack(
-        children: [
-          // 微弱的金光照射效果
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.topLeft,
-                  radius: 1.0,
-                  colors: [
-                    const Color(0xFFFFE135).withValues(alpha: 0.15),
-                    const Color(0xFFFFB347).withValues(alpha: 0.12),
-                    const Color(0xFFFF8C00).withValues(alpha: 0.08),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.3, 0.6, 1.0],
-                ),
-              ),
-            ),
-          ),
-          child,
-        ],
-      ),
-    );
-  }
-
-  /// 纯色清新背景（节能模式）
-  Widget _buildFreshSolidBackground(Widget child) {
-    return Container(
-      color: const Color(0xFFF8FFFE), // 清晨天空白
-      child: child,
-    );
   }
   
   /// 获取优化的阴影效果

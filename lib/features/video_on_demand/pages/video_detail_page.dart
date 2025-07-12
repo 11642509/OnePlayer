@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../shared/widgets/backgrounds/cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background.dart';
-import '../../../shared/widgets/backgrounds/fresh_cosmic_background.dart';
-import '../../../shared/widgets/backgrounds/optimized_fresh_background.dart';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background_v2.dart';
 import '../../../shared/utils/performance_manager.dart';
 import '../controllers/video_detail_controller.dart';
@@ -66,13 +64,7 @@ class VideoDetailPage extends GetView<VideoDetailController> {
             
             if (isPortrait) {
               // 竖屏模式：使用清新亮色背景，对应性能等级
-              if (performance.enableBackgroundEffects) {
-                // 高性能：使用完整清新背景（微光效果）
-                return FreshCosmicBackground(child: content);
-              } else {
-                // 中低性能：使用性能优化清新背景
-                return OptimizedFreshBackground(child: content);
-              }
+              return performance.getOptimizedFreshBackground(child: content);
             } else {
               // 横屏模式：使用宇宙暗色背景，智能选择优化版本
               if (performance.enableBackgroundEffects) {
@@ -179,15 +171,6 @@ class VideoDetailPage extends GetView<VideoDetailController> {
     });
   }
 
-  // 构建竖屏布局 - 此方法已被移除
-  /*
-  Widget _buildPortraitLayout(...) { ... }
-  */
-
-  // 构建横屏布局 - 此方法将被移除
-  /*
-  Widget _buildLandscapeLayout(...) { ... }
-  */
   
   // 为横屏构建平铺的剧集列表
   Widget _buildTiledPlayList(VideoDetailController controller, List<Map<String, String>> episodes, Color textColor, {bool isPortrait = false}) {
