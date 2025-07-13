@@ -424,8 +424,8 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
             mainAxisSpacing: isPortrait ? 20 : 24, // 增加垂直间距
         ),
         itemCount: videoList.length + (widget.typeName != "主页" ? 1 : 0),
-        // 性能优化：减少滚动时的重建
-        cacheExtent: 1000, // 预缓存1000像素范围内的item
+        // 性能优化：大幅增加缓存，确保遥控器快速导航时项目不被回收
+        cacheExtent: 99999,
         addAutomaticKeepAlives: true,
         addRepaintBoundaries: true,
         addSemanticIndexes: false, // 在不需要语义索引的情况下禁用
@@ -552,8 +552,8 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
             mainAxisSpacing: isPortrait ? 20 : 24, // 增加垂直间距
         ),
         itemCount: videoList.length + (widget.typeName != "主页" ? 1 : 0),
-        // 性能优化：减少滚动时的重建
-        cacheExtent: 1000, // 预缓存1000像素范围内的item
+        // 性能优化：大幅增加缓存，确保遥控器快速导航时项目不被回收
+        cacheExtent: 99999,
         addAutomaticKeepAlives: true,
         addRepaintBoundaries: true,
         addSemanticIndexes: false, // 在不需要语义索引的情况下禁用
