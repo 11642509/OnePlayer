@@ -5,6 +5,7 @@ import '../../../shared/widgets/backgrounds/optimized_cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background_v2.dart';
 import '../../../shared/utils/performance_manager.dart';
 import '../controllers/video_detail_controller.dart';
+import '../../../core/remote_control/focusable_glow.dart';
 
 class VideoDetailPage extends GetView<VideoDetailController> {
   final String videoId;
@@ -67,18 +68,24 @@ class VideoDetailPage extends GetView<VideoDetailController> {
               return performance.getOptimizedFreshBackground(child: content);
             } else {
               // 横屏模式：使用宇宙暗色背景，智能选择优化版本
+              Widget background;
               if (performance.enableBackgroundEffects) {
                 if (performance.isLowEndDevice || performance.visualQuality == 3) {
                   // 低端设备或智能模式：使用V2优化版本，保持视觉效果
-                  return OptimizedCosmicBackgroundV2(intensity: 0.9, child: content);
+                  background = OptimizedCosmicBackgroundV2(intensity: 0.9, child: content);
                 } else {
                   // 高端设备手动高性能：使用原始版本
-                  return CosmicBackground(child: content);
+                  background = CosmicBackground(child: content);
                 }
               } else {
                 // 中低性能：使用性能优化背景
-                return OptimizedCosmicBackground(child: content);
+                background = OptimizedCosmicBackground(child: content);
               }
+              // 为横屏的暗色背景提供一个深色主题，确保辉光效果可见
+              return Theme(
+                data: Theme.of(context).copyWith(brightness: Brightness.dark),
+                child: background,
+              );
             }
           });
         },
@@ -103,66 +110,68 @@ class VideoDetailPage extends GetView<VideoDetailController> {
       
       final horizontalPadding = isPortrait ? 16.0 : 30.0;
       
-      // 统一使用SingleChildScrollView和Column，解决横屏割裂感
-      return Stack( // 将内容包裹在Stack中
-        children: [
-          SingleChildScrollView(
-            key: PageStorageKey(videoId),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 1. 全新的Hero Section
-                _buildHeroSection(controller, isPortrait),
-                
-                // 减小竖屏和横屏模式下的间距
-                SizedBox(height: isPortrait ? 24 : 4),
-
-                // 2. 简介区域 - 横屏模式下跳过显示，避免溢出
-                if (isPortrait && videoDetail['vod_content'] != null && videoDetail['vod_content'].toString().isNotEmpty)
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                    child: _buildDescriptionSection(videoDetail, textColor, isPortrait),
-                  ),
-                
-                // 减小竖屏和横屏模式下的间距
-                if (isPortrait) SizedBox(height: isPortrait ? 24 : 4),
-
-                // 3. 播放列表区域
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (allPlaySources.isNotEmpty)
-                        _buildPlaySourceSelector(controller, allPlaySources, textColor, isPortrait),
-                      
-                      if (controller.currentPlaySource.value.isNotEmpty && 
-                          playOptions.containsKey(controller.currentPlaySource.value) && 
-                          playOptions[controller.currentPlaySource.value]!.isNotEmpty) ...[
-                        SizedBox(height: isPortrait ? 12 : 8), // 横屏模式下进一步减小间距
-                        _buildTiledPlayList(controller, playOptions[controller.currentPlaySource.value]!, textColor, isPortrait: isPortrait),
-                      ],
-                    ],
-                  ),
+      // 使用CustomScrollView和SliverAppBar来创建更高级的滚动效果
+      return CustomScrollView(
+        key: PageStorageKey(videoId),
+        slivers: <Widget>[
+          // 可伸缩的应用栏，包含Hero区域和返回按钮
+          SliverAppBar(
+            expandedHeight: 300,
+            pinned: true, // 返回按钮将始终可见
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            automaticallyImplyLeading: false, // 不使用默认的返回按钮
+            leading: Builder(
+              builder: (context) => FocusableGlow(
+                onTap: () => Get.back(),
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.arrow_back, color: Colors.white),
                 ),
-
-                // 减小底部间距
-                SizedBox(height: isPortrait ? 32 : 4),
-              ],
+              ),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: _buildHeroSection(controller, isPortrait),
+              // 防止标题区域与背景内容重叠
+              collapseMode: CollapseMode.pin,
             ),
           ),
-          // 将返回按钮作为独立的层放置在顶部，并使用动画平滑过渡
-          Builder(
-            builder: (context) => AnimatedPositioned(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              top: MediaQuery.of(context).padding.top,
-              left: 10,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Get.back(),
-                splashColor: Colors.transparent,
-                highlightColor: Colors.white.withValues(alpha: 51/255.0),
+          
+          // 页面其余内容
+          SliverToBoxAdapter(
+            child: Padding(
+              // 为内容区域添加内边距
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 减小竖屏和横屏模式下的间距
+                  SizedBox(height: isPortrait ? 24 : 16),
+                  
+                  // 简介区域 - 横屏模式下跳过显示，避免溢出
+                  if (isPortrait && videoDetail['vod_content'] != null && videoDetail['vod_content'].toString().isNotEmpty)
+                    _buildDescriptionSection(videoDetail, textColor, isPortrait),
+                  
+                  // 减小竖屏和横屏模式下的间距
+                  if (isPortrait) SizedBox(height: isPortrait ? 24 : 16),
+                  
+                  // 播放列表区域
+                  if (allPlaySources.isNotEmpty)
+                    _buildPlaySourceSelector(controller, allPlaySources, textColor, isPortrait),
+                  
+                  if (controller.currentPlaySource.value.isNotEmpty &&
+                      playOptions.containsKey(controller.currentPlaySource.value) &&
+                      playOptions[controller.currentPlaySource.value]!.isNotEmpty) ...[
+                    SizedBox(height: isPortrait ? 12 : 16), // 横屏模式下进一步减小间距
+                    _buildTiledPlayList(controller, playOptions[controller.currentPlaySource.value]!, textColor, isPortrait: isPortrait),
+                  ],
+                  
+                  // 减小底部间距
+                  SizedBox(height: isPortrait ? 32 : 16),
+                ],
               ),
             ),
           ),
@@ -207,63 +216,57 @@ class VideoDetailPage extends GetView<VideoDetailController> {
   
   // 竖屏剧集卡片
   Widget _buildPortraitEpisodeCard(VideoDetailController controller, Map<String, String> episode, int index, Color textColor) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        child: InkWell(
-          onTap: () {
-            if (episode['url'] != null && episode['name'] != null) {
-              controller.playVideo(episode['url']!, episode['name']!);
-            }
-          },
+    return FocusableGlow(
+      onTap: () {
+        if (episode['url'] != null && episode['name'] != null) {
+          controller.playVideo(episode['url']!, episode['name']!);
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        decoration: BoxDecoration(
+          // 自然的毛玻璃效果 - 浅色背景
+          color: Colors.white.withValues(alpha: 0.75),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.grey[200]!.withValues(alpha: 0.8),
+            width: 0.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Container(
             decoration: BoxDecoration(
-              // 自然的毛玻璃效果 - 浅色背景
-              color: Colors.white.withValues(alpha: 0.75),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey[200]!.withValues(alpha: 0.8),
-                width: 0.5,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.grey[50]!.withValues(alpha: 0.3),
+                  Colors.grey[100]!.withValues(alpha: 0.1),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.grey[50]!.withValues(alpha: 0.3),
-                      Colors.grey[100]!.withValues(alpha: 0.1),
-                    ],
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Center(
+                child: Text(
+                  episode['name'] ?? '未知',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 13, // 增加字体大小
+                    height: 1.2, // 减少行高，节省空间
+                    fontWeight: FontWeight.w500,
                   ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Center(
-                    child: Text(
-                      episode['name'] ?? '未知',
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 13, // 增加字体大小
-                        height: 1.2, // 减少行高，节省空间
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 3, // 增加最大行数
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 3, // 增加最大行数
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -275,65 +278,59 @@ class VideoDetailPage extends GetView<VideoDetailController> {
   
   // 横屏剧集卡片（电视盒子风格）
   Widget _buildLandscapeEpisodeCard(VideoDetailController controller, Map<String, String> episode, int index, Color textColor) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        child: InkWell(
-          onTap: () {
-            if (episode['url'] != null && episode['name'] != null) {
-              controller.playVideo(episode['url']!, episode['name']!);
-            }
-          },
+    return FocusableGlow(
+      onTap: () {
+        if (episode['url'] != null && episode['name'] != null) {
+          controller.playVideo(episode['url']!, episode['name']!);
+        }
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        height: 64,
+        width: 120,
+        decoration: BoxDecoration(
+          // 自然的毛玻璃效果
+          color: Colors.black.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.15),
+            width: 0.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            height: 64,
-            width: 120,
             decoration: BoxDecoration(
-              // 自然的毛玻璃效果
-              color: Colors.black.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.15),
-                width: 0.5,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.08),
+                  Colors.white.withValues(alpha: 0.03),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.08),
-                      Colors.white.withValues(alpha: 0.03),
-                    ],
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Center(
+                child: Text(
+                  episode['name'] ?? '未知',
+                  style: TextStyle(
+                    color: textColor.withValues(alpha: 0.95),
+                    fontSize: 13,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
                   ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Center(
-                    child: Text(
-                      episode['name'] ?? '未知',
-                      style: TextStyle(
-                        color: textColor.withValues(alpha: 0.95),
-                        fontSize: 13,
-                        height: 1.4,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -548,45 +545,46 @@ class VideoDetailPage extends GetView<VideoDetailController> {
 
   // 横屏专用封面组件
   Widget _buildLandscapeCover(VideoDetailController controller, String coverUrl) {
-    return Container(
-      width: 170, // 进一步增加宽度
-      height: 250, // 进一步增加高度
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Image.network(
-            coverUrl,
-            fit: BoxFit.cover,
-            width: 170,
-            height: 250,
-            errorBuilder: (context, error, stackTrace) =>
-                Container(color: Colors.grey[800]),
-          ),
-          // 添加播放按钮悬浮效果
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.center,
-                  end: Alignment.center,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.3),
-                  ],
+    return FocusableGlow(
+      onTap: () => controller.playFirstEpisode(),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 170, // 进一步增加宽度
+        height: 250, // 进一步增加高度
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Image.network(
+              coverUrl,
+              fit: BoxFit.cover,
+              width: 170,
+              height: 250,
+              errorBuilder: (context, error, stackTrace) =>
+                  Container(color: Colors.grey[800]),
+            ),
+            // 添加播放按钮悬浮效果
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.center,
+                    end: Alignment.center,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.3),
+                    ],
+                  ),
                 ),
-              ),
-              child: InkWell(
-                onTap: () => controller.playFirstEpisode(),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.all(16),
@@ -603,8 +601,8 @@ class VideoDetailPage extends GetView<VideoDetailController> {
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -804,49 +802,47 @@ class VideoDetailPage extends GetView<VideoDetailController> {
     final size = isLandscape ? 180.0 : 100.0;
     final height = isLandscape ? 240.0 : 140.0;
     
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => controller.playFirstEpisode(),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: size,
-              height: height,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Image.network(
-                coverUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    Container(color: Colors.grey[800]),
-              ),
+    return FocusableGlow(
+      onTap: () => controller.playFirstEpisode(),
+      borderRadius: BorderRadius.circular(12),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: size,
+            height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            Container(
-              width: size,
-              height: height,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.play_arrow_rounded,
-                color: Colors.white.withValues(alpha: 0.9),
-                size: isLandscape ? 80 : 60,
-              ),
+            clipBehavior: Clip.antiAlias,
+            child: Image.network(
+              coverUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  Container(color: Colors.grey[800]),
             ),
-          ],
-        ),
+          ),
+          Container(
+            width: size,
+            height: height,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.play_arrow_rounded,
+              color: Colors.white.withValues(alpha: 0.9),
+              size: isLandscape ? 80 : 60,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1012,76 +1008,69 @@ class VideoDetailPage extends GetView<VideoDetailController> {
   
   // 构建播放源选择芯片
   Widget _buildPlaySourceChip(VideoDetailController controller, String source, bool isSelected, Color textColor, bool isPortrait) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        child: InkWell(
-          onTap: () => controller.changePlaySource(source),
+    return FocusableGlow(
+      onTap: () => controller.changePlaySource(source),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [Color(0xFFFF7BB0), Color(0xFFFF4081)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isSelected
+              ? null
+              : isPortrait
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: isSelected
-                  ? const LinearGradient(
-                      colors: [Color(0xFFFF7BB0), Color(0xFFFF4081)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: isSelected
-                  ? null
-                  : isPortrait
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected
-                    ? const Color(0xFFFF7BB0)
-                    : isPortrait
-                        ? Colors.grey[300]!
-                        : Colors.white30,
-                width: 1,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFFFF7BB0).withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isSelected ? Icons.check_circle : Icons.play_circle_outline,
-                  color: isSelected
-                      ? Colors.white
-                      : isPortrait
-                          ? textColor
-                          : Colors.white70,
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  source,
-                  style: TextStyle(
-                    color: isSelected
-                        ? Colors.white
-                        : isPortrait
-                            ? textColor
-                            : Colors.white70,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFFFF7BB0)
+                : isPortrait
+                    ? Colors.grey[300]!
+                    : Colors.white30,
+            width: 1,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFFF7BB0).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? Icons.check_circle : Icons.play_circle_outline,
+              color: isSelected
+                  ? Colors.white
+                  : isPortrait
+                      ? textColor
+                      : Colors.white70,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              source,
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.white
+                    : isPortrait
+                        ? textColor
+                        : Colors.white70,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'dart:async';
@@ -7,6 +8,8 @@ import '../controllers/vod_controller.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../shared/utils/performance_manager.dart';
 import '../../../app/theme/typography.dart';
+import '../../../core/remote_control/focusable_item.dart';
+import '../../../core/remote_control/focus_aware_tab.dart';
 
 class VideoOnDemandPage extends StatelessWidget {
   const VideoOnDemandPage({super.key});
@@ -34,10 +37,11 @@ class VideoOnDemandPage extends StatelessWidget {
             title: SizedBox(
               height: isPortrait ? 36 : 40,
               width: double.infinity,
-              child: controller.tabController != null ? _buildOptimizedTabBar(isPortrait) : const SizedBox(),
+              child: controller.tabController != null ? _buildOptimizedTabBar(context, isPortrait) : const SizedBox(),
             ),
-            titleSpacing: isPortrait ? 0 : null,
-            centerTitle: !isPortrait,
+            // 统一使用左对齐，不再居中，以优化遥控器导航
+            titleSpacing: 0,
+            centerTitle: false,
           );
         }),
       );
@@ -86,42 +90,45 @@ class VideoOnDemandPage extends StatelessWidget {
   }
   
   // 提取TabBar构建逻辑，避免重复计算
-  Widget _buildOptimizedTabBar(bool isPortrait) {
+  Widget _buildOptimizedTabBar(BuildContext context, bool isPortrait) {
     final controller = Get.find<VodController>();
     
     return TabBar(
       controller: controller.tabController,
       isScrollable: true,
       tabs: controller.classList.map((item) {
-        return Tab(
-          height: isPortrait ? 36 : 40,
-          child: Text(
+        final tabContent = Text(
             item['type_name'] as String,
             style: TextStyle(
               fontFamily: AppTypography.systemFont, // 使用统一字体
               fontWeight: FontWeight.w600,
-              fontSize: isPortrait ? 15 : 16,
+              // 统一使用16号字体，与主导航栏对齐
+              fontSize: 16,
               letterSpacing: 0.1,
             ),
-          ),
+        );
+
+        return Tab(
+          height: isPortrait ? 36 : 40,
+          // 仅在横屏模式下应用自定义的焦点效果
+          child: isPortrait ? tabContent : FocusAwareTab(child: tabContent),
         );
       }).toList(),
-      labelColor: isPortrait ? Colors.grey[800] : Colors.white, // 根据背景调整
-      unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7), // 根据背景调整
-      indicatorColor: isPortrait ? Colors.grey[800] : Colors.white, // 根据背景调整
+      // 恢复为原来的颜色和指示器逻辑
+      labelColor: isPortrait ? Colors.grey[800] : Colors.white,
+      unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withOpacity(0.7),
       indicatorSize: TabBarIndicatorSize.label,
       dividerColor: Colors.transparent,
       indicator: UnderlineTabIndicator(
         borderSide: BorderSide(
-          color: isPortrait ? Colors.grey[800]! : Colors.white, // 根据背景调整
+          color: isPortrait ? Colors.grey[800]! : Colors.white,
           width: 3,
         ),
-        insets: EdgeInsets.symmetric(
-          horizontal: isPortrait ? 12 : 16,
-        ),
+        insets: const EdgeInsets.symmetric(horizontal: 16),
       ),
-      padding: isPortrait ? const EdgeInsets.only(left: 16) : null,
-      tabAlignment: isPortrait ? TabAlignment.start : TabAlignment.center,
+      // 统一使用左侧内边距和起始对齐，优化遥控器导航
+      padding: const EdgeInsets.only(left: 16),
+      tabAlignment: TabAlignment.start,
       labelPadding: EdgeInsets.symmetric(
         horizontal: isPortrait ? 12 : 16,
       ),
@@ -151,8 +158,11 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
   late ScrollController _scrollController;
   bool _isHorizontalLayout = true; // 默认横向布局
   
+  // 为网格中的每个项目创建和管理FocusNode
+  final Map<int, FocusNode> _focusNodes = {};
+  
   @override
-  bool get wantKeepAlive => true; // 保持页面状态不被销毁
+  bool get wantKeepAlive => true; // 保持页面状态不被销销
 
   @override
   void initState() {
@@ -211,8 +221,28 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
 
   @override
   void dispose() {
+    // 销毁所有通过此状态管理的FocusNode
+    for (final node in _focusNodes.values) {
+      node.dispose();
+    }
     // 不要在这里dispose _scrollController，因为它由VodController管理
     super.dispose();
+  }
+
+  /// 根据视频列表的大小，更新和管理FocusNode池
+  void _updateFocusNodes(int listSize) {
+    // 移除不再需要的节点的FocusNode
+    final toRemove = _focusNodes.keys.where((i) => i >= listSize).toList();
+    for (final i in toRemove) {
+      _focusNodes.remove(i)?.dispose();
+    }
+
+    // 为新节点添加FocusNode
+    for (var i = 0; i < listSize; i++) {
+      if (!_focusNodes.containsKey(i)) {
+        _focusNodes[i] = FocusNode(debugLabel: 'Item $i');
+      }
+    }
   }
 
   @override
@@ -312,23 +342,86 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
     
     return Builder(builder: (context) {
       final double screenWidth = MediaQuery.of(context).size.width;
+      // 精确计算项目宽度，减去所有水平内边距和间距
       final double itemWidth = isPortrait 
-          ? (screenWidth - 28) / 2 
-          : (screenWidth - 58) / 4;
+          ? (screenWidth - 16 * 2 - 16) / 2 // (总宽 - 左右内边距 - 间距) / 列数
+          : (screenWidth - 24 * 2 - 20 * 3) / 4; // (总宽 - 左右内边距 - 间距) / 列数
       
       // 横向卡片使用16:9比例
       final double imageHeight = itemWidth * 9 / 16;
       final double itemHeight = imageHeight + spacing + titleHeight;
       final double childAspectRatio = itemWidth / itemHeight;
 
-      return GridView.builder(
+      final int videoListLength = videoList.length;
+      _updateFocusNodes(videoListLength);
+
+      return Focus(
+        onKey: (node, event) {
+          if (event is! RawKeyDownEvent) return KeyEventResult.ignored;
+
+          final currentIndex = _focusNodes.entries
+              .firstWhere((entry) => entry.value.hasFocus, orElse: () => MapEntry(-1, FocusNode()))
+              .key;
+
+          if (currentIndex == -1) {
+            return KeyEventResult.ignored;
+          }
+
+          int targetIndex = -1;
+          
+          switch (event.logicalKey) {
+            case LogicalKeyboardKey.arrowUp:
+              targetIndex = currentIndex - crossAxisCount;
+              break;
+            case LogicalKeyboardKey.arrowDown:
+              targetIndex = currentIndex + crossAxisCount;
+              break;
+            case LogicalKeyboardKey.arrowLeft:
+              if (currentIndex % crossAxisCount != 0) {
+                targetIndex = currentIndex - 1;
+              }
+              break;
+            case LogicalKeyboardKey.arrowRight:
+              if ((currentIndex + 1) % crossAxisCount != 0 && currentIndex + 1 < videoListLength) {
+                targetIndex = currentIndex + 1;
+              }
+              break;
+            default:
+              return KeyEventResult.ignored;
+          }
+
+          if (targetIndex >= 0 && targetIndex < videoListLength) {
+            final targetNode = _focusNodes[targetIndex];
+            if (targetNode != null) {
+              targetNode.requestFocus();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (targetNode.context != null) {
+                  Scrollable.ensureVisible(
+                    targetNode.context!,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    alignment: 0.5, // 尽量将项目滚动到视口中间
+                  );
+                }
+              });
+            }
+            return KeyEventResult.handled;
+          }
+          
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            return KeyEventResult.ignored; 
+          }
+
+          return KeyEventResult.handled;
+        },
+        child: GridView.builder(
         controller: _scrollController,
-        padding: EdgeInsets.all(isPortrait ? 10 : 12),
+          padding: EdgeInsets.all(isPortrait ? 16 : 24), // 增加内边距
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossAxisCount,
           childAspectRatio: childAspectRatio,
-          crossAxisSpacing: isPortrait ? 8 : 10,
-          mainAxisSpacing: isPortrait ? 12 : 16,
+            crossAxisSpacing: isPortrait ? 16 : 20, // 增加水平间距
+            mainAxisSpacing: isPortrait ? 20 : 24, // 增加垂直间距
         ),
         itemCount: videoList.length + (widget.typeName != "主页" ? 1 : 0),
         // 性能优化：减少滚动时的重建
@@ -343,7 +436,16 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
           
           final video = videoList[index];
           // 使用稳定的key来优化widget复用
-          return _buildOptimizedVideoCard(
+            return FocusableItem(
+              autofocus: index == 0,
+              focusNode: _focusNodes[index],
+              onSelected: () {
+                Get.toNamed(
+                  AppRoutes.videoDetail,
+                  parameters: {'videoId': video['vod_id']},
+                );
+              },
+              child: _buildOptimizedVideoCard(
             video, 
             index, 
             itemWidth, 
@@ -351,8 +453,10 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
             titleHeight, 
             spacing, 
             isPortrait,
+              ),
           );
         },
+        ),
       );
     });
   }
@@ -366,23 +470,86 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
     
     return Builder(builder: (context) {
       final double screenWidth = MediaQuery.of(context).size.width;
+      // 精确计算项目宽度，减去所有水平内边距和间距
       final double itemWidth = isPortrait 
-          ? (screenWidth - 28) / 2 
-          : (screenWidth - 58) / 4;
+          ? (screenWidth - 16 * 2 - 16) / 2 // (总宽 - 左右内边距 - 间距) / 列数
+          : (screenWidth - 24 * 2 - 20 * 3) / 4; // (总宽 - 左右内边距 - 间距) / 列数
       
       // 纵向卡片也使用16:9比例，但是是纵向的16:9
       final double imageHeight = itemWidth * 16 / 9; // 纵向16:9
       final double itemHeight = imageHeight + spacing + titleHeight;
       final double childAspectRatio = itemWidth / itemHeight;
 
-      return GridView.builder(
+      final int videoListLength = videoList.length;
+      _updateFocusNodes(videoListLength);
+
+      return Focus(
+        onKey: (node, event) {
+          if (event is! RawKeyDownEvent) return KeyEventResult.ignored;
+
+          final currentIndex = _focusNodes.entries
+              .firstWhere((entry) => entry.value.hasFocus, orElse: () => MapEntry(-1, FocusNode()))
+              .key;
+
+          if (currentIndex == -1) {
+            return KeyEventResult.ignored;
+          }
+
+          int targetIndex = -1;
+          
+          switch (event.logicalKey) {
+            case LogicalKeyboardKey.arrowUp:
+              targetIndex = currentIndex - crossAxisCount;
+              break;
+            case LogicalKeyboardKey.arrowDown:
+              targetIndex = currentIndex + crossAxisCount;
+              break;
+            case LogicalKeyboardKey.arrowLeft:
+              if (currentIndex % crossAxisCount != 0) {
+                targetIndex = currentIndex - 1;
+              }
+              break;
+            case LogicalKeyboardKey.arrowRight:
+              if ((currentIndex + 1) % crossAxisCount != 0 && currentIndex + 1 < videoListLength) {
+                targetIndex = currentIndex + 1;
+              }
+              break;
+            default:
+              return KeyEventResult.ignored;
+          }
+
+          if (targetIndex >= 0 && targetIndex < videoListLength) {
+            final targetNode = _focusNodes[targetIndex];
+            if (targetNode != null) {
+              targetNode.requestFocus();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (targetNode.context != null) {
+                  Scrollable.ensureVisible(
+                    targetNode.context!,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    alignment: 0.5, // 尽量将项目滚动到视口中间
+                  );
+                }
+              });
+            }
+            return KeyEventResult.handled;
+          }
+          
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            return KeyEventResult.ignored; 
+          }
+
+          return KeyEventResult.handled;
+        },
+        child: GridView.builder(
         controller: _scrollController,
-        padding: EdgeInsets.all(isPortrait ? 10 : 12),
+          padding: EdgeInsets.all(isPortrait ? 16 : 24), // 增加内边距
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossAxisCount,
           childAspectRatio: childAspectRatio,
-          crossAxisSpacing: isPortrait ? 8 : 10,
-          mainAxisSpacing: isPortrait ? 12 : 16,
+            crossAxisSpacing: isPortrait ? 16 : 20, // 增加水平间距
+            mainAxisSpacing: isPortrait ? 20 : 24, // 增加垂直间距
         ),
         itemCount: videoList.length + (widget.typeName != "主页" ? 1 : 0),
         // 性能优化：减少滚动时的重建
@@ -397,7 +564,16 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
           
           final video = videoList[index];
           // 使用稳定的key来优化widget复用
-          return _buildOptimizedVideoCard(
+            return FocusableItem(
+              autofocus: index == 0,
+              focusNode: _focusNodes[index],
+              onSelected: () {
+                Get.toNamed(
+                  AppRoutes.videoDetail,
+                  parameters: {'videoId': video['vod_id']},
+                );
+              },
+              child: _buildOptimizedVideoCard(
             video, 
             index, 
             itemWidth, 
@@ -405,8 +581,10 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
             titleHeight, 
             spacing, 
             isPortrait,
+              ),
           );
         },
+        ),
       );
     });
   }

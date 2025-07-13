@@ -10,6 +10,7 @@ import '../../../features/video_on_demand/pages/video_on_demand_page.dart'; // �
 import '../../../features/settings/pages/settings_page.dart'; // 导入设置页面
 import '../backgrounds/optimized_cosmic_background.dart'; // 导入优化背景组件
 import '../common/glass_container.dart'; // 导入通用毛玻璃组件
+import '../../../core/remote_control/focusable_glow.dart';
 
 /// 横屏主页布局
 class LandscapeHomeLayout extends StatefulWidget {
@@ -124,20 +125,17 @@ class _LandscapeHomeLayoutState extends State<LandscapeHomeLayout> {
             Positioned(
               top: navBarOffset + 8,
               right: 15,
-              child: GlassContainer(
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(18),
-                    onTap: () => windowController.toggleOrientation(),
-                    child: Center(
-                      child: CustomPaint(
-                        size: const Size(20, 20),
-                        painter: RotationIconPainter(),
-                      ),
+              child: FocusableGlow(
+                onTap: () => windowController.toggleOrientation(),
+                borderRadius: BorderRadius.circular(18),
+                child: GlassContainer(
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  child: Center(
+                    child: CustomPaint(
+                      size: const Size(20, 20),
+                      painter: RotationIconPainter(),
                     ),
                   ),
                 ),

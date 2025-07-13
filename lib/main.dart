@@ -132,7 +132,14 @@ class HomePage extends StatelessWidget {
         appBar: null,
         body: isPortrait 
           ? SafeArea(child: PortraitHomeLayout(onPlayerSelected: _openPlayerPage))
-          : LandscapeHomeLayout(onPlayerSelected: _openPlayerPage),
+            : Theme(
+                // 当处于横屏（深色背景）模式时，为子组件提供一个深色主题
+                data: Theme.of(context).copyWith(
+                  brightness: Brightness.dark,
+                ),
+                child:
+                    LandscapeHomeLayout(onPlayerSelected: _openPlayerPage),
+              ),
       );
     });
   }
