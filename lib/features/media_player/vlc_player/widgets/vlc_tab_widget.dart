@@ -37,6 +37,10 @@ class VlcTabState extends State<VlcTab> {
   final bool _showPlayer = true;
   final bool _exiting = false;
   bool _hasRequestedExit = false; // 防止多次点击返回
+  
+  // 焦点管理
+  final FocusNode _backButtonFocus = FocusNode();
+  final FocusNode _retryButtonFocus = FocusNode();
 
   @override
   void initState() {
@@ -391,6 +395,8 @@ class VlcTabState extends State<VlcTab> {
   @override
   void dispose() {
     // 激进方案：不做任何controller相关操作，只调用super.dispose()
+    _backButtonFocus.dispose();
+    _retryButtonFocus.dispose();
     super.dispose();
   }
 
@@ -465,18 +471,28 @@ class VlcTabState extends State<VlcTab> {
   }
   
   Widget _buildLoadingOverlay() {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[Colors.blue, Colors.green],
+    return Focus(
+      autofocus: true, // 加载界面自动获取焦点以响应按键
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          // 任意按键都将焦点转移到返回按钮
+          _backButtonFocus.requestFocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[Colors.blue, Colors.green],
+          ),
         ),
-      ),
-      child: Stack(
-        children: [
+        child: Stack(
+          children: [
           // 标题栏
           Positioned(
             top: 0,
@@ -503,10 +519,14 @@ class VlcTabState extends State<VlcTab> {
                         borderRadius: BorderRadius.circular(20),
                         onTap: _onBackPressed,
                         child: Focus(
-                          // 不自动获取焦点，等待用户操作
+                          focusNode: _backButtonFocus,
                           onKeyEvent: (node, event) {
                             if (event is KeyDownEvent) {
                               if (event.logicalKey == LogicalKeyboardKey.escape) {
+                                _onBackPressed();
+                                return KeyEventResult.handled;
+                              } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+                                         event.logicalKey == LogicalKeyboardKey.select) {
                                 _onBackPressed();
                                 return KeyEventResult.handled;
                               }
@@ -568,22 +588,33 @@ class VlcTabState extends State<VlcTab> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
   
   Widget _buildErrorOverlay() {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[Colors.red, Colors.orange],
+    return Focus(
+      autofocus: true, // 错误界面自动获取焦点以响应按键
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          // 任意按键都将焦点转移到重试按钮
+          _retryButtonFocus.requestFocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[Colors.red, Colors.orange],
+          ),
         ),
-      ),
-      child: Column(
+        child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           const Icon(Icons.error_outline, color: Colors.white, size: 60),
@@ -606,7 +637,21 @@ class VlcTabState extends State<VlcTab> {
                 borderRadius: BorderRadius.circular(8),
                 onTap: _retry,
                 child: Focus(
-                  // 不自动获取焦点，等待用户操作
+                  focusNode: _retryButtonFocus,
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent) {
+                      if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                        // 右键移动到返回按钮
+                        _backButtonFocus.requestFocus();
+                        return KeyEventResult.handled;
+                      } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+                                 event.logicalKey == LogicalKeyboardKey.select) {
+                        _retry();
+                        return KeyEventResult.handled;
+                      }
+                    }
+                    return KeyEventResult.ignored;
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     decoration: BoxDecoration(
@@ -621,18 +666,39 @@ class VlcTabState extends State<VlcTab> {
               FocusableGlow(
                 borderRadius: BorderRadius.circular(8),
                 onTap: _onBackPressed,
-                child: Container(
+                child: Focus(
+                  focusNode: _backButtonFocus,
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent) {
+                      if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                        // 左键移动到重试按钮
+                        _retryButtonFocus.requestFocus();
+                        return KeyEventResult.handled;
+                      } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+                        _onBackPressed();
+                        return KeyEventResult.handled;
+                      } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+                                 event.logicalKey == LogicalKeyboardKey.select) {
+                        _onBackPressed();
+                        return KeyEventResult.handled;
+                      }
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.red.withValues(alpha: 128/255.0),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text('返回', style: TextStyle(color: Colors.white)),
+                  ),
                 ),
               ),
             ],
           ),
         ],
+        ),
       ),
     );
   }

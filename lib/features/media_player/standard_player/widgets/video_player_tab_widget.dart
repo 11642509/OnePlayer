@@ -33,6 +33,9 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
+  
+  // 焦点管理
+  final FocusNode _backButtonFocus = FocusNode();
 
   @override
   void initState() {
@@ -125,20 +128,30 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
   }
   
   Widget _buildLoadingOverlay() {
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      height: MediaQuery.of(context).size.height,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Colors.blue,
-            Colors.green,
-          ],
+    return Focus(
+      autofocus: true, // 加载界面自动获取焦点以响应按键
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          // 任意按键都将焦点转移到返回按钮
+          _backButtonFocus.requestFocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Container(
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              Colors.blue,
+              Colors.green,
+            ],
+          ),
         ),
-      ),
-      child: Stack(
+        child: Stack(
         children: [
           // 标题栏
           if (widget.title != null)
@@ -166,10 +179,14 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
                         borderRadius: BorderRadius.circular(20),
                         onTap: () => Navigator.pop(context),
                         child: Focus(
-                          // 不自动获取焦点，等待用户操作
+                          focusNode: _backButtonFocus,
                           onKeyEvent: (node, event) {
                             if (event is KeyDownEvent) {
                               if (event.logicalKey == LogicalKeyboardKey.escape) {
+                                Navigator.pop(context);
+                                return KeyEventResult.handled;
+                              } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+                                         event.logicalKey == LogicalKeyboardKey.select) {
                                 Navigator.pop(context);
                                 return KeyEventResult.handled;
                               }
@@ -233,25 +250,43 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
             ),
           ),
         ],
+        ),
       ),
     );
   }
   
   Widget _buildErrorOverlay() {
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      height: MediaQuery.of(context).size.height,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Colors.red,
-            Colors.orange,
-          ],
+    return Focus(
+      autofocus: true, // 错误界面自动获取焦点以响应按键
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          // 任意按键都执行重新加载
+          if (event.logicalKey == LogicalKeyboardKey.enter ||
+              event.logicalKey == LogicalKeyboardKey.select ||
+              event.logicalKey == LogicalKeyboardKey.space) {
+            _retry();
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+            Navigator.pop(context);
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Container(
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              Colors.red,
+              Colors.orange,
+            ],
+          ),
         ),
-      ),
-      child: Column(
+        child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           const Icon(
@@ -271,51 +306,55 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
               textAlign: TextAlign.center,
             ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _isLoading = true;
-                _hasError = false;
-              });
-              
-              _controller.initialize().then((_) {
-                _controller.setVolume(1);
-                _controller.play();
-                
-                if (mounted) {
-                  setState(() {
-                    _isLoading = false;
-                  });
-                }
-              }).catchError((error) {
-                if (mounted) {
-                  setState(() {
-                    _isLoading = false;
-                    _hasError = true;
-                    _errorMessage = '视频加载失败: ${error.toString()}';
-                  });
-                }
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 51/255.0),
-              foregroundColor: Colors.white,
+          FocusableGlow(
+            borderRadius: BorderRadius.circular(8),
+            onTap: _retry,
+            child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 51/255.0),
                 borderRadius: BorderRadius.circular(8),
               ),
+              child: const Text('重新加载', style: TextStyle(color: Colors.white)),
             ),
-            child: const Text('重新加载'),
           ),
         ],
+        ),
       ),
     );
+  }
+
+  void _retry() {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    
+    _controller.initialize().then((_) {
+      _controller.setVolume(1);
+      _controller.play();
+      
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }).catchError((error) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _errorMessage = '视频加载失败: ${error.toString()}';
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
+    _backButtonFocus.dispose();
     super.dispose();
   }
 } 
