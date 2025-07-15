@@ -503,7 +503,7 @@ class VlcTabState extends State<VlcTab> {
                         borderRadius: BorderRadius.circular(20),
                         onTap: _onBackPressed,
                         child: Focus(
-                          autofocus: true, // 自动获取焦点
+                          // 不自动获取焦点，等待用户操作
                           onKeyEvent: (node, event) {
                             if (event is KeyDownEvent) {
                               if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -606,7 +606,7 @@ class VlcTabState extends State<VlcTab> {
                 borderRadius: BorderRadius.circular(8),
                 onTap: _retry,
                 child: Focus(
-                  autofocus: true, // 重新加载按钮默认获取焦点
+                  // 不自动获取焦点，等待用户操作
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     decoration: BoxDecoration(

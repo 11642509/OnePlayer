@@ -166,7 +166,7 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
                         borderRadius: BorderRadius.circular(20),
                         onTap: () => Navigator.pop(context),
                         child: Focus(
-                          autofocus: true, // 自动获取焦点
+                          // 不自动获取焦点，等待用户操作
                           onKeyEvent: (node, event) {
                             if (event is KeyDownEvent) {
                               if (event.logicalKey == LogicalKeyboardKey.escape) {

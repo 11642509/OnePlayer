@@ -359,13 +359,7 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
               opacity: widget.showBar ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 300),
               onEnd: () {
-                // 控制栏显示时自动聚焦到播放按钮
-                if (widget.showBar) {
-                  _playButtonFocus.requestFocus();
-                } else {
-                  // 控制栏隐藏时聚焦回视频区域
-                  _videoAreaFocus.requestFocus();
-                }
+                // 不自动聚焦，等待用户操作
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
