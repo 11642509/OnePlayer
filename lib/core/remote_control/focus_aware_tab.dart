@@ -61,7 +61,7 @@ class _FocusAwareTabState extends State<FocusAwareTab> {
         ? BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             color: isDarkMode
-                ? Colors.white.withOpacity(0.25)
+                ? Colors.white.withValues(alpha: 0.25)
                 : Colors.grey[200],
           )
         : null;

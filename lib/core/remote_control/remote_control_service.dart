@@ -7,11 +7,8 @@ import 'package:get/get.dart';
 class RemoteControlService extends GetxService {
   static RemoteControlService get to => Get.find();
 
-  @override
-  void onInit() {
-    super.onInit();
-    // 在这里可以进行服务的初始化，例如设置监听器。
-  }
+  // GetxService的初始化方法
+  // 注意：GetxService中onInit不是override，所以不需要@override注解
 
   // 可以在这里添加方法来处理特定的按键事件，
   // 例如：handleKeyPress(RawKeyEvent event)

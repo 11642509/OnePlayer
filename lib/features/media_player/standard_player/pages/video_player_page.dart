@@ -84,41 +84,10 @@ class _SingleVideoTabPageState extends State<SingleVideoTabPage> with WidgetsBin
             showBar: showBar,
             onUserInteraction: showBars,
             onRequestHideBar: hideBars,
+            title: widget.title,
           ),
-          // 悬浮标题栏
-          AnimatedOpacity(
-            opacity: showBar ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
-            child: Container(
-              height: 56,
-              padding: EdgeInsets.only(top: _isLandscape ? 0 : MediaQuery.of(context).padding.top),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      // 退出全屏模式
-                      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-                      Navigator.of(context).maybePop();
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      style: const TextStyle(
-                        color: Colors.white, 
-                        fontSize: 18, 
-                        fontWeight: FontWeight.bold,
-                  ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // 注释掉独立的标题栏，因为VideoPlayerWithControls内部已经有了
+          // 标题栏已经集成到播放器控件中
         ],
       ),
     );

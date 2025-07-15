@@ -5,7 +5,6 @@ import 'dart:ui';
 import '../../controllers/window_controller.dart';
 import '../common/glass_container.dart';
 import '../../../app/theme/typography.dart';
-import '../../../core/remote_control/focus_aware_tab.dart';
 import '../../../core/remote_control/focusable_glow.dart';
 
 // 横屏导航栏组件
@@ -154,72 +153,71 @@ class NavigationBarState extends State<NavigationBar> {
       animation: focusNode,
       builder: (context, child) {
         final isFocused = focusNode.hasFocus;
-        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         
         // 当获得焦点且未被选中时，显示药丸背景
         final showPill = isFocused && !isSelected;
 
-        return TweenAnimationBuilder<double>(
+    return TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
-          duration: const Duration(milliseconds: 200),
-          builder: (context, value, child) {
+      duration: const Duration(milliseconds: 200),
+      builder: (context, value, child) {
             Color backgroundColor;
             if (isSelected) {
-              backgroundColor = Colors.white.withOpacity(0.85);
+              backgroundColor = Colors.white.withValues(alpha: 0.85);
             } else if (showPill) {
               // 药丸效果只应该在深色模式下出现
-              backgroundColor = Colors.white.withOpacity(0.25);
+              backgroundColor = Colors.white.withValues(alpha: 0.25);
             } else {
               backgroundColor = Colors.transparent;
             }
 
-            return TextButton(
+        return TextButton(
               focusNode: focusNode,
-              onPressed: () => widget.onTabChanged(title),
-              style: TextButton.styleFrom(
+          onPressed: () => widget.onTabChanged(title),
+          style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
-                ),
+            ),
                 backgroundColor: backgroundColor,
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(buttonHeight / 2),
-                ),
-              ).copyWith(
-                overlayColor: WidgetStateProperty.resolveWith<Color>((states) {
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(buttonHeight / 2),
+            ),
+          ).copyWith(
+            overlayColor: WidgetStateProperty.resolveWith<Color>((states) {
                   if (states.contains(WidgetState.hovered) && !isSelected) {
-                    return Colors.white.withOpacity(0.1);
-                  }
-                  return Colors.transparent;
-                }),
-              ),
-              child: Text(
-                title,
-                style: TextStyle(
+                    return Colors.white.withValues(alpha: 0.1);
+              }
+              return Colors.transparent;
+            }),
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
                   // 仅在选中时（白色实底背景）使用深色文字
                   color: isSelected
-                      ? Colors.black.withOpacity(0.9)
-                      : Colors.white.withOpacity(0.9),
+                      ? Colors.black.withValues(alpha: 0.9)
+                      : Colors.white.withValues(alpha: 0.9),
                   fontSize: 16 + (2 * value), // 未选中16，选中时动画到18
-                  fontWeight: FontWeight.lerp(
-                    FontWeight.w500,
-                    FontWeight.w600,
-                    value,
-                  ),
-                  letterSpacing: 0.2,
+              fontWeight: FontWeight.lerp(
+                FontWeight.w500,
+                FontWeight.w600,
+                value,
+              ),
+              letterSpacing: 0.2,
                   shadows: (isSelected || showPill)
                       ? null
-                      : [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.4),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                ),
-              ),
+                  : [
+                      Shadow(
+                            color: Colors.black.withValues(alpha: 0.4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+            ),
+          ),
             );
           },
         );
@@ -237,15 +235,15 @@ class NavigationBarState extends State<NavigationBar> {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.12),
+          color: Colors.white.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(buttonHeight / 2),
           border: Border.all(
-            color: Colors.white.withOpacity(0.15),
+            color: Colors.white.withValues(alpha: 0.15),
             width: 0.2,
           ),
         ),
         child: const Icon(
-          Icons.search_rounded,
+              Icons.search_rounded,
           color: Colors.white,
           size: 18,
         ),
@@ -398,32 +396,32 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                         child: FocusableGlow(
                           onTap: () { /* TODO: 搜索功能 */ },
                           borderRadius: BorderRadius.circular(18),
-                          child: Container(
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.withOpacity(0.15), // 适配亮色背景
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: Colors.grey.withOpacity(0.25),
-                                width: 0.5,
-                              ),
+                        child: Container(
+                          height: 36,
+                          decoration: BoxDecoration(
+                              color: Colors.grey.withValues(alpha: 0.15), // 适配亮色背景
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                                color: Colors.grey.withValues(alpha: 0.25),
+                              width: 0.5,
                             ),
-                            child: Row(
-                              children: [
-                                const SizedBox(width: 12),
-                                Icon(Icons.search, 
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 12),
+                              Icon(Icons.search, 
+                                color: Colors.grey[600], // 适配亮色背景
+                                size: 20
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '搜索视频、番剧、UP主',
+                                style: TextStyle(
                                   color: Colors.grey[600], // 适配亮色背景
-                                  size: 20
+                                  fontSize: 13,
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '搜索视频、番剧、UP主',
-                                  style: TextStyle(
-                                    color: Colors.grey[600], // 适配亮色背景
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
+                              ),
+                            ],
                             ),
                           ),
                         ),
@@ -439,8 +437,8 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                           width: 36,
                           height: 36,
                           child: Icon(Icons.notifications_none, 
-                            color: Colors.grey[600], 
-                            size: 24
+                        color: Colors.grey[600], 
+                        size: 24
                           ),
                         ),
                       ),
@@ -451,13 +449,13 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                         onTap: Get.find<WindowController>().toggleOrientation,
                         borderRadius: BorderRadius.circular(18),
                         child: GlassContainer(
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          child: Icon(
-                            Icons.screen_rotation_rounded,
-                            color: Colors.grey[700], // 适配亮色背景
-                            size: 20,
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                            child: Icon(
+                              Icons.screen_rotation_rounded,
+                              color: Colors.grey[700], // 适配亮色背景
+                              size: 20,
                           ),
                         ),
                       ),
@@ -555,7 +553,7 @@ class _PortraitFocusHighlightState extends State<_PortraitFocusHighlight> {
           ? BoxDecoration(
               // 模拟系统默认的方形高亮
               borderRadius: BorderRadius.circular(4),
-              color: Colors.black.withOpacity(0.1), // 与系统默认值对齐
+              color: Colors.black.withValues(alpha: 0.1), // 与系统默认值对齐
             )
           : null,
       child: widget.child,

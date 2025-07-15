@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../../../app/data_source.dart';
 import '../pages/video_player_with_controls_page.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import '../../../../core/remote_control/focusable_glow.dart';
 
 class SingleVideoTab extends StatefulWidget {
   final bool showBar;
   final VideoPlayConfig playConfig;
   final VoidCallback? onUserInteraction;
   final VoidCallback? onRequestHideBar;
+  final String? title;
   
   const SingleVideoTab({
     super.key, 
@@ -17,6 +20,7 @@ class SingleVideoTab extends StatefulWidget {
     this.showBar = true, 
     this.onUserInteraction, 
     this.onRequestHideBar,
+    this.title,
   });
 
   @override
@@ -107,6 +111,7 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
             showBar: widget.showBar,
             onUserInteraction: widget.onUserInteraction,
             onRequestHideBar: widget.onRequestHideBar,
+            title: widget.title,
           ),
         ),
         
@@ -133,22 +138,98 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
           ],
         ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          const SpinKitWave(
-            size: 36,
-            color: Colors.white70,
-          ),
-          Container(
-            padding: const EdgeInsets.all(50),
-            child: Text(
-              '视频加载中...',
-              style: TextStyle(
-                color: Colors.white.withAlpha(179),
-                fontSize: 14,
-                fontWeight: FontWeight.normal,
+      child: Stack(
+        children: [
+          // 标题栏
+          if (widget.title != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 153/255.0),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: FocusableGlow(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () => Navigator.pop(context),
+                        child: Focus(
+                          autofocus: true, // 自动获取焦点
+                          onKeyEvent: (node, event) {
+                            if (event is KeyDownEvent) {
+                              if (event.logicalKey == LogicalKeyboardKey.escape) {
+                                Navigator.pop(context);
+                                return KeyEventResult.handled;
+                              }
+                            }
+                            return KeyEventResult.ignored;
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.arrow_back_ios_new,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.title ?? '',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ),
+          // 加载动画
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const SpinKitWave(
+                  size: 36,
+                  color: Colors.white70,
+                ),
+                Container(
+                  padding: const EdgeInsets.all(50),
+                  child: Text(
+                    '视频加载中...',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 179/255.0),
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -183,7 +264,7 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
             child: Text(
               _errorMessage,
               style: TextStyle(
-                color: Colors.white.withAlpha(179),
+                color: Colors.white.withValues(alpha: 179/255.0),
                 fontSize: 14,
                 fontWeight: FontWeight.normal,
               ),
@@ -217,7 +298,7 @@ class SingleVideoTabState extends State<SingleVideoTab> with WidgetsBindingObser
               });
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withAlpha(51),
+              backgroundColor: Colors.white.withValues(alpha: 51/255.0),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(

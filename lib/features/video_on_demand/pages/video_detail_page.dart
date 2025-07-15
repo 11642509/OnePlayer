@@ -112,7 +112,7 @@ class VideoDetailPage extends GetView<VideoDetailController> {
       
       // 使用CustomScrollView和SliverAppBar来创建更高级的滚动效果
       return CustomScrollView(
-        key: PageStorageKey(videoId),
+            key: PageStorageKey(videoId),
         slivers: <Widget>[
           // 可伸缩的应用栏，包含Hero区域和返回按钮
           SliverAppBar(
@@ -122,14 +122,25 @@ class VideoDetailPage extends GetView<VideoDetailController> {
             elevation: 0,
             automaticallyImplyLeading: false, // 不使用默认的返回按钮
             leading: Builder(
-              builder: (context) => FocusableGlow(
-                onTap: () => Get.back(),
-                borderRadius: BorderRadius.circular(24),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.arrow_back, color: Colors.white),
+              builder: (context) => Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: FocusableGlow(
+                  onTap: () => Get.back(),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -145,33 +156,33 @@ class VideoDetailPage extends GetView<VideoDetailController> {
             child: Padding(
               // 为内容区域添加内边距
               padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 减小竖屏和横屏模式下的间距
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 减小竖屏和横屏模式下的间距
                   SizedBox(height: isPortrait ? 24 : 16),
-                  
+
                   // 简介区域 - 横屏模式下跳过显示，避免溢出
-                  if (isPortrait && videoDetail['vod_content'] != null && videoDetail['vod_content'].toString().isNotEmpty)
+                if (isPortrait && videoDetail['vod_content'] != null && videoDetail['vod_content'].toString().isNotEmpty)
                     _buildDescriptionSection(videoDetail, textColor, isPortrait),
-                  
-                  // 减小竖屏和横屏模式下的间距
+                
+                // 减小竖屏和横屏模式下的间距
                   if (isPortrait) SizedBox(height: isPortrait ? 24 : 16),
-                  
+
                   // 播放列表区域
-                  if (allPlaySources.isNotEmpty)
-                    _buildPlaySourceSelector(controller, allPlaySources, textColor, isPortrait),
-                  
-                  if (controller.currentPlaySource.value.isNotEmpty &&
-                      playOptions.containsKey(controller.currentPlaySource.value) &&
-                      playOptions[controller.currentPlaySource.value]!.isNotEmpty) ...[
+                      if (allPlaySources.isNotEmpty)
+                        _buildPlaySourceSelector(controller, allPlaySources, textColor, isPortrait),
+                      
+                      if (controller.currentPlaySource.value.isNotEmpty && 
+                          playOptions.containsKey(controller.currentPlaySource.value) && 
+                          playOptions[controller.currentPlaySource.value]!.isNotEmpty) ...[
                     SizedBox(height: isPortrait ? 12 : 16), // 横屏模式下进一步减小间距
-                    _buildTiledPlayList(controller, playOptions[controller.currentPlaySource.value]!, textColor, isPortrait: isPortrait),
-                  ],
-                  
-                  // 减小底部间距
+                        _buildTiledPlayList(controller, playOptions[controller.currentPlaySource.value]!, textColor, isPortrait: isPortrait),
+                      ],
+
+                // 减小底部间距
                   SizedBox(height: isPortrait ? 32 : 16),
-                ],
+              ],
               ),
             ),
           ),
@@ -217,56 +228,56 @@ class VideoDetailPage extends GetView<VideoDetailController> {
   // 竖屏剧集卡片
   Widget _buildPortraitEpisodeCard(VideoDetailController controller, Map<String, String> episode, int index, Color textColor) {
     return FocusableGlow(
-      onTap: () {
-        if (episode['url'] != null && episode['name'] != null) {
-          controller.playVideo(episode['url']!, episode['name']!);
-        }
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        decoration: BoxDecoration(
-          // 自然的毛玻璃效果 - 浅色背景
-          color: Colors.white.withValues(alpha: 0.75),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: Colors.grey[200]!.withValues(alpha: 0.8),
-            width: 0.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ClipRRect(
+          onTap: () {
+            if (episode['url'] != null && episode['name'] != null) {
+              controller.playVideo(episode['url']!, episode['name']!);
+            }
+          },
           borderRadius: BorderRadius.circular(8),
           child: Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.grey[50]!.withValues(alpha: 0.3),
-                  Colors.grey[100]!.withValues(alpha: 0.1),
-                ],
+              // 自然的毛玻璃效果 - 浅色背景
+              color: Colors.white.withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.grey[200]!.withValues(alpha: 0.8),
+                width: 0.5,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Center(
-                child: Text(
-                  episode['name'] ?? '未知',
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 13, // 增加字体大小
-                    height: 1.2, // 减少行高，节省空间
-                    fontWeight: FontWeight.w500,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.grey[50]!.withValues(alpha: 0.3),
+                      Colors.grey[100]!.withValues(alpha: 0.1),
+                    ],
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 3, // 增加最大行数
-                  overflow: TextOverflow.ellipsis,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Center(
+                    child: Text(
+                      episode['name'] ?? '未知',
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 13, // 增加字体大小
+                        height: 1.2, // 减少行高，节省空间
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 3, // 增加最大行数
+                      overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -279,58 +290,58 @@ class VideoDetailPage extends GetView<VideoDetailController> {
   // 横屏剧集卡片（电视盒子风格）
   Widget _buildLandscapeEpisodeCard(VideoDetailController controller, Map<String, String> episode, int index, Color textColor) {
     return FocusableGlow(
-      onTap: () {
-        if (episode['url'] != null && episode['name'] != null) {
-          controller.playVideo(episode['url']!, episode['name']!);
-        }
-      },
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        height: 64,
-        width: 120,
-        decoration: BoxDecoration(
-          // 自然的毛玻璃效果
-          color: Colors.black.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.15),
-            width: 0.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
+          onTap: () {
+            if (episode['url'] != null && episode['name'] != null) {
+              controller.playVideo(episode['url']!, episode['name']!);
+            }
+          },
           borderRadius: BorderRadius.circular(10),
           child: Container(
+            height: 64,
+            width: 120,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withValues(alpha: 0.08),
-                  Colors.white.withValues(alpha: 0.03),
-                ],
+              // 自然的毛玻璃效果
+              color: Colors.black.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
+                width: 0.5,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Center(
-                child: Text(
-                  episode['name'] ?? '未知',
-                  style: TextStyle(
-                    color: textColor.withValues(alpha: 0.95),
-                    fontSize: 13,
-                    height: 1.4,
-                    fontWeight: FontWeight.w500,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.08),
+                      Colors.white.withValues(alpha: 0.03),
+                    ],
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Center(
+                    child: Text(
+                      episode['name'] ?? '未知',
+                      style: TextStyle(
+                        color: textColor.withValues(alpha: 0.95),
+                        fontSize: 13,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -549,42 +560,42 @@ class VideoDetailPage extends GetView<VideoDetailController> {
       onTap: () => controller.playFirstEpisode(),
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        width: 170, // 进一步增加宽度
-        height: 250, // 进一步增加高度
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Image.network(
-              coverUrl,
-              fit: BoxFit.cover,
-              width: 170,
-              height: 250,
-              errorBuilder: (context, error, stackTrace) =>
-                  Container(color: Colors.grey[800]),
-            ),
-            // 添加播放按钮悬浮效果
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.center,
-                    end: Alignment.center,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.3),
-                    ],
-                  ),
+      width: 170, // 进一步增加宽度
+      height: 250, // 进一步增加高度
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Image.network(
+            coverUrl,
+            fit: BoxFit.cover,
+            width: 170,
+            height: 250,
+            errorBuilder: (context, error, stackTrace) =>
+                Container(color: Colors.grey[800]),
+          ),
+          // 添加播放按钮悬浮效果
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.center,
+                  end: Alignment.center,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.3),
+                  ],
                 ),
+              ),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.all(16),
@@ -596,12 +607,12 @@ class VideoDetailPage extends GetView<VideoDetailController> {
                       Icons.play_arrow_rounded,
                       color: Colors.white,
                       size: 40,
-                    ),
                   ),
                 ),
               ),
             ),
-          ],
+          ),
+        ],
         ),
       ),
     );
@@ -803,46 +814,46 @@ class VideoDetailPage extends GetView<VideoDetailController> {
     final height = isLandscape ? 240.0 : 140.0;
     
     return FocusableGlow(
-      onTap: () => controller.playFirstEpisode(),
+        onTap: () => controller.playFirstEpisode(),
       borderRadius: BorderRadius.circular(12),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: size,
-            height: height,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: size,
+              height: height,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.network(
+                coverUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    Container(color: Colors.grey[800]),
+              ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: Image.network(
-              coverUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  Container(color: Colors.grey[800]),
+            Container(
+              width: size,
+              height: height,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.white.withValues(alpha: 0.9),
+                size: isLandscape ? 80 : 60,
+              ),
             ),
-          ),
-          Container(
-            width: size,
-            height: height,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.play_arrow_rounded,
-              color: Colors.white.withValues(alpha: 0.9),
-              size: isLandscape ? 80 : 60,
-            ),
-          ),
-        ],
+          ],
       ),
     );
   }
@@ -1009,68 +1020,68 @@ class VideoDetailPage extends GetView<VideoDetailController> {
   // 构建播放源选择芯片
   Widget _buildPlaySourceChip(VideoDetailController controller, String source, bool isSelected, Color textColor, bool isPortrait) {
     return FocusableGlow(
-      onTap: () => controller.changePlaySource(source),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? const LinearGradient(
-                  colors: [Color(0xFFFF7BB0), Color(0xFFFF4081)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isSelected
-              ? null
-              : isPortrait
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.15),
+          onTap: () => controller.changePlaySource(source),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFFFF7BB0)
-                : isPortrait
-                    ? Colors.grey[300]!
-                    : Colors.white30,
-            width: 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFFFF7BB0).withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? Icons.check_circle : Icons.play_circle_outline,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? const LinearGradient(
+                      colors: [Color(0xFFFF7BB0), Color(0xFFFF4081)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
               color: isSelected
-                  ? Colors.white
+                  ? null
                   : isPortrait
-                      ? textColor
-                      : Colors.white70,
-              size: 16,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              source,
-              style: TextStyle(
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
                 color: isSelected
-                    ? Colors.white
+                    ? const Color(0xFFFF7BB0)
                     : isPortrait
-                        ? textColor
-                        : Colors.white70,
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
+                        ? Colors.grey[300]!
+                        : Colors.white30,
+                width: 1,
               ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFFFF7BB0).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
             ),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isSelected ? Icons.check_circle : Icons.play_circle_outline,
+                  color: isSelected
+                      ? Colors.white
+                      : isPortrait
+                          ? textColor
+                          : Colors.white70,
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  source,
+                  style: TextStyle(
+                    color: isSelected
+                        ? Colors.white
+                        : isPortrait
+                            ? textColor
+                            : Colors.white70,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
         ),
       ),
     );

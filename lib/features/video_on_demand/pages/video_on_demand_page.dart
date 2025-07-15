@@ -116,7 +116,7 @@ class VideoOnDemandPage extends StatelessWidget {
       }).toList(),
       // 恢复为原来的颜色和指示器逻辑
       labelColor: isPortrait ? Colors.grey[800] : Colors.white,
-      unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withOpacity(0.7),
+      unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
       indicatorSize: TabBarIndicatorSize.label,
       dividerColor: Colors.transparent,
       indicator: UnderlineTabIndicator(
@@ -356,8 +356,8 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
       _updateFocusNodes(videoListLength);
 
       return Focus(
-        onKey: (node, event) {
-          if (event is! RawKeyDownEvent) return KeyEventResult.ignored;
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
           final currentIndex = _focusNodes.entries
               .firstWhere((entry) => entry.value.hasFocus, orElse: () => MapEntry(-1, FocusNode()))
@@ -484,8 +484,8 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
       _updateFocusNodes(videoListLength);
 
       return Focus(
-        onKey: (node, event) {
-          if (event is! RawKeyDownEvent) return KeyEventResult.ignored;
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
           final currentIndex = _focusNodes.entries
               .firstWhere((entry) => entry.value.hasFocus, orElse: () => MapEntry(-1, FocusNode()))
@@ -717,8 +717,8 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
                           colors: [
-                            Colors.black.withAlpha(179),
-                            Colors.black.withAlpha(51),
+                            Colors.black.withValues(alpha: 179/255.0),
+                            Colors.black.withValues(alpha: 51/255.0),
                           ],
                         ),
                       ),

@@ -128,14 +128,14 @@ class _LandscapeHomeLayoutState extends State<LandscapeHomeLayout> {
               child: FocusableGlow(
                 onTap: () => windowController.toggleOrientation(),
                 borderRadius: BorderRadius.circular(18),
-                child: GlassContainer(
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  child: Center(
-                    child: CustomPaint(
-                      size: const Size(20, 20),
-                      painter: RotationIconPainter(),
+              child: GlassContainer(
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                    child: Center(
+                      child: CustomPaint(
+                        size: const Size(20, 20),
+                        painter: RotationIconPainter(),
                     ),
                   ),
                 ),

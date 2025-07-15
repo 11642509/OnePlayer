@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import '../../../../app/data_source.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../pages/vlc_player_with_controls_page.dart';
+import '../../../../core/remote_control/focusable_glow.dart';
 
 class VlcTab extends StatefulWidget {
   final VideoPlayConfig playConfig;
@@ -473,44 +475,98 @@ class VlcTabState extends State<VlcTab> {
           colors: <Color>[Colors.blue, Colors.green],
         ),
       ),
-      child: Column(
-        children: <Widget>[
-          // 顶部标题栏和返回按钮
-          SafeArea(
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: _onBackPressed,
+      child: Stack(
+        children: [
+          // 标题栏
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 153/255.0),
+                    Colors.transparent,
+                  ],
                 ),
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: FocusableGlow(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: _onBackPressed,
+                        child: Focus(
+                          autofocus: true, // 自动获取焦点
+                          onKeyEvent: (node, event) {
+                            if (event is KeyDownEvent) {
+                              if (event.logicalKey == LogicalKeyboardKey.escape) {
+                                _onBackPressed();
+                                return KeyEventResult.handled;
+                              }
+                            }
+                            return KeyEventResult.ignored;
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.arrow_back_ios_new,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // 加载动画
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const SpinKitWave(size: 36, color: Colors.white70),
+                Container(
+                  padding: const EdgeInsets.all(50),
+                  child: const Text(
+                    '视频加载中...',
+                    style: TextStyle(
+                      color: Color.fromARGB(179, 255, 255, 255),
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const Spacer(),
-          const SpinKitWave(size: 36, color: Colors.white70),
-          Container(
-            padding: const EdgeInsets.all(50),
-            child: const Text(
-              '视频加载中...',
-              style: TextStyle(
-                color: Color.fromARGB(179, 255, 255, 255),
-                fontSize: 14,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ),
-          const Spacer(),
         ],
       ),
     );
@@ -546,30 +602,33 @@ class VlcTabState extends State<VlcTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-          ElevatedButton(
-                onPressed: _retry,
-            style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white.withAlpha(51),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
+              FocusableGlow(
                 borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('重新加载'),
-              ),
-              const SizedBox(width: 16),
-              ElevatedButton(
-                onPressed: _onBackPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withAlpha(128),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                onTap: _retry,
+                child: Focus(
+                  autofocus: true, // 重新加载按钮默认获取焦点
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 51/255.0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text('重新加载', style: TextStyle(color: Colors.white)),
                   ),
                 ),
-                child: const Text('返回'),
+              ),
+              const SizedBox(width: 16),
+              FocusableGlow(
+                borderRadius: BorderRadius.circular(8),
+                onTap: _onBackPressed,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 128/255.0),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text('返回', style: TextStyle(color: Colors.white)),
+                ),
               ),
             ],
           ),

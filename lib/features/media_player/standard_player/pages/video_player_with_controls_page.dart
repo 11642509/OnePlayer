@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:tapped/tapped.dart';
+import 'package:oneplayer/core/remote_control/focusable_glow.dart';
 
 typedef OnStopRecordingCallback = void Function(String);
 
@@ -11,6 +13,7 @@ class VideoPlayerWithControls extends StatefulWidget {
   final bool showBar;
   final VoidCallback? onUserInteraction;
   final VoidCallback? onRequestHideBar;
+  final String? title;
 
   const VideoPlayerWithControls({
     required this.controller,
@@ -18,6 +21,7 @@ class VideoPlayerWithControls extends StatefulWidget {
     this.showBar = true,
     this.onUserInteraction,
     this.onRequestHideBar,
+    this.title,
     super.key,
   });
 
@@ -34,7 +38,12 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
   bool _initialPlay = true;
   bool _userPaused = false;
 
-  // 新增：接收url参数
+  // 焦点管理
+  final FocusNode _playButtonFocus = FocusNode();
+  final FocusNode _sliderFocus = FocusNode();
+  final FocusNode _videoAreaFocus = FocusNode();
+  final FocusNode _backButtonFocus = FocusNode();
+  bool _isSliderFocused = false;
 
   Timer? _hideBarTimer;
   Timer? _positionUpdateTimer;
@@ -112,6 +121,10 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
     _controller.removeListener(listener);
     _hideBarTimer?.cancel();
     _positionUpdateTimer?.cancel();
+    _playButtonFocus.dispose();
+    _sliderFocus.dispose();
+    _videoAreaFocus.dispose();
+    _backButtonFocus.dispose();
     super.dispose();
   }
 
@@ -131,17 +144,86 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
         alignment: Alignment.bottomCenter,
         children: [
           // 视频区域+点击控制
-          GestureDetector(
-            onTap: () {
-              _resetHideBarTimer();
-              // 记录用户暂停状态
-              if (_controller.value.isPlaying) {
-                _userPaused = true;
-              } else {
-                _userPaused = false;
+          Focus(
+            focusNode: _videoAreaFocus,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent) {
+                if (event.logicalKey == LogicalKeyboardKey.enter ||
+                    event.logicalKey == LogicalKeyboardKey.select) {
+                  _resetHideBarTimer();
+                  // 记录用户暂停状态
+                  if (_controller.value.isPlaying) {
+                    _userPaused = true;
+                  } else {
+                    _userPaused = false;
+                  }
+                  _togglePlaying();
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  // 下键：显示控制栏并聚焦到播放按钮
+                  _resetHideBarTimer();
+                  if (!widget.showBar && widget.onUserInteraction != null) {
+                    widget.onUserInteraction!();
+                    // 延迟一帧后聚焦，确保控制栏已显示
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _playButtonFocus.requestFocus();
+                    });
+                  } else {
+                    _playButtonFocus.requestFocus();
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  // 上键：显示控制栏并聚焦到返回按钮（如果有标题）
+                  _resetHideBarTimer();
+                  if (!widget.showBar && widget.onUserInteraction != null) {
+                    widget.onUserInteraction!();
+                    if (widget.title != null) {
+                      // 延迟一帧后聚焦，确保控制栏已显示
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _backButtonFocus.requestFocus();
+                      });
+                    }
+                  } else if (widget.title != null) {
+                    _backButtonFocus.requestFocus();
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                  // 左键快退10秒（无论控制栏是否显示）
+                  if (_controller.value.isInitialized && validPosition) {
+                    final currentPosition = _controller.value.position.inSeconds.toDouble();
+                    final newPosition = (currentPosition - 10).clamp(0.0, _controller.value.duration.inSeconds.toDouble());
+                    _controller.seekTo(Duration(seconds: newPosition.toInt()));
+                    _resetHideBarTimer();
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                  // 右键快进10秒（无论控制栏是否显示）
+                  if (_controller.value.isInitialized && validPosition) {
+                    final currentPosition = _controller.value.position.inSeconds.toDouble();
+                    final newPosition = (currentPosition + 10).clamp(0.0, _controller.value.duration.inSeconds.toDouble());
+                    _controller.seekTo(Duration(seconds: newPosition.toInt()));
+                    _resetHideBarTimer();
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+                  // ESC键退出播放器
+                  Navigator.pop(context);
+                  return KeyEventResult.handled;
+                }
               }
-              _togglePlaying();
+              return KeyEventResult.ignored;
             },
+            child: GestureDetector(
+              onTap: () {
+                _resetHideBarTimer();
+                // 记录用户暂停状态
+                if (_controller.value.isPlaying) {
+                  _userPaused = true;
+                } else {
+                  _userPaused = false;
+                }
+                _togglePlaying();
+              },
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -186,13 +268,88 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
                       child: Icon(
                         Icons.play_circle_outline,
                         size: 120,
-                        color: Colors.white.withAlpha(102),
+                        color: Colors.white.withValues(alpha: 102/255.0),
                       ),
                     ),
                   ),
               ],
             ),
+            ),
           ),
+          // 新增的顶部标题栏
+          if (widget.title != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: AnimatedOpacity(
+                opacity: widget.showBar ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 153/255.0),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: FocusableGlow(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () => Navigator.pop(context),
+                          child: Focus(
+                            focusNode: _backButtonFocus,
+                            onKeyEvent: (node, event) {
+                              if (event is KeyDownEvent) {
+                                if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                                  // 下键聚焦到视频区域
+                                  _videoAreaFocus.requestFocus();
+                                  return KeyEventResult.handled;
+                                }
+                              }
+                              return KeyEventResult.ignored;
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.arrow_back_ios_new,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.title ?? '',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           // 底部B站风格控制栏
           Positioned(
             left: 0,
@@ -201,23 +358,54 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
             child: AnimatedOpacity(
               opacity: widget.showBar ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 300),
+              onEnd: () {
+                // 控制栏显示时自动聚焦到播放按钮
+                if (widget.showBar) {
+                  _playButtonFocus.requestFocus();
+                } else {
+                  // 控制栏隐藏时聚焦回视频区域
+                  _videoAreaFocus.requestFocus();
+                }
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    IconButton(
-                      color: Colors.white,
-                      icon: _controller.value.isPlaying
-                          ? const Icon(Icons.pause_rounded, size: 28)
-                          : const BiliPlayIcon(size: 28),
-                      iconSize: 28,
-                      onPressed: () {
+                    FocusableGlow(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
                         _resetHideBarTimer();
+                        if (_controller.value.isPlaying) {
+                          _userPaused = true;
+                        } else {
+                          _userPaused = false;
+                        }
                         _togglePlaying();
                       },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                      child: Focus(
+                        focusNode: _playButtonFocus,
+                        onKeyEvent: (node, event) {
+                          if (event is KeyDownEvent) {
+                            if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                              // 右键聚焦到进度条
+                              _sliderFocus.requestFocus();
+                              return KeyEventResult.handled;
+                            } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                              // 上键聚焦回视频区域
+                              _videoAreaFocus.requestFocus();
+                              return KeyEventResult.handled;
+                            }
+                          }
+                          return KeyEventResult.ignored;
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: _controller.value.isPlaying
+                              ? const Icon(Icons.pause_rounded, size: 28, color: Colors.white)
+                              : const BiliPlayIcon(size: 28),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -226,23 +414,76 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
                     ),
                     const SizedBox(width: 4),
                     Expanded(
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: Colors.pinkAccent,
-                          inactiveTrackColor: Colors.white,
-                          thumbColor: Colors.pinkAccent,
-                          overlayColor: Colors.pinkAccent.withAlpha(51),
-                          trackHeight: 2,
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                        ),
-                        child: Slider(
-                          value: sliderValue,
-                          max: !validPosition
-                              ? 1.0
-                              : _controller.value.duration.inSeconds.toDouble(),
-                          onChanged: validPosition ? _onSliderPositionChanged : null,
-                          onChangeEnd: validPosition ? _onSliderChangeEnd : null,
+                      child: FocusableGlow(
+                        borderRadius: BorderRadius.circular(4),
+                        customGlowColor: Colors.pinkAccent,
+                        onTap: () {
+                          _sliderFocus.requestFocus();
+                        },
+                        child: Focus(
+                          focusNode: _sliderFocus,
+                          onFocusChange: (hasFocus) {
+                            setState(() {
+                              _isSliderFocused = hasFocus;
+                            });
+                          },
+                          onKeyEvent: (node, event) {
+                            if (event is KeyDownEvent && validPosition) {
+                              final seekAmount = 10.0; // 10秒快进/快退
+                              if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                                // 左键快退
+                                final newValue = (sliderValue - seekAmount).clamp(
+                                  0.0, 
+                                  _controller.value.duration.inSeconds.toDouble()
+                                );
+                                _onSliderPositionChanged(newValue);
+                                _onSliderChangeEnd(newValue);
+                                return KeyEventResult.handled;
+                              } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                                // 右键快进
+                                final newValue = (sliderValue + seekAmount).clamp(
+                                  0.0, 
+                                  _controller.value.duration.inSeconds.toDouble()
+                                );
+                                _onSliderPositionChanged(newValue);
+                                _onSliderChangeEnd(newValue);
+                                return KeyEventResult.handled;
+                              } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                                // 上键聚焦回视频区域
+                                _videoAreaFocus.requestFocus();
+                                return KeyEventResult.handled;
+                              }
+                            }
+                            if (event is KeyDownEvent && 
+                                event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+                                !validPosition) {
+                              // 进度条不可用时，左键聚焦回播放按钮
+                              _playButtonFocus.requestFocus();
+                              return KeyEventResult.handled;
+                            }
+                            return KeyEventResult.ignored;
+                          },
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor: _isSliderFocused ? Colors.pink : Colors.pinkAccent,
+                              inactiveTrackColor: Colors.white.withValues(alpha: _isSliderFocused ? 0.5 : 0.3),
+                              thumbColor: _isSliderFocused ? Colors.pink : Colors.pinkAccent,
+                              overlayColor: Colors.pinkAccent.withValues(alpha: 51/255.0),
+                              trackHeight: _isSliderFocused ? 4 : 2,
+                              thumbShape: RoundSliderThumbShape(
+                                enabledThumbRadius: _isSliderFocused ? 8 : 4
+                              ),
+                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                            ),
+                            child: Slider(
+                              value: sliderValue,
+                              max: !validPosition
+                                  ? 1.0
+                                  : _controller.value.duration.inSeconds.toDouble(),
+                              onChanged: validPosition ? _onSliderPositionChanged : null,
+                              onChangeEnd: validPosition ? _onSliderChangeEnd : null,
+                            ),
+                          ),
                         ),
                       ),
                     ),

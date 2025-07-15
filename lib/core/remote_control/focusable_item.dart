@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -95,8 +94,8 @@ class _FocusableItemState extends State<FocusableItem>
     super.dispose();
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, RawKeyEvent event) {
-    if (event is RawKeyDownEvent) {
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.select ||
           event.logicalKey == LogicalKeyboardKey.enter) {
         widget.onSelected();
@@ -110,7 +109,7 @@ class _FocusableItemState extends State<FocusableItem>
   Widget build(BuildContext context) {
     return Focus(
       focusNode: _focusNode,
-      onKey: _handleKeyEvent,
+      onKeyEvent: _handleKeyEvent,
       autofocus: widget.autofocus,
       child: TweenAnimationBuilder<double>(
         // 使用一个统一的动画驱动器
@@ -141,8 +140,8 @@ class _FocusableItemState extends State<FocusableItem>
                     BoxShadow(
                       // 在深色模式下使用辉光，浅色模式下使用阴影
                       color: isDarkMode
-                          ? Colors.white.withOpacity(0.2 * value)
-                          : Colors.black.withOpacity(0.35 * value),
+                          ? Colors.white.withValues(alpha: 0.2 * value)
+                          : Colors.black.withValues(alpha: 0.35 * value),
                       blurRadius: isDarkMode ? 25 * value : 20 * value,
                       spreadRadius: 3 * value,
                       // 辉光居中，阴影向下偏移
@@ -155,42 +154,45 @@ class _FocusableItemState extends State<FocusableItem>
             ),
           );
         },
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            children: [
-              widget.child,
-              // 镜面高光效果层
-              if (_isFocused)
-                AnimatedBuilder(
-                  animation: _shineAnimation,
-                  builder: (context, child) {
-                    return ShaderMask(
-                      shaderCallback: (rect) {
-                        return LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withOpacity(0.0),
-                            Colors.white.withOpacity(0.2), // 降低高光亮度
-                            Colors.white.withOpacity(0.0),
-                          ],
-                          stops: const [0.4, 0.5, 0.6],
-                          transform: GradientRotation(
-                            _shineAnimation.value * math.pi / 2, // 减缓旋转速度
+        child: GestureDetector(
+          onTap: widget.onSelected,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                widget.child,
+                // 镜面高光效果层
+                if (_isFocused)
+                  AnimatedBuilder(
+                    animation: _shineAnimation,
+                    builder: (context, child) {
+                      return ShaderMask(
+                        shaderCallback: (rect) {
+                          return LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.0),
+                              Colors.white.withValues(alpha: 0.2), // 降低高光亮度
+                              Colors.white.withValues(alpha: 0.0),
+                            ],
+                            stops: const [0.4, 0.5, 0.6],
+                            transform: GradientRotation(
+                              _shineAnimation.value * math.pi / 2, // 减缓旋转速度
+                            ),
+                          ).createShader(rect);
+                        },
+                        blendMode: BlendMode.srcATop,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ).createShader(rect);
-                      },
-                      blendMode: BlendMode.srcATop,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                    );
-                  },
-                ),
-            ],
+                      );
+                    },
+                  ),
+              ],
+            ),
           ),
         ),
       ),

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import 'package:tapped/tapped.dart';
+import 'package:oneplayer/core/remote_control/focusable_glow.dart';
 
 typedef OnStopRecordingCallback = void Function(String);
 
@@ -43,6 +45,14 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
   bool isRecording = false;
   List<double> playbackSpeeds = [0.5, 1.0, 2.0];
   int playbackSpeedIndex = 1;
+  
+  // 焦点管理
+  final FocusNode _playButtonFocus = FocusNode();
+  final FocusNode _sliderFocus = FocusNode();
+  final FocusNode _videoAreaFocus = FocusNode();
+  final FocusNode _backButtonFocus = FocusNode();
+  bool _isSliderFocused = false;
+  bool _userPaused = false;
 
   // 新增：接收url参数
   String? get _videoUrl => (widget.controller.dataSource).isNotEmpty ? widget.controller.dataSource : null;
@@ -124,6 +134,10 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
   void dispose() {
     _controller.removeListener(listener);
     _hideBarTimer?.cancel();
+    _playButtonFocus.dispose();
+    _sliderFocus.dispose();
+    _videoAreaFocus.dispose();
+    _backButtonFocus.dispose();
     super.dispose();
   }
 
@@ -143,11 +157,84 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
         alignment: Alignment.bottomCenter,
       children: [
           // 视频区域+点击控制
-          GestureDetector(
-            onTap: () {
-              _resetHideBarTimer();
-              _togglePlaying();
+          Focus(
+            focusNode: _videoAreaFocus,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent) {
+                if (event.logicalKey == LogicalKeyboardKey.enter ||
+                    event.logicalKey == LogicalKeyboardKey.select) {
+                  _resetHideBarTimer();
+                  // 记录用户暂停状态
+                  if (_controller.value.isPlaying) {
+                    _userPaused = true;
+                  } else {
+                    _userPaused = false;
+                  }
+                  _togglePlaying();
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  // 下键：显示控制栏并聚焦到播放按钮
+                  _resetHideBarTimer();
+                  if (!widget.showBar && widget.onUserInteraction != null) {
+                    widget.onUserInteraction!();
+                    // 延迟一帧后聚焦，确保控制栏已显示
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _playButtonFocus.requestFocus();
+                    });
+                  } else {
+                    _playButtonFocus.requestFocus();
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  // 上键：显示控制栏并聚焦到返回按钮
+                  _resetHideBarTimer();
+                  if (!widget.showBar && widget.onUserInteraction != null) {
+                    widget.onUserInteraction!();
+                    // 延迟一帧后聚焦，确保控制栏已显示
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _backButtonFocus.requestFocus();
+                    });
+                  } else {
+                    _backButtonFocus.requestFocus();
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                  // 左键快退10秒（无论控制栏是否显示）
+                  if (_controller.value.isInitialized && validPosition) {
+                    final currentPosition = _controller.value.position.inSeconds.toDouble();
+                    final newPosition = (currentPosition - 10).clamp(0.0, _controller.value.duration.inSeconds.toDouble());
+                    _controller.seekTo(Duration(seconds: newPosition.toInt()));
+                    _resetHideBarTimer();
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                  // 右键快进10秒（无论控制栏是否显示）
+                  if (_controller.value.isInitialized && validPosition) {
+                    final currentPosition = _controller.value.position.inSeconds.toDouble();
+                    final newPosition = (currentPosition + 10).clamp(0.0, _controller.value.duration.inSeconds.toDouble());
+                    _controller.seekTo(Duration(seconds: newPosition.toInt()));
+                    _resetHideBarTimer();
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+                  // ESC键退出播放器
+                  Navigator.pop(context);
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
             },
+            child: GestureDetector(
+              onTap: () {
+                _resetHideBarTimer();
+                // 记录用户暂停状态
+                if (_controller.value.isPlaying) {
+                  _userPaused = true;
+                } else {
+                  _userPaused = false;
+                }
+                _togglePlaying();
+              },
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -182,8 +269,8 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                     ),
                   ),
                 ),
-                // 暂停时中央大暂停按钮
-                if (!_controller.value.isPlaying)
+                // 暂停时中央大暂停按钮 - 修改条件，只有用户暂停时才显示
+                if (_userPaused && !_controller.value.isPlaying)
                   Tapped(
                     onTap: _togglePlaying,
                     child: Container(
@@ -193,11 +280,12 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                       child: Icon(
                         Icons.play_circle_outline,
                         size: 120,
-                        color: Colors.white.withAlpha(102),
+                        color: Colors.white.withValues(alpha: 102/255.0),
                         ),
                     ),
                   ),
               ],
+            ),
             ),
           ),
           // 新增的顶部标题栏
@@ -215,16 +303,46 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withAlpha(153),
+                      Colors.black.withValues(alpha: 153/255.0),
                       Colors.transparent,
                     ],
                   ),
                 ),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: FocusableGlow(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () => Navigator.pop(context),
+                        child: Focus(
+                          focusNode: _backButtonFocus,
+                          onKeyEvent: (node, event) {
+                            if (event is KeyDownEvent) {
+                              if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                                // 下键聚焦到视频区域
+                                _videoAreaFocus.requestFocus();
+                                return KeyEventResult.handled;
+                              }
+                            }
+                            return KeyEventResult.ignored;
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.arrow_back_ios_new,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -251,24 +369,55 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
             child: AnimatedOpacity(
               opacity: widget.showBar ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 300),
+              onEnd: () {
+                // 控制栏显示时自动聚焦到播放按钮
+                if (widget.showBar) {
+                  _playButtonFocus.requestFocus();
+                } else {
+                  // 控制栏隐藏时聚焦回视频区域
+                  _videoAreaFocus.requestFocus();
+                }
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                IconButton(
-                  color: Colors.white,
-                  icon: _controller.value.isPlaying
-                          ? const Icon(Icons.pause_rounded, size: 28)
+                FocusableGlow(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    _resetHideBarTimer();
+                    if (_controller.value.isPlaying) {
+                      _userPaused = true;
+                    } else {
+                      _userPaused = false;
+                    }
+                    _togglePlaying();
+                  },
+                  child: Focus(
+                    focusNode: _playButtonFocus,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                          // 右键聚焦到进度条
+                          _sliderFocus.requestFocus();
+                          return KeyEventResult.handled;
+                        } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                          // 上键聚焦回视频区域
+                          _videoAreaFocus.requestFocus();
+                          return KeyEventResult.handled;
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      child: _controller.value.isPlaying
+                          ? const Icon(Icons.pause_rounded, size: 28, color: Colors.white)
                           : const BiliPlayIcon(size: 28),
-                      iconSize: 28,
-                      onPressed: () {
-                        _resetHideBarTimer();
-                        _togglePlaying();
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
+                  ),
+                ),
                     const SizedBox(width: 4),
                       Text(
                         position,
@@ -276,23 +425,76 @@ class VlcPlayerWithControlsState extends State<VlcPlayerWithControls> {
                       ),
                     const SizedBox(width: 4),
                       Expanded(
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: Colors.pinkAccent,
-                          inactiveTrackColor: Colors.white,
-                          thumbColor: Colors.pinkAccent,
-                          overlayColor: Colors.pinkAccent.withAlpha(51),
-                          trackHeight: 2,
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                        ),
-                        child: Slider(
-                          value: sliderValue,
-                          max: !validPosition
-                              ? 1.0
-                              : _controller.value.duration.inSeconds.toDouble(),
-                          onChanged: validPosition ? _onSliderPositionChanged : null,
-                          onChangeEnd: validPosition ? _onSliderChangeEnd : null,
+                      child: FocusableGlow(
+                        borderRadius: BorderRadius.circular(4),
+                        customGlowColor: Colors.pinkAccent,
+                        onTap: () {
+                          _sliderFocus.requestFocus();
+                        },
+                        child: Focus(
+                          focusNode: _sliderFocus,
+                          onFocusChange: (hasFocus) {
+                            setState(() {
+                              _isSliderFocused = hasFocus;
+                            });
+                          },
+                          onKeyEvent: (node, event) {
+                            if (event is KeyDownEvent && validPosition) {
+                              final seekAmount = 10.0; // 10秒快进/快退
+                              if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                                // 左键快退
+                                final newValue = (sliderValue - seekAmount).clamp(
+                                  0.0, 
+                                  _controller.value.duration.inSeconds.toDouble()
+                                );
+                                _onSliderPositionChanged(newValue);
+                                _onSliderChangeEnd(newValue);
+                                return KeyEventResult.handled;
+                              } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                                // 右键快进
+                                final newValue = (sliderValue + seekAmount).clamp(
+                                  0.0, 
+                                  _controller.value.duration.inSeconds.toDouble()
+                                );
+                                _onSliderPositionChanged(newValue);
+                                _onSliderChangeEnd(newValue);
+                                return KeyEventResult.handled;
+                              } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                                // 上键聚焦回视频区域
+                                _videoAreaFocus.requestFocus();
+                                return KeyEventResult.handled;
+                              }
+                            }
+                            if (event is KeyDownEvent && 
+                                event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+                                !validPosition) {
+                              // 进度条不可用时，左键聚焦回播放按钮
+                              _playButtonFocus.requestFocus();
+                              return KeyEventResult.handled;
+                            }
+                            return KeyEventResult.ignored;
+                          },
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor: _isSliderFocused ? Colors.pink : Colors.pinkAccent,
+                              inactiveTrackColor: Colors.white.withValues(alpha: _isSliderFocused ? 0.5 : 0.3),
+                              thumbColor: _isSliderFocused ? Colors.pink : Colors.pinkAccent,
+                              overlayColor: Colors.pinkAccent.withValues(alpha: 51/255.0),
+                              trackHeight: _isSliderFocused ? 4 : 2,
+                              thumbShape: RoundSliderThumbShape(
+                                enabledThumbRadius: _isSliderFocused ? 8 : 4
+                              ),
+                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                            ),
+                            child: Slider(
+                              value: sliderValue,
+                              max: !validPosition
+                                  ? 1.0
+                                  : _controller.value.duration.inSeconds.toDouble(),
+                              onChanged: validPosition ? _onSliderPositionChanged : null,
+                              onChangeEnd: validPosition ? _onSliderChangeEnd : null,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -361,7 +563,6 @@ class BiliPlayIcon extends StatelessWidget {
     );
   }
 }
-
 class _BiliPlayIconPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -382,3 +583,4 @@ class _BiliPlayIconPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
