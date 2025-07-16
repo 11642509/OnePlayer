@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -190,7 +191,9 @@ class SearchControllerV2 extends GetxController {
       }
     } catch (e) {
       // 如果检测失败，保持默认布局
-      print('检测图片方向失败: $e');
+      if (kDebugMode) {
+        print('检测图片方向失败: $e');
+      }
     }
   }
   

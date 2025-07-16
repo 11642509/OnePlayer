@@ -10,7 +10,6 @@ import '../../../core/remote_control/focusable_glow.dart';
 import '../controllers/search_controller.dart' as search_ctrl;
 import '../widgets/search_source_list.dart';
 import '../widgets/search_result_grid.dart';
-import '../widgets/search_suggestions.dart';
 import '../widgets/search_remote_navigation_handler.dart';
 import '../../../shared/models/search_page_state.dart';
 
