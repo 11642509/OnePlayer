@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import '../../features/search/pages/search_page_v2.dart';
+import '../../features/search/controllers/search_controller_v2.dart';
 import '../../features/video_on_demand/pages/video_detail_page.dart';
 import '../../features/media_player/vlc_player/pages/vlc_player_page.dart';
 import '../../features/media_player/standard_player/pages/video_player_page.dart';
@@ -15,6 +17,17 @@ class AppPages {
 
   /// 路由页面列表
   static final routes = [
+    // 搜索页面
+    GetPage(
+      name: AppRoutes.search,
+      page: () => const SearchPageV2(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut<SearchControllerV2>(() => SearchControllerV2());
+      }),
+      transition: Transition.cupertino,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+    
     // 视频详情页
     GetPage(
       name: AppRoutes.videoDetail,

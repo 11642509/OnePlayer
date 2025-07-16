@@ -13,6 +13,8 @@ class FocusableGlow extends StatefulWidget {
   final VoidCallback onTap;
   final BorderRadius borderRadius;
   final Color? customGlowColor; // 允许自定义辉光颜色
+  final FocusNode? focusNode; // 支持外部FocusNode
+  final Function(bool)? onFocusChange; // 焦点变化回调
 
   const FocusableGlow({
     super.key,
@@ -20,6 +22,8 @@ class FocusableGlow extends StatefulWidget {
     required this.onTap,
     this.borderRadius = BorderRadius.zero,
     this.customGlowColor,
+    this.focusNode,
+    this.onFocusChange,
   });
 
   @override
@@ -28,13 +32,14 @@ class FocusableGlow extends StatefulWidget {
 
 class _FocusableGlowState extends State<FocusableGlow>
     with SingleTickerProviderStateMixin {
-  final FocusNode _focusNode = FocusNode();
+  late final FocusNode _focusNode;
   late final AnimationController _controller;
   late final Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
+    _focusNode = widget.focusNode ?? FocusNode();
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350), // 稍微延长动画时间，让过渡更加平滑
@@ -50,16 +55,22 @@ class _FocusableGlowState extends State<FocusableGlow>
   void dispose() {
     _focusNode.removeListener(_onFocusChanged);
     _controller.dispose();
-    _focusNode.dispose();
+    // 只在内部创建的FocusNode才需要释放
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
     super.dispose();
   }
 
   void _onFocusChanged() {
-    if (_focusNode.hasFocus) {
+    final hasFocus = _focusNode.hasFocus;
+    if (hasFocus) {
       _controller.forward();
     } else {
       _controller.reverse();
     }
+    // 调用外部回调
+    widget.onFocusChange?.call(hasFocus);
   }
 
   @override

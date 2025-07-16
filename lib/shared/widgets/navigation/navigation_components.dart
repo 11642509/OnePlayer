@@ -230,7 +230,9 @@ class NavigationBarState extends State<NavigationBar> {
     const buttonHeight = 36.0; // 固定的按钮高度
     
     return FocusableGlow(
-      onTap: () { /* TODO: 搜索功能 */ },
+      onTap: () { 
+        Get.toNamed('/search'); 
+      },
       borderRadius: BorderRadius.circular(buttonHeight / 2),
       child: Container(
         padding: const EdgeInsets.all(8),
@@ -394,7 +396,9 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                       // 搜索框 - 毛玻璃风格
                       Expanded(
                         child: FocusableGlow(
-                          onTap: () { /* TODO: 搜索功能 */ },
+                          onTap: () { 
+                            Get.toNamed('/search'); 
+                          },
                           borderRadius: BorderRadius.circular(18),
                         child: Container(
                           height: 36,
