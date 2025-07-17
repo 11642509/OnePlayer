@@ -88,6 +88,12 @@ class SearchRemoteNavigationHandler {
   
   /// 处理左键
   KeyEventResult _handleArrowLeft() {
+    // 如果清除按钮有焦点，跳转到搜索框
+    if (controller.getClearButtonFocusNode.hasFocus) {
+      controller.navigateToSearchBox();
+      return KeyEventResult.handled;
+    }
+    
     // 如果搜索框有焦点，让文本框处理
     if (controller.searchFocusNode.hasFocus) {
       return KeyEventResult.ignored;
@@ -110,6 +116,12 @@ class SearchRemoteNavigationHandler {
   
   /// 处理右键
   KeyEventResult _handleArrowRight() {
+    // 如果返回按钮有焦点，跳转到搜索框
+    if (controller.getBackButtonFocusNode.hasFocus) {
+      controller.navigateToSearchBox();
+      return KeyEventResult.handled;
+    }
+    
     // 如果搜索框有焦点，让文本框处理
     if (controller.searchFocusNode.hasFocus) {
       return KeyEventResult.ignored;
@@ -132,6 +144,18 @@ class SearchRemoteNavigationHandler {
   
   /// 处理确认键
   KeyEventResult _handleConfirm() {
+    // 如果返回按钮有焦点，执行返回操作
+    if (controller.getBackButtonFocusNode.hasFocus) {
+      Get.back();
+      return KeyEventResult.handled;
+    }
+    
+    // 如果清除按钮有焦点，执行清除操作
+    if (controller.getClearButtonFocusNode.hasFocus) {
+      controller.clearSearch();
+      return KeyEventResult.handled;
+    }
+    
     // 如果搜索框有焦点，执行搜索
     if (controller.searchFocusNode.hasFocus) {
       controller.performSearch(controller.textController.text);
@@ -158,6 +182,18 @@ class SearchRemoteNavigationHandler {
   
   /// 处理返回键
   KeyEventResult _handleBack() {
+    // 如果返回按钮有焦点，执行返回操作
+    if (controller.getBackButtonFocusNode.hasFocus) {
+      Get.back();
+      return KeyEventResult.handled;
+    }
+    
+    // 如果清除按钮有焦点，跳转到搜索框
+    if (controller.getClearButtonFocusNode.hasFocus) {
+      controller.navigateToSearchBox();
+      return KeyEventResult.handled;
+    }
+    
     // 如果搜索框有焦点，清除焦点
     if (controller.searchFocusNode.hasFocus) {
       controller.searchFocusNode.unfocus();

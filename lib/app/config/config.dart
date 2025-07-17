@@ -45,6 +45,50 @@ class AppConfig {
   
   /// 默认数据源
   static const String defaultDataSource = 'bilibili';
+  
+  /// 搜索站点配置
+  static const List<Map<String, dynamic>> searchSources = [
+    {
+      'id': 'bilibili',
+      'name': 'B站',
+      'apiEndpoint': '/api/v1/bilibili',
+      'iconUrl': 'https://www.bilibili.com/favicon.ico',
+      'color': '#FF6B9D',
+      'isEnabled': true,
+    },
+    {
+      'id': 'iqiyi',
+      'name': '爱奇艺',
+      'apiEndpoint': '/api/v1/iqiyi',
+      'iconUrl': 'https://www.iqiyi.com/favicon.ico',
+      'color': '#00C851',
+      'isEnabled': true,
+    },
+    {
+      'id': 'youku',
+      'name': '优酷',
+      'apiEndpoint': '/api/v1/youku',
+      'iconUrl': 'https://www.youku.com/favicon.ico',
+      'color': '#1976D2',
+      'isEnabled': true,
+    },
+    {
+      'id': 'tencent',
+      'name': '腾讯视频',
+      'apiEndpoint': '/api/v1/tencent',
+      'iconUrl': 'https://v.qq.com/favicon.ico',
+      'color': '#FF9800',
+      'isEnabled': true,
+    },
+    {
+      'id': 'mgtv',
+      'name': '芒果TV',
+      'apiEndpoint': '/api/v1/mgtv',
+      'iconUrl': 'https://www.mgtv.com/favicon.ico',
+      'color': '#FFC107',
+      'isEnabled': true,
+    },
+  ];
 }
 
 /// 播放器内核枚举

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// 一个可重用的辉光焦点组件
 ///
@@ -138,14 +139,17 @@ class _FocusableGlowState extends State<FocusableGlow>
           child: child,
         );
       },
-      child: InkWell(
+      child: Focus(
         focusNode: _focusNode,
-        onTap: widget.onTap,
-        borderRadius: widget.borderRadius,
-        splashColor: Colors.transparent, // 移除水波纹效果
-        highlightColor: Colors.transparent, // 移除高亮效果
-        hoverColor: Colors.transparent, // 移除悬停效果
-        child: widget.child,
+        onKeyEvent: _handleKeyEvent,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: widget.borderRadius,
+          splashColor: Colors.transparent, // 移除水波纹效果
+          highlightColor: Colors.transparent, // 移除高亮效果
+          hoverColor: Colors.transparent, // 移除悬停效果
+          child: widget.child,
+        ),
       ),
     );
   }
@@ -178,5 +182,18 @@ class _FocusableGlowState extends State<FocusableGlow>
       ) ?? colors[0],
       width: width,
     );
+  }
+  
+  /// 处理键盘事件
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.select || 
+          event.logicalKey == LogicalKeyboardKey.enter) {
+        // 触发点击事件
+        widget.onTap();
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
   }
 } 

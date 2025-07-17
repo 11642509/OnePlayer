@@ -24,6 +24,7 @@ class SearchController extends GetxController {
   final FocusNode searchFocusNode = FocusNode();
   final RxBool _searchFocused = false.obs;
   final FocusNode clearButtonFocusNode = FocusNode(debugLabel: 'ClearButton');
+  final FocusNode backButtonFocusNode = FocusNode(debugLabel: 'BackButton');
   
   // 搜索防抖定时器
   Timer? _searchDebouncer;
@@ -55,6 +56,7 @@ class SearchController extends GetxController {
   int get focusedSourceIndexValue => focusedSourceIndex.value;
   int get focusedResultIndexValue => focusedResultIndex.value;
   FocusNode get getClearButtonFocusNode => clearButtonFocusNode;
+  FocusNode get getBackButtonFocusNode => backButtonFocusNode;
   
   // 便捷访问器
   String get currentKeyword => _pageState.value.keyword;
@@ -81,6 +83,7 @@ class SearchController extends GetxController {
     textController.dispose();
     searchFocusNode.dispose();
     clearButtonFocusNode.dispose();
+    backButtonFocusNode.dispose();
     sourceScrollController.dispose();
     resultScrollController.dispose();
     

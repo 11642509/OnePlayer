@@ -148,6 +148,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         children: [
           // 返回按钮
           FocusableGlow(
+            focusNode: controller.getBackButtonFocusNode,
             onTap: () => Get.back(),
             borderRadius: BorderRadius.circular(12),
             child: GlassContainer(
@@ -296,13 +297,16 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
                     onNavigateUp: () {
                       Get.back();
                     },
-                    // 左右方向键可切换到清除按钮
+                    // 左右方向键可切换到返回和清除按钮
                     onNavigateLeft: () {
-                      // 聚焦到清除按钮
-                      controller.getClearButtonFocusNode.requestFocus();
+                      // 聚焦到返回按钮
+                      controller.getBackButtonFocusNode.requestFocus();
                     },
                     onNavigateRight: () {
-                      controller.getClearButtonFocusNode.requestFocus();
+                      // 聚焦到清除按钮（如果有内容）
+                      if (controller.currentKeyword.isNotEmpty) {
+                        controller.getClearButtonFocusNode.requestFocus();
+                      }
                     },
                   ),
                 ),

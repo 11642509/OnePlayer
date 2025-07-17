@@ -1,3 +1,5 @@
+import '../../app/config/config.dart';
+
 /// 搜索源站点模型
 class SearchSource {
   final String id;
@@ -16,45 +18,24 @@ class SearchSource {
     required this.color,
   });
   
-  /// 获取预定义的搜索源列表
+  /// 从配置数据创建SearchSource
+  factory SearchSource.fromConfig(Map<String, dynamic> config) {
+    return SearchSource(
+      id: config['id'] as String,
+      name: config['name'] as String,
+      apiEndpoint: config['apiEndpoint'] as String,
+      iconUrl: config['iconUrl'] as String,
+      isEnabled: config['isEnabled'] as bool? ?? true,
+      color: config['color'] as String,
+    );
+  }
+  
+  /// 从配置文件获取搜索源列表
   static List<SearchSource> getDefaultSources() {
-    return [
-      const SearchSource(
-        id: 'bilibili',
-        name: 'B站',
-        apiEndpoint: '/api/v1/bilibili',
-        iconUrl: 'https://www.bilibili.com/favicon.ico',
-        color: '#FF6B9D',
-      ),
-      const SearchSource(
-        id: 'iqiyi',
-        name: '爱奇艺',
-        apiEndpoint: '/api/v1/iqiyi',
-        iconUrl: 'https://www.iqiyi.com/favicon.ico',
-        color: '#00C851',
-      ),
-      const SearchSource(
-        id: 'youku',
-        name: '优酷',
-        apiEndpoint: '/api/v1/youku',
-        iconUrl: 'https://www.youku.com/favicon.ico',
-        color: '#1976D2',
-      ),
-      const SearchSource(
-        id: 'tencent',
-        name: '腾讯视频',
-        apiEndpoint: '/api/v1/tencent',
-        iconUrl: 'https://v.qq.com/favicon.ico',
-        color: '#FF9800',
-      ),
-      const SearchSource(
-        id: 'mgtv',
-        name: '芒果TV',
-        apiEndpoint: '/api/v1/mgtv',
-        iconUrl: 'https://www.mgtv.com/favicon.ico',
-        color: '#FFC107',
-      ),
-    ];
+    return AppConfig.searchSources
+        .where((config) => config['isEnabled'] == true)
+        .map((config) => SearchSource.fromConfig(config))
+        .toList();
   }
   
   @override
