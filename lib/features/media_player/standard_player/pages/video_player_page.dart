@@ -29,7 +29,7 @@ class _SingleVideoTabPageState extends State<SingleVideoTabPage> with WidgetsBin
     super.initState();
     // 添加观察者以监听设备方向变化
     WidgetsBinding.instance.addObserver(this);
-    // 设置全屏模式
+    // 设置沉浸式全屏模式，不论横竖屏都铺满到状态栏
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     // 确保控制栏初始显示，然后会自动隐藏
     showBar = true;
