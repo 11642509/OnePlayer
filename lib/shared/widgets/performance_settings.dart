@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../utils/performance_manager.dart';
+import '../../core/remote_control/focusable_glow.dart';
 
 /// 性能设置界面
 class PerformanceSettings extends StatelessWidget {
@@ -156,10 +157,11 @@ class PerformanceSettings extends StatelessWidget {
   Widget _buildQualityChip(String label, int value, PerformanceManager performance) {
     final isSelected = performance.visualQuality == value;
     
-    return GestureDetector(
+    return FocusableGlow(
       onTap: () {
         performance.setVisualQuality(value);
       },
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -167,18 +169,7 @@ class PerformanceSettings extends StatelessWidget {
               ? const Color(0xFFFF7BB0) 
               : Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected 
-                ? const Color(0xFFFF7BB0) 
-                : Colors.white.withValues(alpha: 0.3),
-          ),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: const Color(0xFFFF7BB0).withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ] : null,
+          // 移除内部的border，让FocusableGlow完全负责边框效果
         ),
         child: Center(
           child: Text(
@@ -187,6 +178,7 @@ class PerformanceSettings extends StatelessWidget {
               color: isSelected ? Colors.white : Colors.white70,
               fontSize: 12,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              // 保留文字阴影以确保可读性
               shadows: isSelected ? [
                 const Shadow(
                   color: Colors.black26,

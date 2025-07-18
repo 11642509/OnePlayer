@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/remote_control/universal_focus.dart';
 
 /// 通用毛玻璃容器 - 与导航栏完全一致的风格
 class GlassContainer extends StatelessWidget {
@@ -128,71 +129,75 @@ class GlassOption extends StatelessWidget {
     final subtitleColor = orientation ? Colors.grey[600]! : Colors.white.withValues(alpha: 0.7);
     final indicatorColor = orientation ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.6);
     
-    return GlassContainer(
-      margin: margin ?? const EdgeInsets.only(bottom: 8),
-      padding: padding ?? const EdgeInsets.all(16),
-      onTap: onTap,
-      isPortrait: orientation,
-      child: Row(
-        children: [
-          // 选择指示器
-          if (trailing == null) ...[
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: indicatorColor,
-                  width: 2,
+    return UniversalFocus(
+      onTap: onTap ?? () {}, // 提供默认的空回调
+      borderRadius: BorderRadius.circular(16),
+      child: GlassContainer(
+        margin: margin ?? const EdgeInsets.only(bottom: 8),
+        padding: padding ?? const EdgeInsets.all(16),
+        onTap: onTap,
+        isPortrait: orientation,
+        child: Row(
+          children: [
+            // 选择指示器
+            if (trailing == null) ...[
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: indicatorColor,
+                    width: 2,
+                  ),
                 ),
+                child: isSelected 
+                  ? Center(
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: textColor,
+                        ),
+                      ),
+                    )
+                  : null,
               ),
-              child: isSelected 
-                ? Center(
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: textColor,
+              const SizedBox(width: 12),
+            ],
+            
+            // 内容区域
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        color: subtitleColor,
+                        fontSize: 14,
                       ),
                     ),
-                  )
-                : null,
-            ),
-            const SizedBox(width: 12),
-          ],
-          
-          // 内容区域
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle!,
-                    style: TextStyle(
-                      color: subtitleColor,
-                      fontSize: 14,
-                    ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          
-          // 尾部组件
-          if (trailing != null) trailing!,
-        ],
+            
+            // 尾部组件
+            if (trailing != null) trailing!,
+          ],
+        ),
       ),
     );
   }

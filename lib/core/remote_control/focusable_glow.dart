@@ -76,35 +76,34 @@ class _FocusableGlowState extends State<FocusableGlow>
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    // 强制使用深色主题的焦点效果，因为我们有宇宙背景
+    // 这样确保在深色背景上焦点效果始终可见
     
-    // 使用自定义颜色或根据主题选择默认颜色
-    final Color primaryColor = widget.customGlowColor ?? (isDarkMode
-        ? const Color(0xFF81D4FA) // 淡蓝色 - 更柔和
-        : const Color(0xFF0288D1)); // 蓝色 - 更深沉
+    // 使用自定义颜色或增强的默认颜色
+    final Color primaryColor = widget.customGlowColor ?? const Color(0xFF81D4FA); // 淡蓝色 - 在深色背景上更明显
     
-    // 创建渐变色 - 更加柔和的辅助颜色
-    final Color secondaryColor = isDarkMode
-        ? const Color(0xFFE1F5FE) // 非常浅的蓝色
-        : const Color(0xFF4FC3F7); // 浅蓝色
+    // 创建渐变色 - 更加醒目的辅助颜色
+    final Color secondaryColor = const Color(0xFFE1F5FE); // 非常浅的蓝色
     
-    // 边框渐变色 - 更加精致的渐变
-    final List<Color> borderGradient = isDarkMode
-        ? [primaryColor, secondaryColor.withValues(alpha: 0.8), primaryColor.withValues(alpha: 0.9)]
-        : [primaryColor.withValues(alpha: 0.8), secondaryColor, primaryColor.withValues(alpha: 0.7)];
+    // 边框渐变色 - 更加明显的渐变
+    final List<Color> borderGradient = [
+      primaryColor, 
+      secondaryColor.withValues(alpha: 0.9), 
+      primaryColor.withValues(alpha: 0.95)
+    ];
     
-    // 边框宽度 - 稍微减小，更加精致
-    final double borderWidth = isDarkMode ? 1.8 : 1.2;
+    // 边框宽度 - 增加宽度使其更明显
+    final double borderWidth = 2.5; // 增加边框宽度
     
-    // 双层辉光效果参数 - 更加柔和
-    final double innerGlowOpacity = isDarkMode ? 0.6 : 0.35;
-    final double outerGlowOpacity = isDarkMode ? 0.25 : 0.15;
+    // 双层辉光效果参数 - 增强可见性
+    final double innerGlowOpacity = 0.8; // 增强内层辉光
+    final double outerGlowOpacity = 0.4; // 增强外层辉光
     
-    final double innerSpreadRadius = isDarkMode ? 1.5 : 0.8;
-    final double outerSpreadRadius = isDarkMode ? 3.0 : 1.5;
+    final double innerSpreadRadius = 2.0; // 增加内层扩散
+    final double outerSpreadRadius = 4.0; // 增加外层扩散
     
-    final double innerBlurRadius = isDarkMode ? 7.0 : 5.0;
-    final double outerBlurRadius = isDarkMode ? 14.0 : 10.0;
+    final double innerBlurRadius = 8.0; // 增加内层模糊
+    final double outerBlurRadius = 16.0; // 增加外层模糊
 
     return AnimatedBuilder(
       animation: _controller,

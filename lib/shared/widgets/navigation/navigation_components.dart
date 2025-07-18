@@ -5,6 +5,7 @@ import 'dart:ui';
 import '../../controllers/window_controller.dart';
 import '../common/glass_container.dart';
 import '../../../app/theme/typography.dart';
+import '../../../core/remote_control/universal_focus.dart';
 import '../../../core/remote_control/focusable_glow.dart';
 
 // 横屏导航栏组件
@@ -234,18 +235,12 @@ class NavigationBarState extends State<NavigationBar> {
         Get.toNamed('/search'); 
       },
       borderRadius: BorderRadius.circular(buttonHeight / 2),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(buttonHeight / 2),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.15),
-            width: 0.2,
-          ),
-        ),
+      child: GlassContainer(
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         child: const Icon(
-              Icons.search_rounded,
+          Icons.search_rounded,
           color: Colors.white,
           size: 18,
         ),
@@ -395,7 +390,7 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                       
                       // 搜索框 - 毛玻璃风格
                       Expanded(
-                        child: FocusableGlow(
+                        child: UniversalFocus(
                           onTap: () { 
                             Get.toNamed('/search'); 
                           },
@@ -434,7 +429,7 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                       const SizedBox(width: 12),
                       
                       // 消息图标 - 适配竖屏亮色背景
-                      FocusableGlow(
+                      UniversalFocus(
                         onTap: () { /* TODO: 消息功能 */ },
                         borderRadius: BorderRadius.circular(18),
                         child: SizedBox(
@@ -449,13 +444,14 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                       
                       // 屏幕旋转按钮 - 使用GlassContainer
                       const SizedBox(width: 10),
-                      FocusableGlow(
+                      UniversalFocus(
                         onTap: Get.find<WindowController>().toggleOrientation,
                         borderRadius: BorderRadius.circular(18),
                         child: GlassContainer(
                         width: 36,
                         height: 36,
                         borderRadius: 18,
+                        isPortrait: true, // 明确指定为竖屏模式（因为这是在竖屏导航中）
                             child: Icon(
                               Icons.screen_rotation_rounded,
                               color: Colors.grey[700], // 深色图标，适配竖屏亮色背景
@@ -555,9 +551,13 @@ class _PortraitFocusHighlightState extends State<_PortraitFocusHighlight> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: _isFocused
           ? BoxDecoration(
-              // 模拟系统默认的方形高亮
+              // 轻微的焦点高亮效果，类似测试页风格
               borderRadius: BorderRadius.circular(4),
-              color: Colors.white.withValues(alpha: 0.2), // 适配深色背景
+              color: Colors.black.withValues(alpha: 0.08), // 轻微的深色高亮
+              border: Border.all(
+                color: Colors.grey.withValues(alpha: 0.3), // 轻微的边框
+                width: 1,
+              ),
             )
           : null,
       child: widget.child,
