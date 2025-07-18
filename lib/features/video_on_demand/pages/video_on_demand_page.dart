@@ -463,20 +463,20 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
   
   /// 纵向卡片网格布局 (适用于纵向封面图)
   Widget _buildVerticalCardGrid(List videoList, bool isPortrait) {
-    // 纵向卡片：横屏4列，竖屏2列
-    int crossAxisCount = isPortrait ? 2 : 4;
-    final double titleHeight = 40; // 增加标题高度以确保两行文字完整显示
+    // 纵向卡片：横屏6列，竖屏3列（增加列数以适配纵版图片）
+    int crossAxisCount = isPortrait ? 3 : 6;
+    final double titleHeight = 36; // 略微减少标题高度
     final double spacing = 4;
     
     return Builder(builder: (context) {
       final double screenWidth = MediaQuery.of(context).size.width;
       // 精确计算项目宽度，减去所有水平内边距和间距
       final double itemWidth = isPortrait 
-          ? (screenWidth - 16 * 2 - 16) / 2 // (总宽 - 左右内边距 - 间距) / 列数
-          : (screenWidth - 24 * 2 - 20 * 3) / 4; // (总宽 - 左右内边距 - 间距) / 列数
+          ? (screenWidth - 16 * 2 - 12 * 2) / 3 // 3列布局，减少间距
+          : (screenWidth - 24 * 2 - 16 * 5) / 6; // 6列布局，减少间距
       
-      // 纵向卡片也使用16:9比例，但是是纵向的16:9
-      final double imageHeight = itemWidth * 16 / 9; // 纵向16:9
+      // 纵向卡片使用较小的纵向比例，让图片更紧凑
+      final double imageHeight = itemWidth * 1.4; // 使用更小的比例，以显示更多内容
       final double itemHeight = imageHeight + spacing + titleHeight;
       final double childAspectRatio = itemWidth / itemHeight;
 
@@ -548,8 +548,8 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossAxisCount,
           childAspectRatio: childAspectRatio,
-            crossAxisSpacing: isPortrait ? 16 : 20, // 增加水平间距
-            mainAxisSpacing: isPortrait ? 20 : 24, // 增加垂直间距
+            crossAxisSpacing: isPortrait ? 12 : 16, // 减少水平间距
+            mainAxisSpacing: isPortrait ? 16 : 20, // 减少垂直间距
         ),
         itemCount: videoList.length + (widget.typeName != "主页" ? 1 : 0),
         // 性能优化：大幅增加缓存，确保遥控器快速导航时项目不被回收
