@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
-import '../../features/search/pages/search_page_v2.dart';
-import '../../features/search/controllers/search_controller_v2.dart';
+import '../../features/search/pages/search_page.dart';
+import '../../features/search/controllers/search_controller.dart' as search_ctrl;
 import '../../features/video_on_demand/pages/video_detail_page.dart';
 import '../../features/media_player/vlc_player/pages/vlc_player_page.dart';
 import '../../features/media_player/standard_player/pages/video_player_page.dart';
@@ -20,9 +20,9 @@ class AppPages {
     // 搜索页面
     GetPage(
       name: AppRoutes.search,
-      page: () => const SearchPageV2(),
+      page: () => const SearchPage(),
       binding: BindingsBuilder(() {
-        Get.lazyPut<SearchControllerV2>(() => SearchControllerV2());
+        Get.lazyPut<search_ctrl.SearchController>(() => search_ctrl.SearchController());
       }),
       transition: Transition.cupertino,
       transitionDuration: const Duration(milliseconds: 300),
