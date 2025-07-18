@@ -311,13 +311,13 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
     _updateStatusBarStyle();
   }
   
-  // 更新状态栏样式 - 适配清新亮色背景
+  // 更新状态栏样式 - 适配深色宇宙背景
   void _updateStatusBarStyle() {
-    // 竖屏模式下设置状态栏图标为深色（适配亮色清新背景）
+    // 竖屏模式下设置状态栏图标为浅色（适配深色宇宙背景）
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark, // 改为深色图标
-      statusBarBrightness: Brightness.light, // iOS 适配亮色背景
+      statusBarIconBrightness: Brightness.light, // 改为浅色图标
+      statusBarBrightness: Brightness.dark, // iOS 适配深色背景
     ));
   }
   
@@ -381,7 +381,7 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.grey.withValues(alpha: 0.6), // 适配亮色背景
+                            color: Colors.white.withValues(alpha: 0.3), // 适配深色背景
                             width: 2
                           ),
                           image: const DecorationImage(
@@ -403,10 +403,10 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                         child: Container(
                           height: 36,
                           decoration: BoxDecoration(
-                              color: Colors.grey.withValues(alpha: 0.15), // 适配亮色背景
+                              color: Colors.white.withValues(alpha: 0.15), // 适配深色背景
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
-                                color: Colors.grey.withValues(alpha: 0.25),
+                                color: Colors.white.withValues(alpha: 0.25),
                               width: 0.5,
                             ),
                           ),
@@ -414,14 +414,14 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                             children: [
                               const SizedBox(width: 12),
                               Icon(Icons.search, 
-                                color: Colors.grey[600], // 适配亮色背景
+                                color: Colors.white.withValues(alpha: 0.7), // 适配深色背景
                                 size: 20
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 '搜索视频、番剧、UP主',
                                 style: TextStyle(
-                                  color: Colors.grey[600], // 适配亮色背景
+                                  color: Colors.white.withValues(alpha: 0.7), // 适配深色背景
                                   fontSize: 13,
                                 ),
                               ),
@@ -433,7 +433,7 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                       
                       const SizedBox(width: 12),
                       
-                      // 消息图标 - 适配亮色背景
+                      // 消息图标 - 适配深色背景
                       FocusableGlow(
                         onTap: () { /* TODO: 消息功能 */ },
                         borderRadius: BorderRadius.circular(18),
@@ -441,7 +441,7 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                           width: 36,
                           height: 36,
                           child: Icon(Icons.notifications_none, 
-                        color: Colors.grey[600], 
+                        color: Colors.white.withValues(alpha: 0.8), 
                         size: 24
                           ),
                         ),
@@ -458,7 +458,7 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                         borderRadius: 18,
                             child: Icon(
                               Icons.screen_rotation_rounded,
-                              color: Colors.grey[700], // 适配亮色背景
+                              color: Colors.white.withValues(alpha: 0.8), // 适配深色背景
                               size: 20,
                           ),
                         ),
@@ -471,9 +471,9 @@ class _PortraitNavigationBarState extends State<PortraitNavigationBar>
                 TabBar(
                   controller: _tabController,
                   isScrollable: true, // 恢复滚动，6个标签需要滚动
-                  labelColor: Colors.grey[800], // 深色选中文字
-                  unselectedLabelColor: Colors.grey[600], // 浅色未选中文字
-                  indicatorColor: Colors.grey[800], // 深色指示器
+                  labelColor: Colors.white, // 浅色选中文字
+                  unselectedLabelColor: Colors.white.withValues(alpha: 0.7), // 浅色未选中文字
+                  indicatorColor: Colors.white, // 浅色指示器
                   indicatorSize: TabBarIndicatorSize.label,
                   indicatorWeight: 3,
                   dividerColor: Colors.transparent, // 移除底部横线
@@ -557,7 +557,7 @@ class _PortraitFocusHighlightState extends State<_PortraitFocusHighlight> {
           ? BoxDecoration(
               // 模拟系统默认的方形高亮
               borderRadius: BorderRadius.circular(4),
-              color: Colors.black.withValues(alpha: 0.1), // 与系统默认值对齐
+              color: Colors.white.withValues(alpha: 0.2), // 适配深色背景
             )
           : null,
       child: widget.child,

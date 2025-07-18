@@ -159,7 +159,7 @@ class WindowController extends GetxController {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
+          statusBarIconBrightness: Brightness.light, // 适配深色宇宙背景
         ));
       } else {
         // 横屏模式使用沉浸式体验
