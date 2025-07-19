@@ -24,6 +24,9 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   final ScrollController sourceScrollController = ScrollController();
   final ScrollController resultScrollController = ScrollController();
   
+  // ScrollController 管理 - 复制影视页逻辑
+  final Map<String, ScrollController> _scrollControllers = {};
+  
   // TabController for source selection
   TabController? sourceTabController;
   
@@ -33,6 +36,9 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   final RxList<SearchSource> sources = <SearchSource>[].obs;
   final RxString selectedSourceId = ''.obs;
   final RxMap<String, SearchResponse> searchResults = <String, SearchResponse>{}.obs;
+  
+  // 修改数据结构以匹配影视页逻辑 - 每个sourceId对应一个结果列表
+  final RxMap<String, List<SearchResult>> sourceResults = <String, List<SearchResult>>{}.obs;
   final RxMap<String, bool> loadingStates = <String, bool>{}.obs;
   final RxString errorMessage = ''.obs;
   final RxBool isHorizontalLayout = true.obs; // 图片布局方向
@@ -66,6 +72,12 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
     sourceScrollController.dispose();
     resultScrollController.dispose();
     sourceTabController?.dispose();
+    
+    // 清理 ScrollController
+    for (var controller in _scrollControllers.values) {
+      controller.dispose();
+    }
+    _scrollControllers.clear();
     
     // 清理焦点节点
     for (final node in _sourceFocusNodes.values) {
@@ -169,6 +181,13 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
       
       // 更新结果
       searchResults.assignAll(results);
+      
+      // 同时更新sourceResults以匹配影视页逻辑
+      sourceResults.clear();
+      for (final entry in results.entries) {
+        sourceResults[entry.key] = entry.value.results;
+      }
+      
       loadingStates.clear();
       
       // 如果当前选中的源没有结果，自动选择第一个有结果的源
@@ -231,6 +250,7 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   /// 清除搜索结果
   void _clearResults() {
     searchResults.clear();
+    sourceResults.clear();
     loadingStates.clear();
     errorMessage.value = '';
     isSearching.value = false;
@@ -415,18 +435,17 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   /// 获取当前选中源的结果
   List<SearchResult> getCurrentResults() {
     if (selectedSourceId.value.isEmpty) return [];
-    final response = searchResults[selectedSourceId.value];
-    return response?.results ?? [];
+    return sourceResults[selectedSourceId.value] ?? [];
   }
   
   /// 检查源是否有结果
   bool hasSourceResults(String sourceId) {
-    return searchResults[sourceId]?.hasResults ?? false;
+    return (sourceResults[sourceId]?.isNotEmpty) ?? false;
   }
   
   /// 获取源的结果数量
   int getSourceResultCount(String sourceId) {
-    return searchResults[sourceId]?.results.length ?? 0;
+    return sourceResults[sourceId]?.length ?? 0;
   }
   
   /// 检查源是否正在加载
@@ -461,5 +480,13 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
         curve: Curves.easeInOut,
       );
     }
+  }
+  
+  /// 获取或创建 ScrollController - 复制影视页逻辑
+  ScrollController getScrollController(String sourceName) {
+    if (!_scrollControllers.containsKey(sourceName)) {
+      _scrollControllers[sourceName] = ScrollController();
+    }
+    return _scrollControllers[sourceName]!;
   }
 }
