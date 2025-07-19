@@ -82,15 +82,9 @@ class GlassContainer extends StatelessWidget {
     );
 
     if (onTap != null) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(borderRadius),
-          splashColor: Colors.white.withValues(alpha: 0.1),
-          highlightColor: Colors.white.withValues(alpha: 0.05),
-          child: container,
-        ),
+      return GestureDetector(
+        onTap: onTap,
+        child: container,
       );
     }
 
@@ -128,15 +122,19 @@ class GlassOption extends StatelessWidget {
     final textColor = orientation ? Colors.grey[800]! : Colors.white;
     final subtitleColor = orientation ? Colors.grey[600]! : Colors.white.withValues(alpha: 0.7);
     final indicatorColor = orientation ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.6);
+    final containerMargin = margin ?? const EdgeInsets.only(bottom: 8);
+    final containerPadding = padding ?? const EdgeInsets.all(16);
     
-    return UniversalFocus(
-      onTap: onTap ?? () {}, // 提供默认的空回调
-      borderRadius: BorderRadius.circular(16),
-      child: GlassContainer(
-        margin: margin ?? const EdgeInsets.only(bottom: 8),
-        padding: padding ?? const EdgeInsets.all(16),
-        onTap: onTap,
-        isPortrait: orientation,
+    return Container(
+      margin: containerMargin,
+      child: UniversalFocus(
+        onTap: onTap ?? () {}, // 提供默认的空回调
+        borderRadius: BorderRadius.circular(16),
+        child: GlassContainer(
+          margin: EdgeInsets.zero, // 移除margin，让焦点边框完全贴合
+          padding: containerPadding,
+          onTap: onTap,
+          isPortrait: orientation,
         child: Row(
           children: [
             // 选择指示器
@@ -199,6 +197,7 @@ class GlassOption extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

@@ -79,11 +79,11 @@ class _FocusableGlowState extends State<FocusableGlow>
     // 强制使用深色主题的焦点效果，因为我们有宇宙背景
     // 这样确保在深色背景上焦点效果始终可见
     
-    // 使用自定义颜色或增强的默认颜色
-    final Color primaryColor = widget.customGlowColor ?? const Color(0xFF81D4FA); // 淡蓝色 - 在深色背景上更明显
+    // 使用自定义颜色或调整后的默认颜色
+    final Color primaryColor = widget.customGlowColor ?? const Color(0xFF64B5F6); // 改为更亮的天蓝色
     
-    // 创建渐变色 - 更加醒目的辅助颜色
-    final Color secondaryColor = const Color(0xFFE1F5FE); // 非常浅的蓝色
+    // 创建渐变色 - 更加柔和的辅助颜色
+    final Color secondaryColor = const Color(0xFFBBDEFB); // 更亮的浅蓝色
     
     // 边框渐变色 - 更加明显的渐变
     final List<Color> borderGradient = [
@@ -92,18 +92,18 @@ class _FocusableGlowState extends State<FocusableGlow>
       primaryColor.withValues(alpha: 0.95)
     ];
     
-    // 边框宽度 - 增加宽度使其更明显
-    final double borderWidth = 2.5; // 增加边框宽度
+    // 边框宽度 - 减小宽度让界面更清爽
+    final double borderWidth = 1.5; // 减小边框宽度
     
-    // 双层辉光效果参数 - 增强可见性
-    final double innerGlowOpacity = 0.8; // 增强内层辉光
-    final double outerGlowOpacity = 0.4; // 增强外层辉光
+    // 双层辉光效果参数 - 横屏减小辉光，竖屏调整蓝色
+    final double innerGlowOpacity = 0.4; // 减小内层辉光强度
+    final double outerGlowOpacity = 0.2; // 减小外层辉光强度
     
-    final double innerSpreadRadius = 2.0; // 增加内层扩散
-    final double outerSpreadRadius = 4.0; // 增加外层扩散
+    final double innerSpreadRadius = 1.0; // 减小内层扩散
+    final double outerSpreadRadius = 2.0; // 大幅减小外层扩散
     
-    final double innerBlurRadius = 8.0; // 增加内层模糊
-    final double outerBlurRadius = 16.0; // 增加外层模糊
+    final double innerBlurRadius = 4.0; // 减小内层模糊
+    final double outerBlurRadius = 8.0; // 大幅减小外层模糊
 
     return AnimatedBuilder(
       animation: _controller,
@@ -141,12 +141,8 @@ class _FocusableGlowState extends State<FocusableGlow>
       child: Focus(
         focusNode: _focusNode,
         onKeyEvent: _handleKeyEvent,
-        child: InkWell(
+        child: GestureDetector(
           onTap: widget.onTap,
-          borderRadius: widget.borderRadius,
-          splashColor: Colors.transparent, // 移除水波纹效果
-          highlightColor: Colors.transparent, // 移除高亮效果
-          hoverColor: Colors.transparent, // 移除悬停效果
           child: widget.child,
         ),
       ),

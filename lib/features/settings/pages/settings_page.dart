@@ -4,6 +4,7 @@ import '../../../shared/utils/performance_manager.dart';
 import '../../../shared/widgets/common/glass_container.dart';
 import '../../../app/config/config.dart';
 import '../controllers/settings_controller.dart';
+import '../../../core/remote_control/universal_focus.dart';
 
 /// 设置页面 - 使用统一毛玻璃风格
 class SettingsPage extends GetView<SettingsController> {
@@ -295,7 +296,7 @@ class SettingsPage extends GetView<SettingsController> {
     );
   }
 
-  /// 紧凑的性能选项 - 防止溢出
+  /// 紧凑的性能选项
   Widget _buildCompactOption(String title, int value, PerformanceManager performance, BuildContext context, bool isPortrait) {
     final isSelected = performance.visualQuality == value;
     final textColor = isPortrait ? Colors.grey[800]! : Colors.white;
@@ -309,13 +310,83 @@ class SettingsPage extends GetView<SettingsController> {
     
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+      child: UniversalFocus(
+        onTap: () {
+          performance.setVisualQuality(value);
+          Navigator.of(context).pop();
+          _showSettingToast('已切换到$title模式');
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? selectedBgColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: isSelected 
+              ? Border.all(color: selectedBorderColor, width: 1)
+              : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: borderColor,
+                    width: 1.5,
+                  ),
+                ),
+                child: isSelected 
+                  ? Center(
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: textColor,
+                        ),
+                      ),
+                    )
+                  : null,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title, 
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 紧凑的播放器内核选项
+  Widget _buildCompactKernelOption(String title, PlayerKernel kernel, SettingsController controller, BuildContext context, bool isPortrait) {
+    return Obx(() {
+      final isSelected = controller.currentPlayerKernel.value == kernel;
+      final textColor = isPortrait ? Colors.grey[800]! : Colors.white;
+      final borderColor = isPortrait ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.6);
+      final selectedBgColor = isPortrait 
+          ? Colors.grey.withValues(alpha: 0.15) 
+          : Colors.white.withValues(alpha: 0.15);
+      final selectedBorderColor = isPortrait 
+          ? Colors.grey.withValues(alpha: 0.4) 
+          : Colors.white.withValues(alpha: 0.3);
+      
+      return Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        child: UniversalFocus(
           onTap: () {
-            performance.setVisualQuality(value);
+            controller.setPlayerKernel(kernel);
             Navigator.of(context).pop();
-            _showSettingToast('已切换到$title模式');
+            _showSettingToast('已切换到$title内核');
           },
           borderRadius: BorderRadius.circular(8),
           child: Container(
@@ -362,82 +433,6 @@ class SettingsPage extends GetView<SettingsController> {
                   ),
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 紧凑的播放器内核选项
-  Widget _buildCompactKernelOption(String title, PlayerKernel kernel, SettingsController controller, BuildContext context, bool isPortrait) {
-    return Obx(() {
-      final isSelected = controller.currentPlayerKernel.value == kernel;
-      final textColor = isPortrait ? Colors.grey[800]! : Colors.white;
-      final borderColor = isPortrait ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.6);
-      final selectedBgColor = isPortrait 
-          ? Colors.grey.withValues(alpha: 0.15) 
-          : Colors.white.withValues(alpha: 0.15);
-      final selectedBorderColor = isPortrait 
-          ? Colors.grey.withValues(alpha: 0.4) 
-          : Colors.white.withValues(alpha: 0.3);
-      
-      return Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              controller.setPlayerKernel(kernel);
-              Navigator.of(context).pop();
-              _showSettingToast('已切换到$title内核');
-            },
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? selectedBgColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-                border: isSelected 
-                  ? Border.all(color: selectedBorderColor, width: 1)
-                  : null,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: borderColor,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: isSelected 
-                      ? Center(
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: textColor,
-                            ),
-                          ),
-                        )
-                      : null,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    title, 
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
