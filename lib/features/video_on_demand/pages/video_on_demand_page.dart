@@ -93,6 +93,9 @@ class VideoOnDemandPage extends StatelessWidget {
     return TabBar(
       controller: controller.tabController,
       isScrollable: true,
+      // 禁用默认的焦点装饰，只使用我们自定义的FocusAwareTab效果
+      splashFactory: NoSplash.splashFactory,
+      overlayColor: WidgetStateProperty.all(Colors.transparent),
       tabs: controller.classList.map((item) {
         final tabContent = Text(
             item['type_name'] as String,
@@ -107,8 +110,10 @@ class VideoOnDemandPage extends StatelessWidget {
 
         return Tab(
           height: isPortrait ? 36 : 40,
-          // 仅在横屏模式下应用自定义的焦点效果
-          child: isPortrait ? tabContent : FocusAwareTab(child: tabContent),
+          // 竖屏使用与主导航一致的方形高亮，横屏使用药丸效果
+          child: isPortrait 
+              ? _PortraitFocusHighlight(child: tabContent)
+              : FocusAwareTab(child: tabContent),
         );
       }).toList(),
       // 恢复为原来的颜色和指示器逻辑
@@ -305,6 +310,70 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
         onLoadMore: () => widget.controller.loadMoreData(widget.typeName),
         emptyMessage: "此分类下暂无内容",
       ),
+    );
+  }
+}
+
+/// 一个辅助组件，用于在竖屏模式下为Tab提供清晰的方形焦点高亮。
+/// 与上方主导航保持一致的效果。
+class _PortraitFocusHighlight extends StatefulWidget {
+  final Widget child;
+  const _PortraitFocusHighlight({required this.child});
+
+  @override
+  State<_PortraitFocusHighlight> createState() =>
+      _PortraitFocusHighlightState();
+}
+
+class _PortraitFocusHighlightState extends State<_PortraitFocusHighlight> {
+  FocusNode? _focusNode;
+  bool _isFocused = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final focusNode = Focus.of(context);
+    if (_focusNode != focusNode) {
+      _focusNode?.removeListener(_onFocusChanged);
+      _focusNode = focusNode;
+      _focusNode?.addListener(_onFocusChanged);
+      if (_focusNode != null && _isFocused != _focusNode!.hasFocus) {
+        _isFocused = _focusNode!.hasFocus;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode?.removeListener(_onFocusChanged);
+    super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (mounted && _isFocused != _focusNode?.hasFocus) {
+      setState(() {
+        _isFocused = _focusNode!.hasFocus;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 为了让高亮和文字之间有呼吸感，使用内边距
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: _isFocused
+          ? BoxDecoration(
+              // 轻微的焦点高亮效果，类似测试页风格
+              borderRadius: BorderRadius.circular(4),
+              color: Colors.black.withValues(alpha: 0.08), // 轻微的深色高亮
+              border: Border.all(
+                color: Colors.grey.withValues(alpha: 0.3), // 轻微的边框
+                width: 1,
+              ),
+            )
+          : null,
+      child: widget.child,
     );
   }
 }
