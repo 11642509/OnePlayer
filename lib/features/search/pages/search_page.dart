@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background.dart';
 import '../../../shared/widgets/common/glass_container.dart';
 import '../../../app/theme/typography.dart';
-import '../../../core/remote_control/focusable_glow.dart';
+import '../../../core/remote_control/focusable_item.dart';
 import '../../../app/routes/app_routes.dart';
 import '../controllers/search_controller.dart' as search_ctrl;
 
@@ -182,15 +182,9 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
       child: Row(
         children: [
           // 返回按钮
-          FocusableGlow(
+          FocusableItem(
             focusNode: controller.backButtonFocusNode,
-            onTap: () => Get.back(),
-            onFocusChange: (hasFocus) {
-              if (hasFocus) {
-                // 当返回按钮获得焦点时，可以通过右键回到搜索框
-              }
-            },
-            borderRadius: BorderRadius.circular(12),
+            onSelected: () => Get.back(),
             child: GlassContainer(
               width: 48,
               height: 48,
@@ -216,11 +210,10 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
           Obx(() => AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: controller.keyword.value.isNotEmpty
-                ? FocusableGlow(
+                ? FocusableItem(
                     key: const ValueKey('clear'),
                     focusNode: controller.clearButtonFocusNode,
-                    onTap: controller.clearSearch,
-                    borderRadius: BorderRadius.circular(12),
+                    onSelected: controller.clearSearch,
                     child: GlassContainer(
                       width: 48,
                       height: 48,
@@ -406,20 +399,13 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
 
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: FocusableGlow(
+        child: FocusableItem(
           focusNode: controller.getSourceFocusNode(source.id),
-          onTap: () {
+          onSelected: () {
             controller.selectSource(source.id);
             controller.focusedSourceIndex.value = index;
             controller.focusedArea.value = 'sources';
           },
-          onFocusChange: (hasFocus) {
-            if (hasFocus) {
-              controller.focusedSourceIndex.value = index;
-              controller.focusedArea.value = 'sources';
-            }
-          },
-          borderRadius: BorderRadius.circular(12),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.all(16),
@@ -637,21 +623,14 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     return Obx(() {
       final isFocused = controller.focusedResultIndex.value == index;
 
-      return FocusableGlow(
+      return FocusableItem(
         focusNode: controller.getResultFocusNode(index),
-        onTap: () {
+        onSelected: () {
           Get.toNamed(
             AppRoutes.videoDetail,
             parameters: {'videoId': result.vodId},
           );
         },
-        onFocusChange: (hasFocus) {
-          if (hasFocus) {
-            controller.focusedResultIndex.value = index;
-            controller.focusedArea.value = 'results';
-          }
-        },
-        borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           transform: Matrix4.identity()..scale(isFocused ? 1.02 : 1.0),
@@ -915,9 +894,8 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
             textAlign: TextAlign.center,
           )),
           const SizedBox(height: 24),
-          FocusableGlow(
-            onTap: controller.performSearch,
-            borderRadius: BorderRadius.circular(24),
+          FocusableItem(
+            onSelected: controller.performSearch,
             child: GlassContainer(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               borderRadius: 24,

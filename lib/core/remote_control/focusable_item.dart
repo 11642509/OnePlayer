@@ -10,7 +10,7 @@ class FocusableItem extends StatefulWidget {
   /// 需要被包裹的子组件
   final Widget child;
 
-  /// 当用户按下“确认”键时触发的回调
+  /// 当用户按下"确认"键时触发的回调
   final VoidCallback onSelected;
 
   /// 外部传入的焦点节点，用于更精细的控制
@@ -133,22 +133,29 @@ class _FocusableItemState extends State<FocusableItem>
               transform: transform,
               alignment: Alignment.center,
               child: Container(
-                decoration: BoxDecoration(
+                decoration: _isFocused ? BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  // 阴影也使用动画值，实现平滑过渡
-                  boxShadow: [
+                  color: isDarkMode
+                      ? Colors.white.withValues(alpha: 0.25 * value)
+                      : Colors.grey[800]?.withValues(alpha: 0.15 * value),
+                  // 竖屏添加阴影效果
+                  boxShadow: !isDarkMode ? [
+                    // 灰色投影
                     BoxShadow(
-                      // 在深色模式下使用辉光，浅色模式下使用阴影
-                      color: isDarkMode
-                          ? Colors.white.withValues(alpha: 0.2 * value)
-                          : Colors.black.withValues(alpha: 0.35 * value),
-                      blurRadius: isDarkMode ? 25 * value : 20 * value,
-                      spreadRadius: 3 * value,
-                      // 辉光居中，阴影向下偏移
-                      offset: isDarkMode ? Offset.zero : Offset(0, 10 * value),
-                    )
-                  ],
-                ),
+                      color: Colors.grey.withValues(alpha: 0.15 * value),
+                      blurRadius: 20 * value,
+                      spreadRadius: -5 * value,
+                      offset: Offset(0, 8 * value),
+                    ),
+                    // 白色高光
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.8 * value),
+                      blurRadius: 1 * value,
+                      spreadRadius: 0,
+                      offset: Offset(0, -0.3 * value),
+                    ),
+                  ] : null,
+                ) : null,
                 child: child,
               ),
             ),
