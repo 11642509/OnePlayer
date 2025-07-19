@@ -8,7 +8,7 @@ import '../../../shared/services/search_service.dart';
 import '../../../app/routes/app_routes.dart';
 
 /// 搜索控制器
-class SearchController extends GetxController {
+class SearchController extends GetxController with GetTickerProviderStateMixin {
   // 核心服务
   final SearchService _searchService = SearchService();
   
@@ -23,6 +23,9 @@ class SearchController extends GetxController {
   // 滚动控制器
   final ScrollController sourceScrollController = ScrollController();
   final ScrollController resultScrollController = ScrollController();
+  
+  // TabController for source selection
+  TabController? sourceTabController;
   
   // 响应式状态
   final RxString keyword = ''.obs;
@@ -62,6 +65,7 @@ class SearchController extends GetxController {
     backButtonFocusNode.dispose();
     sourceScrollController.dispose();
     resultScrollController.dispose();
+    sourceTabController?.dispose();
     
     // 清理焦点节点
     for (final node in _sourceFocusNodes.values) {
@@ -80,6 +84,33 @@ class SearchController extends GetxController {
     sources.assignAll(defaultSources);
     if (defaultSources.isNotEmpty) {
       selectedSourceId.value = defaultSources.first.id;
+      // 初始化TabController
+      _updateTabController();
+    }
+  }
+  
+  /// 更新TabController
+  void _updateTabController() {
+    if (sources.isEmpty) return;
+    
+    sourceTabController?.dispose();
+    sourceTabController = TabController(length: sources.length, vsync: this);
+    
+    // 监听TabController变化，同步选中的源
+    sourceTabController?.addListener(() {
+      if (sourceTabController!.indexIsChanging) {
+        final selectedIndex = sourceTabController!.index;
+        if (selectedIndex < sources.length) {
+          final source = sources[selectedIndex];
+          selectSource(source.id);
+        }
+      }
+    });
+    
+    // 设置初始选中的tab
+    final selectedIndex = sources.indexWhere((source) => source.id == selectedSourceId.value);
+    if (selectedIndex >= 0 && sourceTabController != null) {
+      sourceTabController!.index = selectedIndex;
     }
   }
   
@@ -217,6 +248,12 @@ class SearchController extends GetxController {
   void selectSource(String sourceId) {
     selectedSourceId.value = sourceId;
     focusedResultIndex.value = -1;
+    
+    // 同步TabController
+    final selectedIndex = sources.indexWhere((source) => source.id == sourceId);
+    if (selectedIndex >= 0 && sourceTabController != null && sourceTabController!.index != selectedIndex) {
+      sourceTabController!.animateTo(selectedIndex);
+    }
     
     // 切换源时重新检测图片方向
     _checkFirstImageOrientation();

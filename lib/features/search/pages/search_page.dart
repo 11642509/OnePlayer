@@ -7,6 +7,7 @@ import '../../../shared/widgets/common/glass_container.dart';
 import '../../../shared/widgets/video/video_grid_widget.dart';
 import '../../../app/theme/typography.dart';
 import '../../../core/remote_control/focusable_item.dart';
+import '../../../core/remote_control/focus_aware_tab.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../shared/controllers/window_controller.dart';
 import '../controllers/search_controller.dart' as search_ctrl;
@@ -40,26 +41,174 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
 
   /// 构建响应式布局
   Widget _buildResponsiveLayout(bool isPortrait) {
-    if (isPortrait) {
-      return Column(
-        children: [
-          _buildHeader(isPortrait),
-          _buildPortraitSourceSelector(),
-          Expanded(
-            child: _buildResultArea(isPortrait),
+    return Column(
+      children: [
+        _buildHeader(isPortrait),
+        Expanded(
+          child: _buildMainContent(isPortrait),
+        ),
+      ],
+    );
+  }
+
+  /// 构建主要内容 - 参考影视页设计
+  Widget _buildMainContent(bool isPortrait) {
+    return Column(
+      children: [
+        // 分类导航（源站点选择）
+        _buildSourceTabBar(isPortrait),
+        
+        // 搜索结果区域
+        Expanded(
+          child: _buildSearchResults(isPortrait),
+        ),
+      ],
+    );
+  }
+
+  /// 构建源站点选择的TabBar - 参考影视页的分类导航
+  Widget _buildSourceTabBar(bool isPortrait) {
+    return Container(
+      height: isPortrait ? 48 : 56,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isPortrait ? [
+            Colors.white.withValues(alpha: 0.05),
+            Colors.transparent,
+          ] : [
+            Colors.black.withValues(alpha: 0.1),
+            Colors.transparent,
+          ],
+        ),
+      ),
+      child: Obx(() {
+        if (controller.sources.isEmpty) {
+          return const SizedBox();
+        }
+        
+        return TabBar(
+          controller: controller.sourceTabController,
+          isScrollable: true,
+          tabs: controller.sources.map((source) {
+            final tabContent = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 源标识点
+                Container(
+                  width: 6,
+                  height: 6,
+                  margin: const EdgeInsets.only(right: 6),
+                  decoration: BoxDecoration(
+                    color: _parseColor(source.color),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                // 源名称
+                Text(
+                  source.name,
+                  style: TextStyle(
+                    fontFamily: AppTypography.systemFont,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+                // 结果数量徽标
+                if (controller.hasSourceResults(source.id)) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _parseColor(source.color).withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${controller.getSourceResultCount(source.id)}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: isPortrait ? Colors.grey[800] : Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+                // 加载指示器
+                if (controller.isSourceLoading(source.id)) ...[
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isPortrait ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+
+            return Tab(
+              height: isPortrait ? 36 : 40,
+              child: isPortrait ? tabContent : FocusAwareTab(child: tabContent),
+            );
+          }).toList(),
+          labelColor: isPortrait ? Colors.grey[800] : Colors.white,
+          unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+          indicatorSize: TabBarIndicatorSize.label,
+          dividerColor: Colors.transparent,
+          indicator: UnderlineTabIndicator(
+            borderSide: BorderSide(
+              color: isPortrait ? Colors.grey[800]! : Colors.white,
+              width: 3,
+            ),
+            insets: const EdgeInsets.symmetric(horizontal: 16),
           ),
-        ],
-      );
-    } else {
-      return Column(
-        children: [
-          _buildHeader(isPortrait),
-          Expanded(
-            child: _buildLandscapeMainContent(),
+          padding: const EdgeInsets.only(left: 16),
+          tabAlignment: TabAlignment.start,
+          labelPadding: EdgeInsets.symmetric(
+            horizontal: isPortrait ? 12 : 16,
           ),
-        ],
-      );
-    }
+        );
+      }),
+    );
+  }
+
+  /// 构建搜索结果 - 参考影视页的视频网格
+  Widget _buildSearchResults(bool isPortrait) {
+    return Obx(() {
+      if (controller.keyword.value.isEmpty) {
+        return _buildEmptyState(
+          icon: Icons.search,
+          title: '开始搜索',
+          subtitle: '输入关键词搜索视频内容',
+          isPortrait: isPortrait,
+        );
+      }
+
+      if (controller.isSearching.value) {
+        return _buildLoadingState(isPortrait);
+      }
+
+      if (controller.errorMessage.value.isNotEmpty) {
+        return _buildErrorState(isPortrait);
+      }
+
+      final results = controller.getCurrentResults();
+      if (results.isEmpty) {
+        return _buildEmptyState(
+          icon: Icons.search_off,
+          title: '没有找到结果',
+          subtitle: '试试其他关键词或选择其他站点',
+          isPortrait: isPortrait,
+        );
+      }
+
+      return _buildResultGrid(results, isPortrait);
+    });
   }
 
   /// 处理键盘事件
@@ -368,414 +517,6 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     });
   }
 
-  /// 构建横屏主要内容
-  Widget _buildLandscapeMainContent() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 左侧源列表
-          SizedBox(
-            width: 300,
-            child: _buildSourceList(false),
-          ),
-          
-          const SizedBox(width: 20),
-          
-          // 右侧结果区域
-          Expanded(
-            child: _buildResultArea(false),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 构建竖屏源选择器（横向滚动）
-  Widget _buildPortraitSourceSelector() {
-    final windowController = Get.find<WindowController>();
-    final isPortrait = windowController.isPortrait.value;
-    
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
-              '搜索站点',
-              style: AppTypography.titleMedium.copyWith(
-                color: isPortrait ? Colors.grey[800] : Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Obx(() => ListView.builder(
-              controller: controller.sourceScrollController,
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              itemCount: controller.sources.length,
-              itemBuilder: (context, index) {
-                final source = controller.sources[index];
-                return _buildPortraitSourceItem(source, index);
-              },
-            )),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 构建竖屏源项目
-  Widget _buildPortraitSourceItem(source, int index) {
-    final windowController = Get.find<WindowController>();
-    final isPortrait = windowController.isPortrait.value;
-    
-    return Obx(() {
-      final isSelected = controller.selectedSourceId.value == source.id;
-      final isFocused = controller.focusedSourceIndex.value == index;
-      final hasResults = controller.hasSourceResults(source.id);
-      final isLoading = controller.isSourceLoading(source.id);
-      final resultCount = controller.getSourceResultCount(source.id);
-
-      return Padding(
-        padding: const EdgeInsets.only(right: 12),
-        child: FocusableItem(
-          focusNode: controller.getSourceFocusNode(source.id),
-          onSelected: () {
-            controller.selectSource(source.id);
-            controller.focusedSourceIndex.value = index;
-            controller.focusedArea.value = 'sources';
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 120,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? (isPortrait ? Colors.grey.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.2))
-                  : (isPortrait ? Colors.grey.withValues(alpha: isFocused ? 0.2 : 0.12) : Colors.white.withValues(alpha: isFocused ? 0.15 : 0.08)),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected
-                    ? (isPortrait ? Colors.grey.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.4))
-                    : isFocused
-                        ? (isPortrait ? Colors.grey.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.3))
-                        : Colors.transparent,
-                width: 1.5,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    // 源标识
-                    Container(
-                      width: 3,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: _parseColor(source.color),
-                        borderRadius: BorderRadius.circular(1.5),
-                      ),
-                    ),
-                    
-                    const SizedBox(width: 8),
-                    
-                    // 源名称
-                    Expanded(
-                      child: Text(
-                        source.name,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: isPortrait ? Colors.grey[800] : Colors.white,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    
-                    // 状态指示器
-                    if (isLoading)
-                      SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            isPortrait ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      )
-                    else if (hasResults)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _parseColor(source.color).withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '$resultCount',
-                          style: AppTypography.labelSmall.copyWith(
-                            color: isPortrait ? Colors.grey[800] : Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 9,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    });
-  }
-
-  /// 构建源列表
-  Widget _buildSourceList(bool isPortrait) {
-    return GlassContainer(
-      borderRadius: 16,
-      isPortrait: isPortrait,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 标题
-          Padding(
-            padding: EdgeInsets.all(isPortrait ? 16 : 20),
-            child: Text(
-              '搜索站点',
-              style: AppTypography.titleLarge.copyWith(
-                color: isPortrait ? Colors.grey[800] : Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: isPortrait ? 16 : 18,
-              ),
-            ),
-          ),
-          
-          // 源列表
-          Expanded(
-            child: Obx(() => ListView.builder(
-              controller: controller.sourceScrollController,
-              padding: EdgeInsets.symmetric(
-                horizontal: isPortrait ? 16 : 20,
-                vertical: 10,
-              ),
-              itemCount: controller.sources.length,
-              itemBuilder: (context, index) {
-                final source = controller.sources[index];
-                return _buildSourceItem(source, index, isPortrait);
-              },
-            )),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 构建源项目
-  Widget _buildSourceItem(source, int index, bool isPortrait) {
-    return Obx(() {
-      final isSelected = controller.selectedSourceId.value == source.id;
-      final isFocused = controller.focusedSourceIndex.value == index;
-      final hasResults = controller.hasSourceResults(source.id);
-      final isLoading = controller.isSourceLoading(source.id);
-      final resultCount = controller.getSourceResultCount(source.id);
-
-      return Padding(
-        padding: EdgeInsets.only(bottom: isPortrait ? 10 : 12),
-        child: FocusableItem(
-          focusNode: controller.getSourceFocusNode(source.id),
-          onSelected: () {
-            controller.selectSource(source.id);
-            controller.focusedSourceIndex.value = index;
-            controller.focusedArea.value = 'sources';
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: EdgeInsets.all(isPortrait ? 12 : 16),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? (isPortrait ? Colors.grey.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.2))
-                  : (isPortrait ? Colors.grey.withValues(alpha: isFocused ? 0.2 : 0.12) : Colors.white.withValues(alpha: isFocused ? 0.15 : 0.08)),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected
-                    ? (isPortrait ? Colors.grey.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.4))
-                    : isFocused
-                        ? (isPortrait ? Colors.grey.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.3))
-                        : Colors.transparent,
-                width: 1.5,
-              ),
-            ),
-            child: Row(
-              children: [
-                // 源标识
-                Container(
-                  width: 4,
-                  height: isPortrait ? 28 : 32,
-                  decoration: BoxDecoration(
-                    color: _parseColor(source.color),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                
-                SizedBox(width: isPortrait ? 12 : 16),
-                
-                // 源信息
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        source.name,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: isPortrait ? Colors.grey[800] : Colors.white,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          fontSize: isPortrait ? 14 : 16,
-                        ),
-                      ),
-                      if (hasResults) ...[
-                        SizedBox(height: isPortrait ? 2 : 4),
-                        Text(
-                          '$resultCount 个结果',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
-                            fontSize: isPortrait ? 11 : 12,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                
-                // 状态指示器
-                if (isLoading) ...[
-                  SizedBox(
-                    width: isPortrait ? 16 : 20,
-                    height: isPortrait ? 16 : 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isPortrait ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ),
-                ] else if (hasResults) ...[
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isPortrait ? 6 : 8,
-                      vertical: isPortrait ? 3 : 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _parseColor(source.color).withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '$resultCount',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: isPortrait ? Colors.grey[800] : Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: isPortrait ? 10 : 11,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      );
-    });
-  }
-
-  /// 构建结果区域
-  Widget _buildResultArea(bool isPortrait) {
-    return GlassContainer(
-      borderRadius: 16,
-      isPortrait: isPortrait,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 标题
-          Padding(
-            padding: EdgeInsets.all(isPortrait ? 16 : 20),
-            child: Obx(() => Row(
-              children: [
-                Text(
-                  '搜索结果',
-                  style: AppTypography.titleLarge.copyWith(
-                    color: isPortrait ? Colors.grey[800] : Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: isPortrait ? 16 : 18,
-                  ),
-                ),
-                
-                const Spacer(),
-                
-                if (controller.getCurrentResults().isNotEmpty) ...[
-                  Text(
-                    '${controller.getCurrentResults().length} 个结果',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
-                      fontSize: isPortrait ? 12 : 14,
-                    ),
-                  ),
-                ],
-              ],
-            )),
-          ),
-          
-          // 结果内容
-          Expanded(
-            child: _buildResultContent(isPortrait),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 构建结果内容
-  Widget _buildResultContent(bool isPortrait) {
-    return Obx(() {
-      if (controller.keyword.value.isEmpty) {
-        return _buildEmptyState(
-          icon: Icons.search,
-          title: '开始搜索',
-          subtitle: '输入关键词搜索视频内容',
-          isPortrait: isPortrait,
-        );
-      }
-
-      if (controller.isSearching.value) {
-        return _buildLoadingState(isPortrait);
-      }
-
-      if (controller.errorMessage.value.isNotEmpty) {
-        return _buildErrorState(isPortrait);
-      }
-
-      final results = controller.getCurrentResults();
-      if (results.isEmpty) {
-        return _buildEmptyState(
-          icon: Icons.search_off,
-          title: '没有找到结果',
-          subtitle: '试试其他关键词或选择其他站点',
-          isPortrait: isPortrait,
-        );
-      }
-
-      return _buildResultGrid(results, isPortrait);
-    });
-  }
-
   /// 构建结果网格 - 使用共享的VideoGridWidget
   Widget _buildResultGrid(List results, bool isPortrait) {
     return Obx(() {
@@ -799,13 +540,12 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         scrollController: controller.resultScrollController,
         isPortrait: isPortrait,
         isHorizontalLayout: isHorizontal,
-        showLoadMore: false, // 搜索结果通常不需要加载更多
+        showLoadMore: false,
         isLoadingMore: false,
         hasMore: false,
         padding: EdgeInsets.all(isPortrait ? 16 : 20),
         emptyMessage: "没有找到相关视频",
         onVideoTap: (video) {
-          // 自定义点击事件，导航到视频详情页
           Get.toNamed(
             AppRoutes.videoDetail,
             parameters: {'videoId': video['vod_id'] ?? video['vodId']},
