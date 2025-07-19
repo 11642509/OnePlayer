@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/fresh_cosmic_background.dart';
 import '../../../shared/widgets/common/glass_container.dart';
+import '../../../shared/widgets/video/video_grid_widget.dart';
 import '../../../app/theme/typography.dart';
 import '../../../core/remote_control/focusable_item.dart';
 import '../../../app/routes/app_routes.dart';
@@ -96,8 +97,9 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         }
         return KeyEventResult.handled;
       case 'results':
-        controller.moveResultUp(); // 控制器内部已处理跳转到搜索框的逻辑
-        return KeyEventResult.handled;
+        // 由于使用了VideoGridWidget，交由其内部处理焦点导航
+        // 如果需要跳转到搜索框，可以监听边界情况
+        return KeyEventResult.ignored; // 让VideoGridWidget处理
       default:
         return KeyEventResult.ignored;
     }
@@ -112,8 +114,8 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         controller.moveSourceDown();
         return KeyEventResult.handled;
       case 'results':
-        controller.moveResultDown();
-        return KeyEventResult.handled;
+        // 由于使用了VideoGridWidget，交由其内部处理焦点导航
+        return KeyEventResult.ignored; // 让VideoGridWidget处理
       default:
         return KeyEventResult.ignored;
     }
@@ -132,13 +134,9 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         controller.backButtonFocusNode.requestFocus();
         return KeyEventResult.handled;
       case 'results':
-        if (controller.focusedResultIndex.value % 4 == 0) {
-          // 在最左列，跳转到源列表
-          controller.navigateToSources();
-        } else {
-          controller.moveResultLeft();
-        }
-        return KeyEventResult.handled;
+        // 由于使用了VideoGridWidget，交由其内部处理焦点导航
+        // 如果在最左列，可能需要跳转到源列表，但这需要VideoGridWidget支持
+        return KeyEventResult.ignored; // 让VideoGridWidget处理
       default:
         return KeyEventResult.ignored;
     }
@@ -168,8 +166,8 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         controller.navigateToResults();
         return KeyEventResult.handled;
       case 'results':
-        controller.moveResultRight();
-        return KeyEventResult.handled;
+        // 由于使用了VideoGridWidget，交由其内部处理焦点导航
+        return KeyEventResult.ignored; // 让VideoGridWidget处理
       default:
         return KeyEventResult.ignored;
     }
@@ -778,231 +776,41 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     });
   }
 
-  /// 构建结果网格
+  /// 构建结果网格 - 使用共享的VideoGridWidget
   Widget _buildResultGrid(List results, bool isPortrait) {
     return Obx(() {
       final isHorizontal = controller.isHorizontalLayout.value;
       
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          // 响应式布局参数
-          final int crossAxisCount = isPortrait ? 2 : 4;  // 竖屏2列，横屏4列
-          final double crossAxisSpacing = isPortrait ? 12 : 16;
-          final double mainAxisSpacing = isPortrait ? 16 : 16;
-          final double padding = isPortrait ? 16 : 20;
-          final double titleHeight = 40;
-          final double spacing = 8;
-          
-          // 计算每个项目的宽度
-          final double itemWidth = (constraints.maxWidth - padding * 2 - crossAxisSpacing * (crossAxisCount - 1)) / crossAxisCount;
-          
-          // 根据图片方向计算高度
-          final double imageHeight = isHorizontal 
-              ? itemWidth * 9 / 16  // 横版图片：16:9
-              : itemWidth * 16 / 9; // 竖版图片：9:16
-          
-          final double itemHeight = imageHeight + spacing + titleHeight;
-          final double childAspectRatio = itemWidth / itemHeight;
-          
-          return GridView.builder(
-            controller: controller.resultScrollController,
-            padding: EdgeInsets.all(padding),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: crossAxisSpacing,
-              mainAxisSpacing: mainAxisSpacing,
-              childAspectRatio: childAspectRatio,
-            ),
-            itemCount: results.length,
-            itemBuilder: (context, index) {
-              final result = results[index];
-              return _buildResultItem(result, index, isHorizontal, itemWidth, imageHeight, isPortrait);
-            },
-          );
-        },
-      );
-    });
-  }
-
-  /// 构建结果项目
-  Widget _buildResultItem(result, int index, bool isHorizontal, double itemWidth, double imageHeight, bool isPortrait) {
-    return Obx(() {
-      final isFocused = controller.focusedResultIndex.value == index;
-
-      return FocusableItem(
-        focusNode: controller.getResultFocusNode(index),
-        onSelected: () {
+      // 将搜索结果转换为video格式
+      final List<Map<String, dynamic>> videoList = results.map((result) => {
+        'vod_id': result.vodId,
+        'vod_name': result.vodName,
+        'vod_pic': result.vodPic,
+        'vod_remarks': result.vodRemarks,
+        // 为兼容性添加备用字段名
+        'vodId': result.vodId,
+        'vodName': result.vodName,
+        'vodPic': result.vodPic,
+        'vodRemarks': result.vodRemarks,
+      }).toList();
+      
+      return VideoGridWidget(
+        videoList: videoList,
+        scrollController: controller.resultScrollController,
+        isPortrait: isPortrait,
+        isHorizontalLayout: isHorizontal,
+        showLoadMore: false, // 搜索结果通常不需要加载更多
+        isLoadingMore: false,
+        hasMore: false,
+        padding: EdgeInsets.all(isPortrait ? 16 : 20),
+        emptyMessage: "没有找到相关视频",
+        onVideoTap: (video) {
+          // 自定义点击事件，导航到视频详情页
           Get.toNamed(
             AppRoutes.videoDetail,
-            parameters: {'videoId': result.vodId},
+            parameters: {'videoId': video['vod_id'] ?? video['vodId']},
           );
         },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          transform: Matrix4.identity()..scale(isFocused ? 1.02 : 1.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 封面卡片
-              SizedBox(
-                height: imageHeight,
-                child: Card(
-                  elevation: 0,
-                  margin: EdgeInsets.zero,
-                  clipBehavior: Clip.antiAlias,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  color: Colors.black.withValues(alpha: 0.15),
-                  child: Container(
-                    width: double.infinity,
-                    height: imageHeight,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isPortrait 
-                            ? Colors.grey.withValues(alpha: isFocused ? 0.4 : 0.12)
-                            : Colors.white.withValues(alpha: isFocused ? 0.4 : 0.12),
-                        width: isFocused ? 2 : 0.5,
-                      ),
-                      boxShadow: isFocused
-                          ? [
-                              BoxShadow(
-                                color: isPortrait 
-                                    ? Colors.grey.withValues(alpha: 0.2)
-                                    : Colors.white.withValues(alpha: 0.1),
-                                blurRadius: 8,
-                                spreadRadius: 0,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            result.vodPic,
-                            fit: BoxFit.cover,
-                            width: itemWidth,
-                            height: imageHeight,
-                            cacheWidth: (itemWidth * 2).round(),
-                            cacheHeight: (imageHeight * 2).round(),
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                color: Colors.grey[850],
-                                child: const Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey[800],
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.image_not_supported,
-                                    color: Colors.white54,
-                                    size: 32,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        
-                        // 备注信息覆盖层
-                        if (result.vodRemarks.isNotEmpty && result.vodRemarks.length <= 30) ...[
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.bottomCenter,
-                                  end: Alignment.topCenter,
-                                  colors: [
-                                    Colors.black.withValues(alpha: 0.7),
-                                    Colors.black.withValues(alpha: 0.2),
-                                  ],
-                                ),
-                              ),
-                              child: Text(
-                                result.vodRemarks,
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
-                              ),
-                            ),
-                          ),
-                        ],
-                        
-                        // 播放按钮（仅在焦点时显示）
-                        if (isFocused) ...[
-                          Center(
-                            child: Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.play_arrow,
-                                color: Colors.white,
-                                size: 36,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
-              // 标题
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 36, // 固定高度避免溢出
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Text(
-                    result.vodName,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: isPortrait ? Colors.grey[800] : Colors.white,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 13,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.start,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       );
     });
   }
