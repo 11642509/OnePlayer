@@ -4,10 +4,11 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../models/search_source.dart';
 import '../models/search_result.dart';
+import '../../app/config/config.dart';
 
 /// 搜索API服务
 class SearchService {
-  static const String _baseUrl = 'http://localhost:8080';
+  static String get _baseUrl => AppConfig.apiBaseUrl;
   static const Duration _timeout = Duration(seconds: 10);
   
   // 搜索结果缓存
