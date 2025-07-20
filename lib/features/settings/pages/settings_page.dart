@@ -5,6 +5,7 @@ import '../../../shared/widgets/common/glass_container.dart';
 import '../../../app/config/config.dart';
 import '../controllers/settings_controller.dart';
 import '../../../core/remote_control/universal_focus.dart';
+import '../../../shared/controllers/window_controller.dart';
 
 /// 设置页面 - 使用统一毛玻璃风格
 class SettingsPage extends GetView<SettingsController> {
@@ -13,6 +14,7 @@ class SettingsPage extends GetView<SettingsController> {
   @override
   Widget build(BuildContext context) {
     final performance = Get.find<PerformanceManager>();
+    final windowController = Get.find<WindowController>();
     
     return Obx(() {
         // 确保控制器已初始化
@@ -20,8 +22,9 @@ class SettingsPage extends GetView<SettingsController> {
           Get.put(SettingsController());
         }
         
-        // 检测屏幕方向，调整文字颜色
-        final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+        // 使用WindowController统一判断横竖屏，与其他页面保持一致
+        final isPortrait = windowController.isPortrait.value;
+        
         return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -175,7 +178,8 @@ class SettingsPage extends GetView<SettingsController> {
   
   void _showPerformanceSettings(BuildContext context) {
     final performance = Get.find<PerformanceManager>();
-    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    final windowController = Get.find<WindowController>();
+    final isPortrait = windowController.isPortrait.value;
     
     showDialog(
       context: context,
@@ -215,7 +219,8 @@ class SettingsPage extends GetView<SettingsController> {
   }
   
   void _showPlayerKernelDialog(BuildContext context, SettingsController controller) {
-    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    final windowController = Get.find<WindowController>();
+    final isPortrait = windowController.isPortrait.value;
     
     showDialog(
       context: context,
@@ -257,7 +262,8 @@ class SettingsPage extends GetView<SettingsController> {
     final context = Get.context;
     if (context == null) return;
     
-    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    final windowController = Get.find<WindowController>();
+    final isPortrait = windowController.isPortrait.value;
     
     Get.snackbar(
       '',
