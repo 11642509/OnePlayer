@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'dart:async';
-import 'dart:ui';
 import '../controllers/window_controller.dart';
+import '../widgets/common/glass_container.dart';
 
 /// 统一的返回键处理服务
 /// 基于GetX架构，提供全局返回键管理和退出确认功能
@@ -54,7 +54,7 @@ class BackButtonHandler extends GetxService {
   }
   
   /// 处理返回键逻辑
-  /// 优先级：页面自定义回调 > GetX路由栈 > 标签页返回 > 退出确认
+  /// 优先级：页面自定义回调 > GetX路由栈 > 退出确认
   Future<bool> handleBackButton() async {
     // 1. 执行页面自定义回调（如播放器资源清理）
     if (_backCallbacks.isNotEmpty) {
@@ -82,28 +82,8 @@ class BackButtonHandler extends GetxService {
       return false;
     }
     
-    // 4. 检查是否在标签页中，如果是，返回到主标签页
-    if (_isInTabPage()) {
-      _returnToMainTab();
-      return false;
-    }
-    
-    // 5. 到达主页面，执行退出确认逻辑
+    // 4. 到达主页面，执行退出确认逻辑
     return await _handleAppExit();
-  }
-  
-  /// 检查当前是否在标签页中（非主标签页）
-  bool _isInTabPage() {
-    // 由于已移除影视页和设置页的BackButtonHandler包装，
-    // 这个方法现在只在主页面被调用，直接返回false
-    return false;
-  }
-  
-  /// 返回到主标签页
-  void _returnToMainTab() {
-    // 由于影视页和设置页是主页面内的标签内容，不需要特殊处理
-    // 直接执行退出确认逻辑
-    _showExitHint();
   }
   
   /// 处理应用退出确认
@@ -122,98 +102,61 @@ class BackButtonHandler extends GetxService {
       Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: Container(
+        child: GlassContainer(
           width: isPortrait ? 280 : 320,
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            // 降低透明度，使弹窗更不透明
-            color: isPortrait 
-                ? Colors.white.withValues(alpha: 0.92) // 竖屏：白色背景，更不透明
-                : Colors.white.withValues(alpha: 0.15), // 横屏：白色毛玻璃，稍微提高不透明度
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(
-              color: isPortrait 
-                  ? Colors.grey.withValues(alpha: 0.3) // 竖屏：灰色边框
-                  : Colors.white.withValues(alpha: 0.2), // 横屏：白色边框
-              width: 0.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isPortrait 
-                    ? Colors.grey.withValues(alpha: 0.25) // 竖屏：灰色投影
-                    : Colors.black.withValues(alpha: 0.15), // 横屏：深色投影
-                blurRadius: 20,
-                spreadRadius: -2,
-                offset: const Offset(0, 8),
+          borderRadius: 25,
+          isPortrait: isPortrait,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '确认退出',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  // 根据横竖屏调整字体颜色，参考主导航栏
+                  color: isPortrait ? Colors.grey[800] : Colors.white,
+                ),
               ),
-              BoxShadow(
-                color: isPortrait 
-                    ? Colors.white.withValues(alpha: 0.9) // 竖屏：明显白色高光
-                    : Colors.white.withValues(alpha: 0.25), // 横屏：白色高光
-                blurRadius: 1,
-                spreadRadius: 0,
-                offset: const Offset(0, -0.5),
+              const SizedBox(height: 16),
+              Text(
+                '确定要退出应用吗？',
+                style: TextStyle(
+                  fontSize: 14,
+                  // 根据横竖屏调整字体颜色，参考主导航栏
+                  color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  // 取消按钮 - 参考主导航栏未选中样式
+                  Expanded(
+                    child: _buildDialogButton(
+                      text: '取消',
+                      isPortrait: isPortrait,
+                      isPrimary: false,
+                      onTap: () => Get.back(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // 确认按钮 - 参考主导航栏选中样式
+                  Expanded(
+                    child: _buildDialogButton(
+                      text: '确认退出',
+                      isPortrait: isPortrait,
+                      isPrimary: true,
+                      onTap: () {
+                        Get.back();
+                        SystemNavigator.pop();
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // 添加背景模糊效果
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                Text(
-                  '确认退出',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    // 根据横竖屏调整字体颜色，参考主导航栏
-                    color: isPortrait ? Colors.grey[800] : Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '确定要退出应用吗？',
-                  style: TextStyle(
-                    fontSize: 14,
-                    // 根据横竖屏调整字体颜色，参考主导航栏
-                    color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    // 取消按钮 - 参考主导航栏未选中样式
-                    Expanded(
-                      child: _buildDialogButton(
-                        text: '取消',
-                        isPortrait: isPortrait,
-                        isPrimary: false,
-                        onTap: () => Get.back(),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // 确认按钮 - 参考主导航栏选中样式
-                    Expanded(
-                      child: _buildDialogButton(
-                        text: '确认退出',
-                        isPortrait: isPortrait,
-                        isPrimary: true,
-                        onTap: () {
-                          Get.back();
-                          SystemNavigator.pop();
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            ),
           ),
         ),
       ),

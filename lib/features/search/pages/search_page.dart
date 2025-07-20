@@ -380,18 +380,33 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
           controller.clearSearch();
           return KeyEventResult.handled;
         } else if (controller.backButtonFocusNode.hasFocus) {
-          Get.back();
+          _handleBackNavigation();
           return KeyEventResult.handled;
         }
         break;
       case LogicalKeyboardKey.escape:
       case LogicalKeyboardKey.goBack:
-        Get.back();
+        _handleBackNavigation();
         return KeyEventResult.handled;
       default:
         return KeyEventResult.ignored;
     }
     return KeyEventResult.ignored;
+  }
+
+  /// 统一处理返回导航逻辑，防止重复调用
+  void _handleBackNavigation() {
+    // 如果正在搜索，先取消搜索状态
+    if (controller.isSearching.value) {
+      return; // 搜索中不允许返回
+    }
+    
+    // 确保只调用一次返回
+    if (Get.isDialogOpen == true) {
+      return; // 如果有对话框打开，不执行返回
+    }
+    
+    Get.back();
   }
 
   /// 构建头部
@@ -416,7 +431,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
           // 返回按钮
           FocusableGlow(
             focusNode: controller.backButtonFocusNode,
-            onTap: () => Get.back(),
+            onTap: () => _handleBackNavigation(),
             borderRadius: BorderRadius.circular(12),
             child: GlassContainer(
               width: isPortrait ? 44 : 48,
