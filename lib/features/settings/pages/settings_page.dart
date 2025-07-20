@@ -5,7 +5,6 @@ import '../../../shared/widgets/common/glass_container.dart';
 import '../../../app/config/config.dart';
 import '../controllers/settings_controller.dart';
 import '../../../core/remote_control/universal_focus.dart';
-import '../../../shared/services/back_button_handler.dart';
 
 /// 设置页面 - 使用统一毛玻璃风格
 class SettingsPage extends GetView<SettingsController> {
@@ -14,10 +13,8 @@ class SettingsPage extends GetView<SettingsController> {
   @override
   Widget build(BuildContext context) {
     final performance = Get.find<PerformanceManager>();
-    final backButtonHandler = Get.find<BackButtonHandler>();
     
-    return backButtonHandler.createPopScope(
-      child: Obx(() {
+    return Obx(() {
         // 确保控制器已初始化
         if (!Get.isRegistered<SettingsController>()) {
           Get.put(SettingsController());
@@ -154,8 +151,7 @@ class SettingsPage extends GetView<SettingsController> {
             ],
           ),
         );
-      }),
-    );
+      });
   }
   
   String _getQualityDescription(int quality) {

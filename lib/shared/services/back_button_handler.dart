@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'dart:async';
+import 'dart:ui';
 import '../controllers/window_controller.dart';
-import '../widgets/common/glass_container.dart';
 
 /// 统一的返回键处理服务
 /// 基于GetX架构，提供全局返回键管理和退出确认功能
@@ -54,7 +54,7 @@ class BackButtonHandler extends GetxService {
   }
   
   /// 处理返回键逻辑
-  /// 优先级：页面自定义回调 > GetX路由栈 > 退出确认
+  /// 优先级：页面自定义回调 > GetX路由栈 > 标签页返回 > 退出确认
   Future<bool> handleBackButton() async {
     // 1. 执行页面自定义回调（如播放器资源清理）
     if (_backCallbacks.isNotEmpty) {
@@ -82,8 +82,28 @@ class BackButtonHandler extends GetxService {
       return false;
     }
     
-    // 4. 到达主页面，执行退出确认逻辑
+    // 4. 检查是否在标签页中，如果是，返回到主标签页
+    if (_isInTabPage()) {
+      _returnToMainTab();
+      return false;
+    }
+    
+    // 5. 到达主页面，执行退出确认逻辑
     return await _handleAppExit();
+  }
+  
+  /// 检查当前是否在标签页中（非主标签页）
+  bool _isInTabPage() {
+    // 由于已移除影视页和设置页的BackButtonHandler包装，
+    // 这个方法现在只在主页面被调用，直接返回false
+    return false;
+  }
+  
+  /// 返回到主标签页
+  void _returnToMainTab() {
+    // 由于影视页和设置页是主页面内的标签内容，不需要特殊处理
+    // 直接执行退出确认逻辑
+    _showExitHint();
   }
   
   /// 处理应用退出确认
@@ -102,90 +122,173 @@ class BackButtonHandler extends GetxService {
       Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: GlassContainer(
-          borderRadius: 25,
-          child: Container(
-            width: isPortrait ? 280 : 320,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
+        child: Container(
+          width: isPortrait ? 280 : 320,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            // 降低透明度，使弹窗更不透明
+            color: isPortrait 
+                ? Colors.white.withValues(alpha: 0.92) // 竖屏：白色背景，更不透明
+                : Colors.white.withValues(alpha: 0.15), // 横屏：白色毛玻璃，稍微提高不透明度
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(
+              color: isPortrait 
+                  ? Colors.grey.withValues(alpha: 0.3) // 竖屏：灰色边框
+                  : Colors.white.withValues(alpha: 0.2), // 横屏：白色边框
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isPortrait 
+                    ? Colors.grey.withValues(alpha: 0.25) // 竖屏：灰色投影
+                    : Colors.black.withValues(alpha: 0.15), // 横屏：深色投影
+                blurRadius: 20,
+                spreadRadius: -2,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: isPortrait 
+                    ? Colors.white.withValues(alpha: 0.9) // 竖屏：明显白色高光
+                    : Colors.white.withValues(alpha: 0.25), // 横屏：白色高光
+                blurRadius: 1,
+                spreadRadius: 0,
+                offset: const Offset(0, -0.5),
+              ),
+            ],
+          ),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // 添加背景模糊效果
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                Text(
                   '确认退出',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    // 根据横竖屏调整字体颜色，参考主导航栏
+                    color: isPortrait ? Colors.grey[800] : Colors.white,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   '确定要退出应用吗？',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.white70,
+                    // 根据横竖屏调整字体颜色，参考主导航栏
+                    color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
                 Row(
                   children: [
+                    // 取消按钮 - 参考主导航栏未选中样式
                     Expanded(
-                      child: GestureDetector(
+                      child: _buildDialogButton(
+                        text: '取消',
+                        isPortrait: isPortrait,
+                        isPrimary: false,
                         onTap: () => Get.back(),
-                        child: Container(
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '取消',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
+                    // 确认按钮 - 参考主导航栏选中样式
                     Expanded(
-                      child: GestureDetector(
+                      child: _buildDialogButton(
+                        text: '确认退出',
+                        isPortrait: isPortrait,
+                        isPrimary: true,
                         onTap: () {
                           Get.back();
                           SystemNavigator.pop();
                         },
-                        child: Container(
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF6B9D),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '确认退出',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                   ],
                 ),
               ],
             ),
+            ),
           ),
         ),
       ),
       barrierDismissible: true,
+    );
+  }
+
+  /// 构建对话框按钮，参考主导航栏样式
+  Widget _buildDialogButton({
+    required String text,
+    required bool isPortrait,
+    required bool isPrimary,
+    required VoidCallback onTap,
+  }) {
+    // 参考主导航栏的样式配置
+    Color backgroundColor;
+    Color textColor;
+    
+    if (isPrimary) {
+      // 确认按钮使用选中状态的样式
+      backgroundColor = isPortrait 
+          ? Colors.grey.withValues(alpha: 0.85)  // 竖屏深色背景
+          : Colors.white.withValues(alpha: 0.85); // 横屏白色背景
+      textColor = isPortrait 
+          ? Colors.white // 竖屏白色文字
+          : Colors.black.withValues(alpha: 0.9); // 横屏深色文字
+    } else {
+      // 取消按钮使用药丸效果样式
+      backgroundColor = isPortrait
+          ? Colors.grey.withValues(alpha: 0.15) // 竖屏轻微深色
+          : Colors.white.withValues(alpha: 0.25); // 横屏轻微白色
+      textColor = isPortrait 
+          ? Colors.grey[700]! // 竖屏深色文字
+          : Colors.white.withValues(alpha: 0.9); // 横屏白色文字
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(22), // 药丸形状
+          // 参考主导航栏的阴影效果
+          boxShadow: isPrimary ? [
+            BoxShadow(
+              color: isPortrait 
+                  ? Colors.grey.withValues(alpha: 0.2)
+                  : Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              spreadRadius: 0,
+              offset: const Offset(0, 2),
+            ),
+          ] : null,
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 16,
+              color: textColor,
+              fontWeight: isPrimary ? FontWeight.w600 : FontWeight.w500,
+              letterSpacing: 0.2,
+              // 参考主导航栏的文字阴影
+              shadows: (!isPrimary && !isPortrait) ? [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ] : null,
+            ),
+          ),
+        ),
+      ),
     );
   }
   
