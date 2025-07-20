@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'dart:async';
 import '../controllers/window_controller.dart';
 import '../widgets/common/glass_container.dart';
+import '../../core/remote_control/focusable_glow.dart';
 
 /// 统一的返回键处理服务
 /// 基于GetX架构，提供全局返回键管理和退出确认功能
@@ -14,16 +15,24 @@ class BackButtonHandler extends GetxService {
   // 全局焦点节点，用于处理键盘事件
   late final FocusNode _globalFocusNode;
   
+  // 对话框按钮焦点节点
+  late final FocusNode _cancelButtonFocusNode;
+  late final FocusNode _confirmButtonFocusNode;
+  
   @override
   void onInit() {
     super.onInit();
     _globalFocusNode = FocusNode();
+    _cancelButtonFocusNode = FocusNode();
+    _confirmButtonFocusNode = FocusNode();
     _setupGlobalKeyboardListener();
   }
   
   @override
   void onClose() {
     _globalFocusNode.dispose();
+    _cancelButtonFocusNode.dispose();
+    _confirmButtonFocusNode.dispose();
     super.onClose();
   }
   
@@ -98,65 +107,76 @@ class BackButtonHandler extends GetxService {
     final windowController = Get.find<WindowController>();
     final isPortrait = windowController.isPortrait.value;
 
+    // 对话框显示时，默认焦点在取消按钮
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _cancelButtonFocusNode.requestFocus();
+    });
+
     Get.dialog(
       Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: GlassContainer(
-          width: isPortrait ? 280 : 320,
-          padding: const EdgeInsets.all(24),
-          borderRadius: 25,
-          isPortrait: isPortrait,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '确认退出',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  // 根据横竖屏调整字体颜色，参考主导航栏
-                  color: isPortrait ? Colors.grey[800] : Colors.white,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '确定要退出应用吗？',
-                style: TextStyle(
-                  fontSize: 14,
-                  // 根据横竖屏调整字体颜色，参考主导航栏
-                  color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  // 取消按钮 - 参考主导航栏未选中样式
-                  Expanded(
-                    child: _buildDialogButton(
-                      text: '取消',
-                      isPortrait: isPortrait,
-                      isPrimary: false,
-                      onTap: () => Get.back(),
-                    ),
+        child: Focus(
+          autofocus: true,
+          onKeyEvent: _handleDialogKeyEvent,
+          child: GlassContainer(
+            width: isPortrait ? 280 : 320,
+            padding: const EdgeInsets.all(24),
+            borderRadius: 25,
+            isPortrait: isPortrait,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '确认退出',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    // 根据横竖屏调整字体颜色，参考主导航栏
+                    color: isPortrait ? Colors.grey[800] : Colors.white,
                   ),
-                  const SizedBox(width: 12),
-                  // 确认按钮 - 参考主导航栏选中样式
-                  Expanded(
-                    child: _buildDialogButton(
-                      text: '确认退出',
-                      isPortrait: isPortrait,
-                      isPrimary: true,
-                      onTap: () {
-                        Get.back();
-                        SystemNavigator.pop();
-                      },
-                    ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '确定要退出应用吗？',
+                  style: TextStyle(
+                    fontSize: 14,
+                    // 根据横竖屏调整字体颜色，参考主导航栏
+                    color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
                   ),
-                ],
-              ),
-            ],
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    // 取消按钮 - 参考主导航栏未选中样式
+                    Expanded(
+                      child: _buildDialogButton(
+                        text: '取消',
+                        isPortrait: isPortrait,
+                        isPrimary: false,
+                        focusNode: _cancelButtonFocusNode,
+                        onTap: () => Get.back(),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // 确认按钮 - 参考主导航栏选中样式
+                    Expanded(
+                      child: _buildDialogButton(
+                        text: '确认退出',
+                        isPortrait: isPortrait,
+                        isPrimary: true,
+                        focusNode: _confirmButtonFocusNode,
+                        onTap: () {
+                          Get.back();
+                          SystemNavigator.pop();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -164,16 +184,45 @@ class BackButtonHandler extends GetxService {
     );
   }
 
-  /// 构建对话框按钮，参考主导航栏样式
+  /// 处理对话框键盘事件，支持左右切换焦点
+  KeyEventResult _handleDialogKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.arrowLeft:
+        if (_confirmButtonFocusNode.hasFocus) {
+          _cancelButtonFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+        break;
+      case LogicalKeyboardKey.arrowRight:
+        if (_cancelButtonFocusNode.hasFocus) {
+          _confirmButtonFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+        break;
+      case LogicalKeyboardKey.escape:
+      case LogicalKeyboardKey.goBack:
+        Get.back(); // 按返回键或ESC键关闭对话框
+        return KeyEventResult.handled;
+      default:
+        return KeyEventResult.ignored;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// 构建对话框按钮，使用FocusableGlow支持遥控器操作
   Widget _buildDialogButton({
     required String text,
     required bool isPortrait,
     required bool isPrimary,
+    required FocusNode focusNode,
     required VoidCallback onTap,
   }) {
     // 参考主导航栏的样式配置
     Color backgroundColor;
     Color textColor;
+    Color? customGlowColor;
     
     if (isPrimary) {
       // 确认按钮使用选中状态的样式
@@ -183,6 +232,10 @@ class BackButtonHandler extends GetxService {
       textColor = isPortrait 
           ? Colors.white // 竖屏白色文字
           : Colors.black.withValues(alpha: 0.9); // 横屏深色文字
+      // 确认按钮使用红色辉光效果
+      customGlowColor = isPortrait 
+          ? const Color(0xFFFF7BB0) // 竖屏粉红色辉光
+          : const Color(0xFFFF5722); // 横屏橙红色辉光
     } else {
       // 取消按钮使用药丸效果样式
       backgroundColor = isPortrait
@@ -191,10 +244,17 @@ class BackButtonHandler extends GetxService {
       textColor = isPortrait 
           ? Colors.grey[700]! // 竖屏深色文字
           : Colors.white.withValues(alpha: 0.9); // 横屏白色文字
+      // 取消按钮使用蓝色辉光效果
+      customGlowColor = isPortrait
+          ? const Color(0xFF64B5F6) // 竖屏天蓝色辉光
+          : const Color(0xFF42A5F5); // 横屏浅蓝色辉光
     }
 
-    return GestureDetector(
+    return FocusableGlow(
+      focusNode: focusNode,
       onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      customGlowColor: customGlowColor,
       child: Container(
         height: 44,
         decoration: BoxDecoration(

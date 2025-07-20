@@ -10,6 +10,7 @@ import '../../../core/remote_control/focusable_glow.dart';
 import '../../../core/remote_control/focus_aware_tab.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../shared/controllers/window_controller.dart';
+import '../../../shared/services/back_button_handler.dart';
 import '../controllers/search_controller.dart' as search_ctrl;
 
 /// 搜索页面 - 保留搜索功能，解决阴影效果问题
@@ -19,33 +20,33 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
   @override
   Widget build(BuildContext context) {
     final windowController = Get.find<WindowController>();
+    final backButtonHandler = Get.find<BackButtonHandler>();
     
     return Obx(() {
       final isPortrait = windowController.isPortrait.value;
       
-      Widget buildContent() {
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: isPortrait 
-              ? FreshCosmicBackground(
-                  child: _buildResponsiveLayout(isPortrait),
-                )
-              : OptimizedCosmicBackground(
-                  child: _buildResponsiveLayout(isPortrait),
-                ),
-        );
-      }
+      // 1. 先构建基础内容（Scaffold）
+      Widget content = Scaffold(
+        backgroundColor: Colors.transparent,
+        body: _buildResponsiveLayout(isPortrait),
+      );
       
+      // 2. 使用BackButtonHandler包装内容，完全参考视频详情页
+      content = backButtonHandler.createPopScope(
+        child: content,
+      );
+      
+      // 3. 最后在外层套上背景
       if (isPortrait) {
         // 竖屏模式：使用默认主题
-        return buildContent();
+        return FreshCosmicBackground(child: content);
       } else {
         // 横屏模式：使用深色主题，与影视页完全一致，确保阴影效果相同
         return Theme(
           data: Theme.of(context).copyWith(
             brightness: Brightness.dark,
           ),
-          child: buildContent(),
+          child: OptimizedCosmicBackground(child: content),
         );
       }
     });
@@ -386,26 +387,22 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         break;
       case LogicalKeyboardKey.escape:
       case LogicalKeyboardKey.goBack:
-        _handleBackNavigation();
-        return KeyEventResult.handled;
+        // 不拦截返回键，让 BackButtonHandler 处理
+        return KeyEventResult.ignored;
       default:
         return KeyEventResult.ignored;
     }
     return KeyEventResult.ignored;
   }
 
-  /// 统一处理返回导航逻辑，防止重复调用
+  /// 处理手动点击返回按钮的逻辑
   void _handleBackNavigation() {
     // 如果正在搜索，先取消搜索状态
     if (controller.isSearching.value) {
       return; // 搜索中不允许返回
     }
     
-    // 确保只调用一次返回
-    if (Get.isDialogOpen == true) {
-      return; // 如果有对话框打开，不执行返回
-    }
-    
+    // 手动点击返回按钮，直接返回
     Get.back();
   }
 
