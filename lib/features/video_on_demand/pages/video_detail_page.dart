@@ -4,6 +4,7 @@ import '../../../shared/widgets/backgrounds/cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background_v2.dart';
 import '../../../shared/utils/performance_manager.dart';
+import '../../../shared/services/back_button_handler.dart';
 import '../controllers/video_detail_controller.dart';
 import '../../../core/remote_control/focusable_glow.dart';
 
@@ -22,6 +23,7 @@ class VideoDetailPage extends GetView<VideoDetailController> {
   Widget build(BuildContext context) {
     // 通过GetView自动获取控制器（由路由绑定管理）
     controller.initWithVideoId(videoId);
+    final backButtonHandler = Get.find<BackButtonHandler>();
     
     return KeyedSubtree(
       key: UniqueKey(),
@@ -56,6 +58,11 @@ class VideoDetailPage extends GetView<VideoDetailController> {
                         ),
                       )
                     : _buildDetailContent(controller, textColor, isPortrait)),
+          );
+          
+          // 为视频详情页面添加返回键处理
+          content = backButtonHandler.createPopScope(
+            child: content,
           );
           
           // 横屏模式下使用性能优化的宇宙背景，与主页保持一致

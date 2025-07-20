@@ -5,6 +5,7 @@ import '../../../shared/widgets/common/glass_container.dart';
 import '../../../app/config/config.dart';
 import '../controllers/settings_controller.dart';
 import '../../../core/remote_control/universal_focus.dart';
+import '../../../shared/services/back_button_handler.dart';
 
 /// 设置页面 - 使用统一毛玻璃风格
 class SettingsPage extends GetView<SettingsController> {
@@ -13,15 +14,17 @@ class SettingsPage extends GetView<SettingsController> {
   @override
   Widget build(BuildContext context) {
     final performance = Get.find<PerformanceManager>();
+    final backButtonHandler = Get.find<BackButtonHandler>();
     
-    return Obx(() {
-      // 确保控制器已初始化
-      if (!Get.isRegistered<SettingsController>()) {
-        Get.put(SettingsController());
-      }
-      
-      // 检测屏幕方向，调整文字颜色
-      final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    return backButtonHandler.createPopScope(
+      child: Obx(() {
+        // 确保控制器已初始化
+        if (!Get.isRegistered<SettingsController>()) {
+          Get.put(SettingsController());
+        }
+        
+        // 检测屏幕方向，调整文字颜色
+        final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
         return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -151,7 +154,7 @@ class SettingsPage extends GetView<SettingsController> {
             ],
           ),
         );
-      },
+      }),
     );
   }
   

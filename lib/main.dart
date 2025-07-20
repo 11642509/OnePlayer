@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'dart:io';
 import 'shared/controllers/window_controller.dart';
+import 'shared/services/back_button_handler.dart';
 import 'features/short_videos/players/vlc/vlc_short_video_player.dart';
 import 'features/short_videos/pages/short_videos_page.dart';
 import 'features/short_videos/players/media_kit/video_player_factory.dart';
@@ -120,26 +121,31 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final backButtonHandler = Get.find<BackButtonHandler>();
+    
     return Obx(() {
       final windowController = Get.find<WindowController>();
       final isPortrait = windowController.isPortrait.value;
       _updateSystemUIMode(isPortrait);
       
-      
-      return Scaffold(
-        backgroundColor: isPortrait ? Colors.white : Colors.black, // 竖屏白色背景，横屏黑色背景
-        // 竖屏和横屏模式都不显示AppBar，让自定义标签栏显示在顶部
-        appBar: null,
-        body: isPortrait 
-          ? SafeArea(child: PortraitHomeLayout(onPlayerSelected: _openPlayerPage))
-            : Theme(
-                // 当处于横屏（深色背景）模式时，为子组件提供一个深色主题
-                data: Theme.of(context).copyWith(
-                  brightness: Brightness.dark,
+      // 使用统一的返回键处理包装主页面
+      return backButtonHandler.createPopScope(
+        canPop: false, // 主页面不直接退出，需要二次确认
+        child: Scaffold(
+          backgroundColor: isPortrait ? Colors.white : Colors.black, // 竖屏白色背景，横屏黑色背景
+          // 竖屏和横屏模式都不显示AppBar，让自定义标签栏显示在顶部
+          appBar: null,
+          body: isPortrait 
+            ? SafeArea(child: PortraitHomeLayout(onPlayerSelected: _openPlayerPage))
+              : Theme(
+                  // 当处于横屏（深色背景）模式时，为子组件提供一个深色主题
+                  data: Theme.of(context).copyWith(
+                    brightness: Brightness.dark,
+                  ),
+                  child:
+                      LandscapeHomeLayout(onPlayerSelected: _openPlayerPage),
                 ),
-                child:
-                    LandscapeHomeLayout(onPlayerSelected: _openPlayerPage),
-              ),
+        ),
       );
     });
   }

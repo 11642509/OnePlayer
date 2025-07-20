@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'dart:async';
 import '../../../shared/controllers/window_controller.dart';
+import '../../../shared/services/back_button_handler.dart';
 import '../controllers/vod_controller.dart';
 import '../../../app/theme/typography.dart';
 import '../../../core/remote_control/focus_aware_tab.dart';
@@ -16,6 +17,7 @@ class VideoOnDemandPage extends StatelessWidget {
     // 使用 Get.put 懒加载控制器，确保只创建一次
     final controller = Get.put(VodController(), permanent: true);
     final windowController = Get.find<WindowController>();
+    final backButtonHandler = Get.find<BackButtonHandler>();
     
     
     // 分离AppBar构建，减少重建范围
@@ -62,28 +64,30 @@ class VideoOnDemandPage extends StatelessWidget {
       ) : const SizedBox();
     }
     
-    return Obx(() {
-      // 影视页背景始终透明，与横屏一致
-      const backgroundColor = Colors.transparent;
-          
-      // 如果数据正在加载中，显示加载指示器
-      if (controller.isLoading.value && controller.homeData.isEmpty) {
+    return backButtonHandler.createPopScope(
+      child: Obx(() {
+        // 影视页背景始终透明，与横屏一致
+        const backgroundColor = Colors.transparent;
+            
+        // 如果数据正在加载中，显示加载指示器
+        if (controller.isLoading.value && controller.homeData.isEmpty) {
+          return Scaffold(
+            backgroundColor: backgroundColor,
+            body: const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF7BB0),
+              ),
+            ),
+          );
+        }
+        
         return Scaffold(
           backgroundColor: backgroundColor,
-          body: const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFFFF7BB0),
-            ),
-          ),
+          appBar: buildAppBar(),
+          body: buildBody(),
         );
-      }
-      
-      return Scaffold(
-        backgroundColor: backgroundColor,
-        appBar: buildAppBar(),
-        body: buildBody(),
-      );
-    });
+      }),
+    );
   }
   
   // 提取TabBar构建逻辑，避免重复计算
