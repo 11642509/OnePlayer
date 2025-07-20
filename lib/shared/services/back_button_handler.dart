@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'dart:async';
+import '../controllers/window_controller.dart';
+import '../widgets/common/glass_container.dart';
 
 /// 统一的返回键处理服务
 /// 基于GetX架构，提供全局返回键管理和退出确认功能
 class BackButtonHandler extends GetxService {
-  // 退出确认相关
-  DateTime? _lastPressedTime;
-  static const int _exitTimeInterval = 2000; // 2秒内连续按返回键退出
-  
   // 页面回调栈
   final List<Future<bool> Function()> _backCallbacks = [];
   
@@ -90,34 +88,104 @@ class BackButtonHandler extends GetxService {
   
   /// 处理应用退出确认
   Future<bool> _handleAppExit() async {
-    final now = DateTime.now();
-    
-    // 首次按返回键或距离上次按键超过间隔时间
-    if (_lastPressedTime == null ||
-        now.difference(_lastPressedTime!).inMilliseconds > _exitTimeInterval) {
-      _lastPressedTime = now;
-      
-      // 显示提示信息
-      _showExitHint();
-      return false; // 不退出应用
-    }
-    
-    // 连续按返回键，退出应用
-    return true;
+    // 显示确认对话框
+    _showExitHint();
+    return false; // 不直接退出应用，通过对话框确认
   }
   
-  /// 显示退出提示
+  /// 显示退出确认对话框
   void _showExitHint() {
-    Get.snackbar(
-      '退出提示',
-      '再按一次返回键退出应用',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(milliseconds: 1500),
-      backgroundColor: Colors.black87,
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 8,
-      isDismissible: true,
+    final windowController = Get.find<WindowController>();
+    final isPortrait = windowController.isPortrait.value;
+
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: GlassContainer(
+          borderRadius: 25,
+          child: Container(
+            width: isPortrait ? 280 : 320,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '确认退出',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '确定要退出应用吗？',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white70,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Get.back(),
+                        child: Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '取消',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Get.back();
+                          SystemNavigator.pop();
+                        },
+                        child: Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF6B9D),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '确认退出',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      barrierDismissible: true,
     );
   }
   
