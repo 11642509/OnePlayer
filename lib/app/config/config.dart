@@ -47,7 +47,7 @@ class AppConfig {
       'iconUrl': 'https://www.jianpian.com/favicon.ico',
       'color': '#E91E63',
       'isEnabled': true,
-      'isDefault': true,
+      'isDefault': false,
     },
     'yhdm': {
       'id': 'yhdm',
@@ -67,7 +67,7 @@ class AppConfig {
       'iconUrl': 'https://www.bilibili.com/favicon.ico',
       'color': '#FF6B9D',
       'isEnabled': true,
-      'isDefault': false,
+      'isDefault': true,
     },
     'iqiyi': {
       'id': 'iqiyi',

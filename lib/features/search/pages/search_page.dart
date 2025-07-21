@@ -6,6 +6,7 @@ import '../../../shared/widgets/backgrounds/fresh_cosmic_background.dart';
 import '../../../shared/widgets/common/glass_container.dart';
 import '../../../shared/widgets/video/video_grid_widget.dart';
 import '../../../app/theme/typography.dart';
+import '../../../app/data_source.dart';
 import '../../../core/remote_control/focusable_glow.dart';
 import '../../../core/remote_control/focus_aware_tab.dart';
 import '../../../app/routes/app_routes.dart';
@@ -336,6 +337,10 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
           hasMore: false,
           emptyMessage: "此源暂无搜索结果",
           onVideoTap: (video) {
+            // 获取当前选中的搜索源并切换DataSource
+            final currentSource = controller.selectedSourceId.value;
+            DataSource(siteId: currentSource); // 切换到对应站点
+            
             Get.toNamed(
               AppRoutes.videoDetail,
               parameters: {'videoId': video['vod_id'] ?? ''},
