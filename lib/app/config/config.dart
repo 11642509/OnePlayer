@@ -57,7 +57,7 @@ class AppConfig {
       'iconUrl': 'https://www.yhdm.tv/favicon.ico',
       'color': '#FF5722',
       'isEnabled': true,
-      'isDefault': false,
+      'isDefault': true,
     },
     'bilibili': {
       'id': 'bilibili',
@@ -67,7 +67,7 @@ class AppConfig {
       'iconUrl': 'https://www.bilibili.com/favicon.ico',
       'color': '#FF6B9D',
       'isEnabled': true,
-      'isDefault': true,
+      'isDefault': false,
     },
     'iqiyi': {
       'id': 'iqiyi',
