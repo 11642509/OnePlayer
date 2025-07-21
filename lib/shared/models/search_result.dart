@@ -91,7 +91,7 @@ class SearchResponse {
   }
   
   /// 检查响应是否成功
-  bool get isSuccess => code == 0;
+  bool get isSuccess => code == 0 || code == 200;
   
   /// 检查是否有结果
   bool get hasResults => results.isNotEmpty;

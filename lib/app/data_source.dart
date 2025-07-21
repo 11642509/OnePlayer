@@ -2,12 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'config/config.dart';
 
-/// 数据源类型枚举
-enum SourceType {
-  bilibili,
-  other, // 未来可扩展其他数据源
-}
-
 /// 视频格式枚举
 enum VideoFormat {
   mp4,    // 标准MP4格式
@@ -259,57 +253,46 @@ class VideoPlayConfig {
 /// 通用数据源服务
 class DataSource {
   final Dio _dio = Dio();
-  String baseUrl;
-  SourceType sourceType;
+  String currentSiteId;
   
   // 单例模式
   static final DataSource _instance = DataSource._internal(
-    baseUrl: AppConfig.apiBaseUrl,
-    sourceType: SourceType.bilibili,
+    currentSiteId: AppConfig.defaultSiteId,
   );
   
-  factory DataSource({String? baseUrl, SourceType? sourceType}) {
-    if (baseUrl != null) {
-      _instance.baseUrl = baseUrl;
-    }
-    if (sourceType != null) {
-      _instance.sourceType = sourceType;
+  factory DataSource({String? siteId}) {
+    if (siteId != null) {
+      _instance.currentSiteId = siteId;
     }
     return _instance;
   }
   
   DataSource._internal({
-    required this.baseUrl,
-    required this.sourceType,
+    required this.currentSiteId,
   });
+
+  /// 获取当前站点的API URL
+  String get currentApiUrl {
+    final apiUrl = AppConfig.getSiteApiUrl(currentSiteId);
+    if (apiUrl == null) {
+      throw Exception('站点配置未找到: $currentSiteId');
+    }
+    return apiUrl;
+  }
 
   /// 获取首页数据
   Future<Map<String, dynamic>> fetchHomeData() async {
     try {
-      String endpoint = '';
-      
-      // 根据数据源类型确定接口路径
-      switch (sourceType) {
-        case SourceType.bilibili:
-          endpoint = 'bilibili';
-          break;
-        case SourceType.other:
-          endpoint = 'other';
-          break;
-      }
-      
-      final response = await _dio.get(AppConfig.getApiPath(endpoint));
+      final response = await _dio.get(currentApiUrl);
       return response.data;
     } catch (e) {
       if (kDebugMode) {
         print('获取首页数据失败: $e');
+        print('使用的API URL: $currentApiUrl');
       }
       if (AppConfig.useMockData) {
-        // 如果配置允许使用模拟数据，则在API请求失败时返回模拟数据
-        // 这里我们抛出异常，让调用方处理
         throw Exception('获取首页数据失败: $e');
       } else {
-        // 如果配置不允许使用模拟数据，则直接抛出异常
         throw Exception('获取首页数据失败: $e');
       }
     }
@@ -320,37 +303,24 @@ class DataSource {
   /// [page] 页码，默认为1
   Future<Map<String, dynamic>> fetchCategoryData(String categoryName, {int page = 1}) async {
     try {
-      String endpoint = '';
       Map<String, dynamic> queryParams = {
         't': categoryName,
         'pg': page.toString(),
       };
       
-      // 根据数据源类型确定接口路径
-      switch (sourceType) {
-        case SourceType.bilibili:
-          endpoint = 'bilibili';
-          break;
-        case SourceType.other:
-          endpoint = 'other';
-          break;
-      }
-      
       final response = await _dio.get(
-        AppConfig.getApiPath(endpoint),
+        currentApiUrl,
         queryParameters: queryParams,
       );
       return response.data;
     } catch (e) {
       if (kDebugMode) {
         print('获取分类数据失败: $e');
+        print('使用的API URL: $currentApiUrl');
       }
       if (AppConfig.useMockData) {
-        // 如果配置允许使用模拟数据，则在API请求失败时返回模拟数据
-        // 这里我们抛出异常，让调用方处理
         throw Exception('获取分类数据失败: $e');
       } else {
-        // 如果配置不允许使用模拟数据，则直接抛出异常
         throw Exception('获取分类数据失败: $e');
       }
     }
@@ -360,12 +330,12 @@ class DataSource {
   Future<VideoPlayConfig> fetchVideoPlayUrl(String id, String flag) async {
     try {
       if (kDebugMode) {
-        print('获取视频播放地址: ${AppConfig.apiBaseUrl}/api/v1/bilibili');
+        print('获取视频播放地址: $currentApiUrl');
         print('参数: {flag: $flag, id: $id}');
       }
       
       final response = await _dio.get(
-        '${AppConfig.apiBaseUrl}/api/v1/bilibili',
+        currentApiUrl,
         queryParameters: {
           'flag': flag,
           'id': id,
@@ -376,7 +346,7 @@ class DataSource {
         print('视频播放地址响应: ${response.data}');
       }
       
-      if (response.data['code'] == 0) {
+      if (response.data['code'] == 0 || response.data['code'] == 200) {
         final Map<String, dynamic> data = response.data;
         
         // 直接使用fromApiResponse方法，它已经处理了所有header逻辑
@@ -386,6 +356,7 @@ class DataSource {
         final updatedExtra = Map<String, dynamic>.from(playConfig.extra);
         updatedExtra['parse'] = data['parse'];
         updatedExtra['from'] = data['from'];
+        updatedExtra['siteId'] = currentSiteId;
         
         return VideoPlayConfig(
           url: playConfig.url,
@@ -401,6 +372,37 @@ class DataSource {
     } catch (e) {
       if (kDebugMode) {
         print('获取视频播放地址出错: $e');
+        print('使用的API URL: $currentApiUrl');
+      }
+      rethrow;
+    }
+  }
+  
+  /// 获取视频详情
+  /// [videoId] 视频ID
+  Future<Map<String, dynamic>> fetchVideoDetail(String videoId) async {
+    try {
+      if (kDebugMode) {
+        print('获取视频详情: $currentApiUrl');
+        print('参数: {ids: $videoId}');
+      }
+      
+      final response = await _dio.get(
+        currentApiUrl,
+        queryParameters: {
+          'ids': videoId,
+        },
+      );
+      
+      if (kDebugMode) {
+        print('视频详情响应: ${response.data}');
+      }
+      
+      return response.data;
+    } catch (e) {
+      if (kDebugMode) {
+        print('获取视频详情出错: $e');
+        print('使用的API URL: $currentApiUrl');
       }
       rethrow;
     }

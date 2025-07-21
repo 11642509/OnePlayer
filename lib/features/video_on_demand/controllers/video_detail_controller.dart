@@ -1,7 +1,5 @@
 import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../../../app/config/config.dart';
 import '../../../app/data_source.dart';
 import '../../../app/routes/app_routes.dart';
@@ -31,40 +29,33 @@ class VideoDetailController extends GetxController {
       isLoading.value = true;
       errorMessage.value = '';
       
-      final url = '${AppConfig.apiBaseUrl}/api/v1/bilibili?ids=$videoId';
-      final response = await http.get(Uri.parse(url));
+      final data = await _dataSource.fetchVideoDetail(videoId);
       
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['code'] == 0 && data['list'] != null && data['list'].isNotEmpty) {
-          videoDetail.value = data['list'][0];
-          isLoading.value = false;
-          
-          // 解析播放源
-          final playFrom = videoDetail.value!['vod_play_from']?.toString().split('\$\$\$') ?? [];
-          
-          // 查找第一个非"相关"的播放源
-          String defaultSource = '';
-          for (final source in playFrom) {
-            if (source != '相关') {
-              defaultSource = source;
-              break;
-            }
+      if ((data['code'] == 0 || data['code'] == 200) && data['list'] != null && data['list'].isNotEmpty) {
+        videoDetail.value = data['list'][0];
+        isLoading.value = false;
+        
+        // 解析播放源
+        final playFrom = videoDetail.value!['vod_play_from']?.toString().split('\$\$\$') ?? [];
+        
+        // 查找第一个非"相关"的播放源
+        String defaultSource = '';
+        for (final source in playFrom) {
+          if (source != '相关') {
+            defaultSource = source;
+            break;
           }
-          
-          // 如果没有找到非"相关"的播放源，则使用第一个播放源（可能是"相关"）
-          currentPlaySource.value = defaultSource.isNotEmpty ? defaultSource : (playFrom.isNotEmpty ? playFrom.first : '');
-          
-          if (kDebugMode) {
-            print('设置默认播放源: ${currentPlaySource.value}');
-            print('所有播放源: $playFrom');
-          }
-        } else {
-          errorMessage.value = '获取视频详情失败: ${data['message'] ?? '未知错误'}';
-          isLoading.value = false;
+        }
+        
+        // 如果没有找到非"相关"的播放源，则使用第一个播放源（可能是"相关"）
+        currentPlaySource.value = defaultSource.isNotEmpty ? defaultSource : (playFrom.isNotEmpty ? playFrom.first : '');
+        
+        if (kDebugMode) {
+          print('设置默认播放源: ${currentPlaySource.value}');
+          print('所有播放源: $playFrom');
         }
       } else {
-        errorMessage.value = '网络请求失败，状态码: ${response.statusCode}';
+        errorMessage.value = '获取视频详情失败: ${data['message'] ?? '未知错误'}';
         isLoading.value = false;
       }
     } catch (e) {
