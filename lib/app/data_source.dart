@@ -257,7 +257,7 @@ class DataSource {
   
   // 单例模式
   static final DataSource _instance = DataSource._internal(
-    currentSiteId: AppConfig.defaultSiteId,
+    currentSiteId: AppConfig.currentDefaultSiteId,
   );
   
   factory DataSource({String? siteId}) {
@@ -299,12 +299,12 @@ class DataSource {
   }
 
   /// 获取分类数据
-  /// [categoryName] 分类名称
+  /// [typeId] 分类ID
   /// [page] 页码，默认为1
-  Future<Map<String, dynamic>> fetchCategoryData(String categoryName, {int page = 1}) async {
+  Future<Map<String, dynamic>> fetchCategoryData(String typeId, {int page = 1}) async {
     try {
       Map<String, dynamic> queryParams = {
-        't': categoryName,
+        't': typeId,
         'pg': page.toString(),
       };
       

@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import '../../../app/config/config.dart';
+import '../../../app/data_source.dart';
 
 /// 设置控制器
 class SettingsController extends GetxController {
@@ -10,9 +11,13 @@ class SettingsController extends GetxController {
   // 数据源设置
   final RxBool _useMockData = false.obs;
   
+  // 默认站点设置
+  final RxString _currentDefaultSite = ''.obs;
+  
   // Getters
   Rx<PlayerKernel> get currentPlayerKernel => _currentPlayerKernel;
   RxBool get useMockData => _useMockData;
+  RxString get currentDefaultSite => _currentDefaultSite;
   
   @override
   void onInit() {
@@ -25,9 +30,10 @@ class SettingsController extends GetxController {
     // 从AppConfig加载当前设置
     _currentPlayerKernel.value = AppConfig.currentPlayerKernel;
     _useMockData.value = AppConfig.forceMockData;
+    _currentDefaultSite.value = AppConfig.currentDefaultSiteId;
     
     if (kDebugMode) {
-      print('设置加载完成: 播放器=${_currentPlayerKernel.value}, 模拟数据=${_useMockData.value}');
+      print('设置加载完成: 播放器=${_currentPlayerKernel.value}, 模拟数据=${_useMockData.value}, 默认站点=${_currentDefaultSite.value}');
     }
   }
   
@@ -51,10 +57,34 @@ class SettingsController extends GetxController {
     }
   }
   
+  /// 设置默认站点
+  void setDefaultSite(String siteId) {
+    _currentDefaultSite.value = siteId;
+    AppConfig.setRuntimeDefaultSite(siteId);
+    
+    // 切换DataSource到新的默认站点
+    DataSource(siteId: siteId);
+    
+    if (kDebugMode) {
+      print('默认站点已切换: $siteId');
+    }
+  }
+  
+  /// 获取站点显示名称
+  String getSiteName(String siteId) {
+    final config = AppConfig.getSiteConfig(siteId);
+    return config?['name'] as String? ?? siteId;
+  }
+  
+  /// 获取所有启用的站点
+  List<Map<String, dynamic>> get availableSites {
+    return AppConfig.enabledSites;
+  }
   
   /// 重置所有设置为默认值
   void resetToDefaults() {
     setPlayerKernel(PlayerKernel.videoPlayer);
     toggleMockData(false);
+    setDefaultSite(AppConfig.defaultSiteId);
   }
 }

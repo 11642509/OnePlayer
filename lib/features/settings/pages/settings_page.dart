@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../shared/utils/performance_manager.dart';
 import '../../../shared/widgets/common/glass_container.dart';
@@ -6,6 +7,7 @@ import '../../../app/config/config.dart';
 import '../controllers/settings_controller.dart';
 import '../../../core/remote_control/universal_focus.dart';
 import '../../../shared/controllers/window_controller.dart';
+import '../../../features/video_on_demand/controllers/vod_controller.dart';
 
 /// 设置页面 - 使用统一毛玻璃风格
 class SettingsPage extends GetView<SettingsController> {
@@ -94,6 +96,27 @@ class SettingsPage extends GetView<SettingsController> {
                 title: '数据设置',
                 isPortrait: isPortrait,
                 children: [
+                  Obx(() => GlassOption(
+                    title: '默认数据站点',
+                    subtitle: controller.getSiteName(controller.currentDefaultSite.value),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          controller.getSiteName(controller.currentDefaultSite.value),
+                          style: TextStyle(
+                            color: isPortrait ? Colors.grey[700] : Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.chevron_right, color: isPortrait ? Colors.grey[600] : Colors.white54),
+                      ],
+                    ),
+                    onTap: () => _showDataSourceDialog(context, controller),
+                    isPortrait: isPortrait,
+                  )),
+                  
                   Obx(() => GlassOption(
                     title: '数据源',
                     subtitle: controller.useMockData.value ? '使用模拟数据（离线模式）' : '使用在线数据',
@@ -218,6 +241,46 @@ class SettingsPage extends GetView<SettingsController> {
     );
   }
   
+  void _showDataSourceDialog(BuildContext context, SettingsController controller) {
+    final windowController = Get.find<WindowController>();
+    final isPortrait = windowController.isPortrait.value;
+    
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (context) => Center(
+        child: GlassContainer(
+          width: 280,
+          padding: const EdgeInsets.all(16),
+          isPortrait: isPortrait,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '选择默认数据站点',
+                style: TextStyle(
+                  color: isPortrait ? Colors.grey[800] : Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+              
+              Column(
+                children: controller.availableSites.map((site) {
+                  final siteId = site['id'] as String;
+                  final siteName = site['name'] as String;
+                  return _buildCompactSiteOption(siteName, siteId, controller, context, isPortrait);
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showPlayerKernelDialog(BuildContext context, SettingsController controller) {
     final windowController = Get.find<WindowController>();
     final isPortrait = windowController.isPortrait.value;
@@ -372,6 +435,80 @@ class SettingsPage extends GetView<SettingsController> {
     );
   }
 
+  /// 紧凑的数据站点选项
+  Widget _buildCompactSiteOption(String siteName, String siteId, SettingsController controller, BuildContext context, bool isPortrait) {
+    return Obx(() {
+      final isSelected = controller.currentDefaultSite.value == siteId;
+      final textColor = isPortrait ? Colors.grey[800]! : Colors.white;
+      final borderColor = isPortrait ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.6);
+      final selectedBgColor = isPortrait 
+          ? Colors.grey.withValues(alpha: 0.15) 
+          : Colors.white.withValues(alpha: 0.15);
+      final selectedBorderColor = isPortrait 
+          ? Colors.grey.withValues(alpha: 0.4) 
+          : Colors.white.withValues(alpha: 0.3);
+      
+      return Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        child: UniversalFocus(
+          onTap: () {
+            controller.setDefaultSite(siteId);
+            Navigator.of(context).pop();
+            _showSettingToast('已切换到$siteName');
+            
+            // 触发影视页重新加载
+            _reloadVideoOnDemandPage();
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            decoration: BoxDecoration(
+              color: isSelected ? selectedBgColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: isSelected 
+                ? Border.all(color: selectedBorderColor, width: 1)
+                : Border.all(color: borderColor.withValues(alpha: 0.3), width: 1),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? selectedBorderColor : borderColor,
+                      width: 2,
+                    ),
+                    color: isSelected ? selectedBgColor : Colors.transparent,
+                  ),
+                  child: isSelected 
+                    ? Icon(
+                        Icons.check,
+                        size: 10,
+                        color: textColor,
+                      )
+                    : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    siteName,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 14,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
   /// 紧凑的播放器内核选项
   Widget _buildCompactKernelOption(String title, PlayerKernel kernel, SettingsController controller, BuildContext context, bool isPortrait) {
     return Obx(() {
@@ -443,6 +580,42 @@ class SettingsPage extends GetView<SettingsController> {
         ),
       );
     });
+  }
+  
+  /// 重新加载影视页
+  void _reloadVideoOnDemandPage() {
+    try {
+      if (Get.isRegistered<VodController>()) {
+        final vodController = Get.find<VodController>();
+        
+        if (kDebugMode) {
+          print('开始重新加载影视页数据，当前默认站点: ${AppConfig.currentDefaultSiteId}');
+        }
+        
+        // 清除所有缓存的数据和状态
+        vodController.homeData.clear();
+        vodController.categoryData.clear();
+        vodController.currentPages.clear();
+        vodController.hasMoreStates.clear();
+        vodController.categoryLoadingStates.clear();
+        vodController.loadingMoreStates.clear();
+        vodController.classList.clear();
+        
+        // 重新设置加载状态
+        vodController.isLoading.value = true;
+        
+        // 调用VodController的初始化方法重新加载数据
+        vodController.initializeData();
+        
+        if (kDebugMode) {
+          print('影视页数据重新加载已触发');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('重新加载影视页出错: $e');
+      }
+    }
   }
 
   void _showHelpDialog(BuildContext context) {

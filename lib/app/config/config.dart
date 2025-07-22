@@ -39,6 +39,16 @@ class AppConfig {
   
   /// 站点配置模型
   static const Map<String, Map<String, dynamic>> siteConfigs = {
+    'ptt': {
+      'id': 'ptt',
+      'name': 'PTT',
+      'apiEndpoint': '/api/v1/ptt',
+      'apiUrl': 'http://$serverHost:$serverPort/api/v1/ptt',
+      'iconUrl': 'https://www.ptt.cc/favicon.ico',
+      'color': '#9C27B0',
+      'isEnabled': true,
+      'isDefault': true,
+    },
     'jianpian': {
       'id': 'jianpian',
       'name': '简片',
@@ -57,7 +67,7 @@ class AppConfig {
       'iconUrl': 'https://www.yhdm.tv/favicon.ico',
       'color': '#FF5722',
       'isEnabled': true,
-      'isDefault': true,
+      'isDefault': false,
     },
     'bilibili': {
       'id': 'bilibili',
@@ -140,6 +150,24 @@ class AppConfig {
   /// 获取搜索站点配置（向后兼容）
   static List<Map<String, dynamic>> get searchSources {
     return enabledSites;
+  }
+  
+  // 运行时的默认站点ID（可动态修改）
+  static String _runtimeDefaultSiteId = '';
+  
+  /// 设置运行时默认站点
+  static void setRuntimeDefaultSite(String siteId) {
+    if (siteConfigs.containsKey(siteId)) {
+      _runtimeDefaultSiteId = siteId;
+    }
+  }
+  
+  /// 获取当前运行时默认站点ID（优先使用运行时设置）
+  static String get currentDefaultSiteId {
+    if (_runtimeDefaultSiteId.isNotEmpty && siteConfigs.containsKey(_runtimeDefaultSiteId)) {
+      return _runtimeDefaultSiteId;
+    }
+    return defaultSiteId; // 回退到配置文件中的默认站点
   }
 }
 

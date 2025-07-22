@@ -47,7 +47,8 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
   final RxInt selectedTabIndex = 0.obs;
   
   // 数据源
-  final DataSource _dataSource = DataSource();
+  // 数据源 - 改为getter以便动态获取最新实例
+  DataSource get _dataSource => DataSource();
   
   // 添加主页分类
   final Map<String, dynamic> _homeCategory = {"type_id": "0", "type_name": "主页"};
@@ -58,8 +59,13 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     if (!_isInitialized) {
       _isInitialized = true;
       _setupWorkers();
-      _fetchHomeData();
+      initializeData();
     }
+  }
+  
+  /// 初始化数据（可重复调用）
+  void initializeData() {
+    _fetchHomeData();
   }
   
   /// 设置GetX Workers进行自动化操作（优化版本）
@@ -215,12 +221,13 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
           // 获取当前选中的分类
           final selectedCategory = classList[tabController!.index];
           final selectedTypeName = selectedCategory['type_name'] as String;
+          final selectedTypeId = selectedCategory['type_id']?.toString() ?? '';
           
           // 如果不是主页，则重新加载该分类的数据
-          if (selectedTypeName != "主页") {
+          if (selectedTypeName != "主页" && selectedTypeId.isNotEmpty) {
             categoryLoadingStates[selectedTypeName] = true;
             try {
-              await fetchCategoryData(selectedTypeName, isInitialLoad: true);
+              await fetchCategoryData(selectedTypeId, typeName: selectedTypeName, isInitialLoad: true);
             } finally {
               categoryLoadingStates[selectedTypeName] = false;
             }
@@ -238,23 +245,28 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     if (!categoryData.containsKey(typeName) || categoryData[typeName]!.isEmpty) {
       final isCurrentlyLoading = categoryLoadingStates[typeName] ?? false;
       if (!isCurrentlyLoading) {
-        // 延迟执行避免在build期间触发状态更新
-        Future.microtask(() {
-          categoryLoadingStates[typeName] = true;
-          fetchCategoryData(typeName, isInitialLoad: true).then((_) {
-            categoryLoadingStates[typeName] = false;
-          }).catchError((error) {
-            categoryLoadingStates[typeName] = false;
+        // 从classList中查找对应的typeId
+        final typeId = _getTypeIdByName(typeName);
+        if (typeId.isNotEmpty) {
+          // 延迟执行避免在build期间触发状态更新
+          Future.microtask(() {
+            categoryLoadingStates[typeName] = true;
+            fetchCategoryData(typeId, typeName: typeName, isInitialLoad: true).then((_) {
+              categoryLoadingStates[typeName] = false;
+            }).catchError((error) {
+              categoryLoadingStates[typeName] = false;
+            });
           });
-        });
+        }
       }
     }
   }
 
   // 获取分类数据
-  Future<Map<String, dynamic>> fetchCategoryData(String typeName, {bool isInitialLoad = false}) async {
-    final page = currentPages[typeName] ?? 1;
-    final cacheKey = '${typeName}_$page';
+  Future<Map<String, dynamic>> fetchCategoryData(String typeId, {String? typeName, bool isInitialLoad = false}) async {
+    final displayName = typeName ?? typeId; // 用于显示和缓存键的名称
+    final page = currentPages[displayName] ?? 1;
+    final cacheKey = '${displayName}_$page';
     
     // 如果已经有缓存的Future，返回它
     if (_categoryFutures.containsKey(cacheKey)) {
@@ -262,36 +274,34 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     }
 
     // 创建新的Future并缓存
-    final future = _fetchCategoryDataInternal(typeName, page);
+    final future = _fetchCategoryDataInternal(typeId, displayName, page);
     _categoryFutures[cacheKey] = future;
     
     return future;
   }
   
   // 内部实际获取数据的方法
-  Future<Map<String, dynamic>> _fetchCategoryDataInternal(String typeName, int page) async {
+  Future<Map<String, dynamic>> _fetchCategoryDataInternal(String typeId, String displayName, int page) async {
     // 检查是否强制使用mock数据
     if (AppConfig.forceMockData) {
-      final typeId = _getTypeIdByName(typeName);
       final mockData = CategoryContent.getMockData(typeId, page: page);
       
-      _updateDataAndPages(typeName, mockData, isLoadMore: page > 1);
+      _updateDataAndPages(displayName, mockData, isLoadMore: page > 1);
       return mockData;
     }
     
     try {
-      // 尝试从真实接口获取数据
-      final data = await _dataSource.fetchCategoryData(typeName, page: page);
-      _updateDataAndPages(typeName, data, isLoadMore: page > 1);
+      // 尝试从真实接口获取数据，传递typeId
+      final data = await _dataSource.fetchCategoryData(typeId, page: page);
+      _updateDataAndPages(displayName, data, isLoadMore: page > 1);
       return data;
     } catch (e) {
       if (kDebugMode) {
         print('分类API调用失败，使用mock数据: $e');
       }
       // 如果API调用失败，回退到使用mock数据
-      final typeId = _getTypeIdByName(typeName);
       final mockData = CategoryContent.getMockData(typeId, page: page);
-      _updateDataAndPages(typeName, mockData, isLoadMore: page > 1);
+      _updateDataAndPages(displayName, mockData, isLoadMore: page > 1);
       return mockData;
     }
   }
@@ -393,7 +403,7 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
   String _getTypeIdByName(String typeName) {
     for (var category in classList) {
       if (category['type_name'] == typeName) {
-        return category['type_id'] as String;
+        return category['type_id']?.toString() ?? "";
       }
     }
     return "1"; // 默认返回第一个分类ID
@@ -414,7 +424,8 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
       _categoryFutures.remove(cacheKey);
       
       try {
-        await fetchCategoryData(typeName, isInitialLoad: true);
+        final typeId = _getTypeIdByName(typeName);
+        await fetchCategoryData(typeId, typeName: typeName, isInitialLoad: true);
       } finally {
         categoryLoadingStates[typeName] = false;
       }
@@ -440,7 +451,8 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
       _categoryFutures.remove(cacheKey);
       
       // 获取下一页数据
-      await fetchCategoryData(typeName, isInitialLoad: false);
+      final typeId = _getTypeIdByName(typeName);
+      await fetchCategoryData(typeId, typeName: typeName, isInitialLoad: false);
     } finally {
       loadingMoreStates[typeName] = false;
     }
