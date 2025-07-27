@@ -210,6 +210,15 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     isLoading.value = false;
   }
   
+  // 刷新当前选中的分类数据
+  Future<void> refreshCurrentCategory() async {
+    if (tabController != null && tabController!.index < classList.length) {
+      final selectedCategory = classList[tabController!.index];
+      final selectedTypeName = selectedCategory['type_name'] as String;
+      await refreshData(selectedTypeName);
+    }
+  }
+
   // 单独的标签变化处理方法
   void _onTabChanged() {
     if (tabController!.indexIsChanging && !_isProcessingTabChange) {
@@ -412,11 +421,17 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
   // 刷新数据
   Future<void> refreshData(String typeName) async {
     if (typeName == "主页") {
+      // 清空主页数据，让用户看到刷新效果
+      homeData.clear();
+      categoryData["主页"] = [];
       await _fetchHomeData();
     } else {
       categoryLoadingStates[typeName] = true;
       currentPages[typeName] = 1;
       hasMoreStates[typeName] = true;
+      
+      // 强制清空现有数据，让用户看到刷新效果
+      categoryData[typeName] = [];
       
       // 清除缓存的Future
       final page = currentPages[typeName] ?? 1;

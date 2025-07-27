@@ -7,6 +7,7 @@ import '../../../main.dart' show PlayerType; // 引入PlayerType枚举
 import '../../controllers/window_controller.dart';
 import '../../../features/home/pages/home_selection_page.dart'; // 导入HomeTest页面
 import '../../../features/video_on_demand/pages/video_on_demand_page.dart'; // 导入VodPage页面
+import '../../../features/video_on_demand/controllers/vod_controller.dart'; // 导入VOD控制器
 import '../../../features/settings/pages/settings_page.dart'; // 导入设置页面
 import '../backgrounds/optimized_cosmic_background.dart'; // 导入优化背景组件
 import '../common/glass_container.dart'; // 导入通用毛玻璃组件
@@ -30,7 +31,36 @@ class _LandscapeHomeLayoutState extends State<LandscapeHomeLayout> {
   final _navBarKey = GlobalKey<nav.NavigationBarState>();
 
   void _handleTabChanged(String tab) {
-    setState(() => _currentTab = tab);
+    // 如果点击的是当前已选中的标签，则触发刷新
+    if (_currentTab == tab) {
+      _refreshCurrentTab(tab);
+    } else {
+      setState(() => _currentTab = tab);
+    }
+  }
+
+  // 刷新当前标签页数据
+  void _refreshCurrentTab(String tab) {
+    switch (tab) {
+      case '影视':
+        // 刷新影视页面数据
+        if (Get.isRegistered<VodController>()) {
+          final vodController = Get.find<VodController>();
+          // 获取当前选中的分类名称
+          final currentCategoryName = vodController.classList.isNotEmpty && 
+                                     vodController.selectedTabIndex.value < vodController.classList.length
+              ? vodController.classList[vodController.selectedTabIndex.value]['type_name'] as String
+              : "主页";
+          vodController.refreshData(currentCategoryName);
+        }
+        break;
+      case '测试':
+        // 测试页面可能需要其他刷新逻辑
+        break;
+      default:
+        // 其他标签页暂不处理刷新
+        break;
+    }
   }
 
   // 根据当前标签获取对应的页面内容

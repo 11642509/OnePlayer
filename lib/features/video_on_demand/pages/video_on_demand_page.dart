@@ -85,7 +85,7 @@ class VideoOnDemandPage extends StatelessWidget {
       });
   }
   
-  // 提取TabBar构建逻辑，避免重复计算
+  // 提取TabBar构建逻辑，避免重复计算，支持点击刷新
   Widget _buildOptimizedTabBar(BuildContext context, bool isPortrait) {
     final controller = Get.find<VodController>();
     
@@ -95,6 +95,14 @@ class VideoOnDemandPage extends StatelessWidget {
       // 禁用默认的焦点装饰，只使用我们自定义的FocusAwareTab效果
       splashFactory: NoSplash.splashFactory,
       overlayColor: WidgetStateProperty.all(Colors.transparent),
+      onTap: (index) {
+        // 检测是否点击了当前已选中的标签
+        if (controller.tabController?.index == index) {
+          // 如果是当前选中的标签，触发刷新
+          controller.refreshCurrentCategory();
+        }
+        // 注意：不需要手动处理tab切换，TabBar会自动处理
+      },
       tabs: controller.classList.map((item) {
         final tabContent = Text(
             item['type_name'] as String,
