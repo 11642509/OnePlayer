@@ -193,6 +193,9 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
       // 禁用默认的焦点装饰，只使用我们自定义的FocusAwareTab效果
       splashFactory: NoSplash.splashFactory,
       overlayColor: WidgetStateProperty.all(Colors.transparent),
+      // 添加更多焦点稳定性配置
+      automaticIndicatorColorAdjustment: false,
+      enableFeedback: false,
       tabs: controller.sources.map((source) {
         final resultCount = controller.getSourceResultCount(source.id);
         final isLoading = controller.isSourceLoading(source.id);
@@ -235,10 +238,15 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         );
 
         return Tab(
+          key: ValueKey('search_tab_${source.id}'), // 稳定的key
           height: isPortrait ? 36 : 40,
-          child: isPortrait 
-              ? _PortraitFocusHighlight(child: tabContent)
-              : FocusAwareTab(child: tabContent),
+          child: Focus(
+            skipTraversal: false,
+            canRequestFocus: true,
+            child: isPortrait 
+                ? _PortraitFocusHighlight(child: tabContent)
+                : FocusAwareTab(child: tabContent),
+          ),
         );
       }).toList(),
       labelColor: isPortrait ? Colors.grey[800] : Colors.white,
@@ -258,10 +266,13 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         horizontal: isPortrait ? 12 : 16,
       ),
       onTap: (index) {
-        if (index < controller.sources.length) {
-          final source = controller.sources[index];
-          controller.selectSource(source.id);
+        // 检测是否点击了当前已选中的标签
+        if (controller.sourceTabController?.index == index) {
+          // 如果是当前选中的标签，可以考虑触发刷新或其他操作
+          // 这里暂时不做处理，保持与影视页一致的行为
         }
+        // 注意：不需要手动处理tab切换，TabBar会自动处理
+        // controller.selectSource调用会通过TabController的监听器自动触发
       },
     );
   }
@@ -269,86 +280,95 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
   /// 构建搜索TabBarView
   Widget _buildSearchTabBarView(bool isPortrait) {
     return TabBarView(
+      key: ValueKey('search_tabbar_view_${controller.sources.length}'), // 稳定的key
       controller: controller.sourceTabController,
+      physics: const NeverScrollableScrollPhysics(), // 禁用滑动切换，只允许点击导航
       children: controller.sources.map((source) {
-        return _buildSourceResultPage(source.id, isPortrait);
+        return Container(
+          key: ValueKey('tab_content_${source.id}'), // 每个页面稳定的key
+          child: _buildSourceResultPage(source.id, isPortrait),
+        );
       }).toList(),
     );
   }
 
   /// 构建单个搜索源的结果页面
   Widget _buildSourceResultPage(String sourceId, bool isPortrait) {
-    return Obx(() {
-      final results = controller.sourceResults[sourceId] ?? [];
-      final isLoading = controller.isSourceLoading(sourceId);
-      
-      if (isLoading && results.isEmpty) {
-        return const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFFFF7BB0),
-          ),
-        );
-      }
-      
-      if (results.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.search_off,
-                size: 64,
-                color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '此源暂无搜索结果',
-                style: TextStyle(
+    return Container(
+      key: ValueKey('search_result_$sourceId'), // 稳定的key避免重建
+      child: Obx(() {
+        final results = controller.sourceResults[sourceId] ?? [];
+        final isLoading = controller.isSourceLoading(sourceId);
+        
+        if (isLoading && results.isEmpty) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFFFF7BB0),
+            ),
+          );
+        }
+        
+        if (results.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.search_off,
+                  size: 64,
                   color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-                  fontSize: 16,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  '此源暂无搜索结果',
+                  style: TextStyle(
+                    color: isPortrait ? Colors.grey[600] : Colors.grey[400],
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        // 将SearchResult转换为VideoGridWidget需要的格式
+        final videoList = results.map((result) => {
+          'vod_id': result.vodId,
+          'vod_name': result.vodName,
+          'vod_pic': result.vodPic,
+          'vod_remarks': result.vodRemarks,
+        }).toList();
+        
+        return RefreshIndicator(
+          color: const Color(0xFFFF7BB0),
+          backgroundColor: Colors.grey[900],
+          onRefresh: () async {
+            await controller.performSearch();
+          },
+          child: VideoGridWidget(
+            key: ValueKey('video_grid_${sourceId}_${results.length}'), // 防止VideoGrid重建影响焦点
+            videoList: videoList,
+            scrollController: controller.getScrollController(sourceId),
+            isPortrait: isPortrait,
+            isHorizontalLayout: controller.isHorizontalLayout.value,
+            showLoadMore: false, // 搜索结果通常不需要加载更多
+            isLoadingMore: false,
+            hasMore: false,
+            emptyMessage: "此源暂无搜索结果",
+            onVideoTap: (video) {
+              // 获取当前选中的搜索源并切换DataSource
+              final currentSource = controller.selectedSourceId.value;
+              DataSource(siteId: currentSource); // 切换到对应站点
+              
+              Get.toNamed(
+                AppRoutes.videoDetail,
+                parameters: {'videoId': video['vod_id'] ?? ''},
+              );
+            },
           ),
         );
-      }
-      
-      // 将SearchResult转换为VideoGridWidget需要的格式
-      final videoList = results.map((result) => {
-        'vod_id': result.vodId,
-        'vod_name': result.vodName,
-        'vod_pic': result.vodPic,
-        'vod_remarks': result.vodRemarks,
-      }).toList();
-      
-      return RefreshIndicator(
-        color: const Color(0xFFFF7BB0),
-        backgroundColor: Colors.grey[900],
-        onRefresh: () async {
-          await controller.performSearch();
-        },
-        child: VideoGridWidget(
-          videoList: videoList,
-          scrollController: controller.getScrollController(sourceId),
-          isPortrait: isPortrait,
-          isHorizontalLayout: controller.isHorizontalLayout.value,
-          showLoadMore: false, // 搜索结果通常不需要加载更多
-          isLoadingMore: false,
-          hasMore: false,
-          emptyMessage: "此源暂无搜索结果",
-          onVideoTap: (video) {
-            // 获取当前选中的搜索源并切换DataSource
-            final currentSource = controller.selectedSourceId.value;
-            DataSource(siteId: currentSource); // 切换到对应站点
-            
-            Get.toNamed(
-              AppRoutes.videoDetail,
-              parameters: {'videoId': video['vod_id'] ?? ''},
-            );
-          },
-        ),
-      );
-    });
+      }),
+    );
   }
 
 

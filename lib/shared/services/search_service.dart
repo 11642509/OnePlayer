@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import '../models/search_source.dart';
 import '../models/search_result.dart';
 import '../../app/config/config.dart';
+import '../../features/settings/services/cms_site_service.dart';
 
 /// 搜索API服务
 class SearchService {
@@ -43,8 +45,19 @@ class SearchService {
     }
     
     try {
+      // 构建查询参数
+      final queryParameters = {'wd': keyword};
+      
+      // 如果搜索源是CMS类型，添加CMS配置参数
+      if (source.id.startsWith('cms_')) {
+        final cmsParams = _getCmsQueryParams(source.id);
+        if (cmsParams != null) {
+          queryParameters.addAll(cmsParams.map((key, value) => MapEntry(key, value.toString())));
+        }
+      }
+      
       final uri = Uri.parse('$_baseUrl${source.apiEndpoint}').replace(
-        queryParameters: {'wd': keyword},
+        queryParameters: queryParameters,
       );
       
       final response = await http.get(uri).timeout(_timeout);
@@ -108,7 +121,7 @@ class SearchService {
     }
   }
   
-  /// 搜索所有默认源
+  /// 搜索所有默认源（包含CMS站点）
   Future<Map<String, SearchResponse>> searchAll(String keyword) async {
     final sources = SearchSource.getDefaultSources();
     return await searchFromMultipleSources(sources, keyword);
@@ -142,5 +155,46 @@ class SearchService {
           .where((entry) => DateTime.now().difference(entry.value) >= _cacheExpiration)
           .length,
     };
+  }
+  
+  /// 获取CMS查询参数
+  Map<String, dynamic>? _getCmsQueryParams(String sourceId) {
+    try {
+      if (Get.isRegistered<CmsSiteService>()) {
+        final cmsService = Get.find<CmsSiteService>();
+        
+        // 从source ID中提取CMS站点ID (格式: cms_${site.id})
+        final siteId = sourceId.replaceFirst('cms_', '');
+        
+        // 根据站点ID找到对应的CMS站点
+        final cmsSite = cmsService.cmsSites.firstWhereOrNull((site) => site.id == siteId);
+        
+        if (cmsSite != null) {
+          if (kDebugMode) {
+            print('SearchService: 使用CMS站点 ${cmsSite.name} (${cmsSite.id}) 的配置参数');
+          }
+          
+          // 直接使用站点URL作为config参数
+          final params = {
+            'config': cmsSite.url,
+          };
+          
+          if (kDebugMode) {
+            print('SearchService: CMS查询参数: $params');
+          }
+          
+          return params;
+        } else {
+          if (kDebugMode) {
+            print('SearchService: 找不到ID为 $siteId 的CMS站点');
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('SearchService: 获取CMS参数失败: $e');
+      }
+    }
+    return null;
   }
 }

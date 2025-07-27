@@ -275,6 +275,11 @@ class DataSource {
 
   /// 获取当前站点的API URL
   String get currentApiUrl {
+    // 如果是CMS站点（cms_开头），使用CMS API端点
+    if (currentSiteId.startsWith('cms_')) {
+      return AppConfig.getSiteApiUrl('cms')!;
+    }
+    
     final apiUrl = AppConfig.getSiteApiUrl(currentSiteId);
     if (apiUrl == null) {
       throw Exception('站点配置未找到: $currentSiteId');
@@ -284,12 +289,24 @@ class DataSource {
 
   /// 获取CMS查询参数
   Map<String, dynamic>? _getCmsQueryParams() {
-    if (currentSiteId == 'cms') {
+    if (currentSiteId == 'cms' || currentSiteId.startsWith('cms_')) {
       try {
         final cmsService = Get.find<CmsSiteService>();
-        final selectedSite = cmsService.selectedSite;
-        if (selectedSite != null) {
-          return {'config': selectedSite.url};
+        
+        if (currentSiteId.startsWith('cms_')) {
+          // 动态CMS站点，从站点ID中提取CMS站点ID
+          final siteId = currentSiteId.replaceFirst('cms_', '');
+          final cmsSite = cmsService.cmsSites.firstWhere(
+            (site) => site.id == siteId,
+            orElse: () => throw Exception('找不到CMS站点: $siteId'),
+          );
+          return {'config': cmsSite.url};
+        } else {
+          // 传统CMS模式，使用选中的站点
+          final selectedSite = cmsService.selectedSite;
+          if (selectedSite != null) {
+            return {'config': selectedSite.url};
+          }
         }
       } catch (e) {
         if (kDebugMode) {
@@ -364,12 +381,21 @@ class DataSource {
         print('参数: {flag: $flag, id: $id}');
       }
       
+      // 构建查询参数
+      final queryParameters = {
+        'flag': flag,
+        'id': id,
+      };
+      
+      // 添加CMS配置参数
+      final cmsParams = _getCmsQueryParams();
+      if (cmsParams != null) {
+        queryParameters.addAll(cmsParams.map((key, value) => MapEntry(key, value.toString())));
+      }
+      
       final response = await _dio.get(
         currentApiUrl,
-        queryParameters: {
-          'flag': flag,
-          'id': id,
-        },
+        queryParameters: queryParameters,
       );
       
       if (kDebugMode) {
@@ -417,11 +443,20 @@ class DataSource {
         print('参数: {ids: $videoId}');
       }
       
+      // 构建查询参数
+      final queryParameters = {
+        'ids': videoId,
+      };
+      
+      // 添加CMS配置参数
+      final cmsParams = _getCmsQueryParams();
+      if (cmsParams != null) {
+        queryParameters.addAll(cmsParams.map((key, value) => MapEntry(key, value.toString())));
+      }
+      
       final response = await _dio.get(
         currentApiUrl,
-        queryParameters: {
-          'ids': videoId,
-        },
+        queryParameters: queryParameters,
       );
       
       if (kDebugMode) {

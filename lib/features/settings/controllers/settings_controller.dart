@@ -2,7 +2,6 @@ import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import '../../../app/config/config.dart';
 import '../../../app/data_source.dart';
-import '../services/cms_site_service.dart';
 
 /// 设置控制器
 class SettingsController extends GetxController {

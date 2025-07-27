@@ -1,4 +1,3 @@
-import 'package:get/get.dart';
 
 /// 播放器内核枚举
 enum PlayerKernel {
@@ -149,8 +148,7 @@ class AppConfig {
     // 添加启用的标准站点
     options.addAll(enabledSites);
     
-    // 添加CMS选项
-    options.add(siteConfigs['cms']!);
+    // CMS选项已经通过enabledSites包含，不需要重复添加
     
     return options;
   }

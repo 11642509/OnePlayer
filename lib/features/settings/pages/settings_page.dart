@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../../shared/utils/performance_manager.dart';
 import '../../../shared/widgets/common/glass_container.dart';
 import '../../../app/config/config.dart';
 import '../controllers/settings_controller.dart';
 import '../../../core/remote_control/universal_focus.dart';
+import '../../../core/remote_control/focusable_glow.dart';
 import '../../../shared/controllers/window_controller.dart';
 import '../../../features/video_on_demand/controllers/vod_controller.dart';
 import '../services/cms_site_service.dart';
@@ -786,7 +788,7 @@ class SettingsPage extends GetView<SettingsController> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // 添加站点按钮
-                  _buildDialogButton(
+                  _buildCmsDialogButton(
                     '添加站点',
                     const Color(0xFFFF7BB0),
                     () => _showAddCmsSiteDialog(context),
@@ -794,7 +796,7 @@ class SettingsPage extends GetView<SettingsController> {
                   ),
                   
                   // 关闭按钮
-                  _buildDialogButton(
+                  _buildCmsDialogButton(
                     '关闭',
                     Colors.grey,
                     () => Navigator.of(context).pop(),
@@ -909,11 +911,12 @@ class SettingsPage extends GetView<SettingsController> {
     );
   }
   
-  /// 构建弹窗按钮
-  Widget _buildDialogButton(String text, Color color, VoidCallback onPressed, bool isPortrait) {
-    return UniversalFocus(
+  /// 构建CMS弹窗按钮
+  Widget _buildCmsDialogButton(String text, Color color, VoidCallback onPressed, bool isPortrait) {
+    return FocusableGlow(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(8),
+      customGlowColor: color.withValues(alpha: 0.8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
@@ -985,13 +988,13 @@ class SettingsPage extends GetView<SettingsController> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildDialogButton(
+                  _buildCmsDialogButton(
                     '取消',
                     Colors.grey,
                     () => Navigator.of(context).pop(),
                     isPortrait,
                   ),
-                  _buildDialogButton(
+                  _buildCmsDialogButton(
                     '删除',
                     Colors.red,
                     () async {
@@ -1028,18 +1031,35 @@ class _AddCmsSiteDialog extends StatefulWidget {
 class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _urlController;
+  late final FocusNode _nameFocusNode;
+  late final FocusNode _urlFocusNode;
+  late final FocusNode _cancelButtonFocusNode;
+  late final FocusNode _addButtonFocusNode;
   
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: '');
     _urlController = TextEditingController(text: '');
+    _nameFocusNode = FocusNode();
+    _urlFocusNode = FocusNode();
+    _cancelButtonFocusNode = FocusNode();
+    _addButtonFocusNode = FocusNode();
+    
+    // 弹窗打开后自动聚焦到第一个输入框
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _nameFocusNode.requestFocus();
+    });
   }
   
   @override
   void dispose() {
     _nameController.dispose();
     _urlController.dispose();
+    _nameFocusNode.dispose();
+    _urlFocusNode.dispose();
+    _cancelButtonFocusNode.dispose();
+    _addButtonFocusNode.dispose();
     super.dispose();
   }
   
@@ -1065,10 +1085,12 @@ class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
     );
   }
   
-  Widget _buildDialogButton(String text, Color color, VoidCallback onPressed) {
-    return UniversalFocus(
+  Widget _buildDialogButton(String text, Color color, VoidCallback onPressed, FocusNode? focusNode) {
+    return FocusableGlow(
       onTap: onPressed,
+      focusNode: focusNode,
       borderRadius: BorderRadius.circular(8),
+      customGlowColor: color.withValues(alpha: 0.8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
@@ -1089,14 +1111,70 @@ class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
   
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: GlassContainer(
-        width: widget.isPortrait ? 300 : 400,
-        padding: const EdgeInsets.all(20),
-        isPortrait: widget.isPortrait,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+    return KeyboardListener(
+      focusNode: FocusNode(),
+      onKeyEvent: (KeyEvent event) {
+        if (event is KeyDownEvent) {
+          final key = event.logicalKey;
+          
+          if (key == LogicalKeyboardKey.arrowDown) {
+            if (_nameFocusNode.hasFocus) {
+              _urlFocusNode.requestFocus();
+            } else if (_urlFocusNode.hasFocus) {
+              _cancelButtonFocusNode.requestFocus();
+            }
+          } else if (key == LogicalKeyboardKey.arrowUp) {
+            if (_urlFocusNode.hasFocus) {
+              _nameFocusNode.requestFocus();
+            } else if (_cancelButtonFocusNode.hasFocus || _addButtonFocusNode.hasFocus) {
+              _urlFocusNode.requestFocus();
+            }
+          } else if (key == LogicalKeyboardKey.arrowLeft) {
+            if (_addButtonFocusNode.hasFocus) {
+              _cancelButtonFocusNode.requestFocus();
+            }
+          } else if (key == LogicalKeyboardKey.arrowRight) {
+            if (_cancelButtonFocusNode.hasFocus) {
+              _addButtonFocusNode.requestFocus();
+            }
+          }
+        }
+      },
+      child: Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: widget.isPortrait ? 350 : 450,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: widget.isPortrait 
+                  ? Colors.white.withValues(alpha: 0.95)
+                  : Colors.grey[900]!.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(
+                color: widget.isPortrait 
+                    ? Colors.grey.withValues(alpha: 0.25)
+                    : Colors.white.withValues(alpha: 0.15),
+                width: 0.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 30,
+                  spreadRadius: -5,
+                  offset: const Offset(0, 12),
+                ),
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  blurRadius: 1,
+                  spreadRadius: 0,
+                  offset: const Offset(0, -0.3),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
             Text(
               '添加CMS站点',
               style: TextStyle(
@@ -1108,43 +1186,93 @@ class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
             const SizedBox(height: 20),
             
             // 站点名称输入
-            TextField(
-              key: const ValueKey('cms_site_name_input'),
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: '站点名称',
-                hintText: '例如：非凡资源',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+            Material(
+              color: Colors.transparent,
+              child: TextField(
+                key: const ValueKey('cms_site_name_input'),
+                controller: _nameController,
+                focusNode: _nameFocusNode,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (value) {
+                  _urlFocusNode.requestFocus();
+                },
+                decoration: InputDecoration(
+                  labelText: '站点名称',
+                  hintText: '例如：非凡资源',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: widget.isPortrait ? Colors.grey[600]! : Colors.white.withValues(alpha: 0.6),
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: widget.isPortrait 
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.white.withValues(alpha: 0.05),
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
                 ),
-                filled: true,
-                fillColor: widget.isPortrait 
-                    ? Colors.white.withValues(alpha: 0.7)
-                    : Colors.white.withValues(alpha: 0.1),
-              ),
-              style: TextStyle(
-                color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+                style: TextStyle(
+                  color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+                ),
               ),
             ),
             const SizedBox(height: 16),
             
             // 站点URL输入
-            TextField(
-              key: const ValueKey('cms_site_url_input'),
-              controller: _urlController,
-              decoration: InputDecoration(
-                labelText: '站点URL',
-                hintText: 'https://example.com/api.php/provide/vod',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+            Material(
+              color: Colors.transparent,
+              child: TextField(
+                key: const ValueKey('cms_site_url_input'),
+                controller: _urlController,
+                focusNode: _urlFocusNode,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (value) {
+                  _cancelButtonFocusNode.requestFocus();
+                },
+                decoration: InputDecoration(
+                  labelText: '站点URL',
+                  hintText: 'https://example.com/api.php/provide/vod',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: widget.isPortrait ? Colors.grey[600]! : Colors.white.withValues(alpha: 0.6),
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: widget.isPortrait 
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.white.withValues(alpha: 0.05),
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
                 ),
-                filled: true,
-                fillColor: widget.isPortrait 
-                    ? Colors.white.withValues(alpha: 0.7)
-                    : Colors.white.withValues(alpha: 0.1),
-              ),
-              style: TextStyle(
-                color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+                style: TextStyle(
+                  color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -1157,6 +1285,7 @@ class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
                   '取消',
                   Colors.grey,
                   () => Navigator.of(context).pop(),
+                  _cancelButtonFocusNode,
                 ),
                 _buildDialogButton(
                   '添加',
@@ -1181,12 +1310,13 @@ class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
                       }
                     }
                   },
+                  _addButtonFocusNode,
                 ),
               ],
             ),
           ],
         ),
-      ),
+      ))),
     );
   }
 }
