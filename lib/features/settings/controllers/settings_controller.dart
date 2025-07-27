@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import '../../../app/config/config.dart';
 import '../../../app/data_source.dart';
+import '../services/cms_site_service.dart';
 
 /// 设置控制器
 class SettingsController extends GetxController {
@@ -76,9 +77,9 @@ class SettingsController extends GetxController {
     return config?['name'] as String? ?? siteId;
   }
   
-  /// 获取所有启用的站点
+  /// 获取所有启用的站点（包括CMS）
   List<Map<String, dynamic>> get availableSites {
-    return AppConfig.enabledSites;
+    return AppConfig.dataSourceOptions;
   }
   
   /// 重置所有设置为默认值

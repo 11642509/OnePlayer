@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import 'config/config.dart';
+import '../features/settings/services/cms_site_service.dart';
 
 /// 视频格式枚举
 enum VideoFormat {
@@ -280,10 +282,32 @@ class DataSource {
     return apiUrl;
   }
 
+  /// 获取CMS查询参数
+  Map<String, dynamic>? _getCmsQueryParams() {
+    if (currentSiteId == 'cms') {
+      try {
+        final cmsService = Get.find<CmsSiteService>();
+        final selectedSite = cmsService.selectedSite;
+        if (selectedSite != null) {
+          return {'config': selectedSite.url};
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('获取CMS配置失败: $e');
+        }
+      }
+    }
+    return null;
+  }
+
   /// 获取首页数据
   Future<Map<String, dynamic>> fetchHomeData() async {
     try {
-      final response = await _dio.get(currentApiUrl);
+      final cmsParams = _getCmsQueryParams();
+      final response = await _dio.get(
+        currentApiUrl,
+        queryParameters: cmsParams,
+      );
       return response.data;
     } catch (e) {
       if (kDebugMode) {
@@ -307,6 +331,12 @@ class DataSource {
         't': typeId,
         'pg': page.toString(),
       };
+      
+      // 如果是CMS站点，添加config参数
+      final cmsParams = _getCmsQueryParams();
+      if (cmsParams != null) {
+        queryParams.addAll(cmsParams);
+      }
       
       final response = await _dio.get(
         currentApiUrl,

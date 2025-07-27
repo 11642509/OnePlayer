@@ -8,6 +8,7 @@ import '../controllers/settings_controller.dart';
 import '../../../core/remote_control/universal_focus.dart';
 import '../../../shared/controllers/window_controller.dart';
 import '../../../features/video_on_demand/controllers/vod_controller.dart';
+import '../widgets/cms_site_manager.dart';
 
 /// 设置页面 - 使用统一毛玻璃风格
 class SettingsPage extends GetView<SettingsController> {
@@ -141,6 +142,18 @@ class SettingsPage extends GetView<SettingsController> {
                     title: '数据源说明',
                     subtitle: '模拟数据：无需网络，用于测试\n在线数据：需要网络连接',
                     isPortrait: isPortrait,
+                  ),
+                ],
+              ),
+              
+              // CMS站点管理区域
+              GlassSection(
+                title: 'CMS管理',
+                isPortrait: isPortrait,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    child: const CmsSiteManager(),
                   ),
                 ],
               ),

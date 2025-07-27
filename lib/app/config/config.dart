@@ -1,3 +1,11 @@
+import 'package:get/get.dart';
+
+/// 播放器内核枚举
+enum PlayerKernel {
+  videoPlayer,  // 原生 video_player
+  vlc,         // VLC Player
+}
+
 /// 应用配置类
 class AppConfig {
   /// 是否强制使用mock数据
@@ -16,6 +24,9 @@ class AppConfig {
   
   /// 播放器内核选择
   static PlayerKernel currentPlayerKernel = PlayerKernel.videoPlayer;
+  
+  /// 当前选中的数据源类型
+  static String currentDataSource = 'ptt';
   
   /// 获取代理服务器URL
   static String getProxyUrl(Map<String, String> queryParams) {
@@ -119,7 +130,30 @@ class AppConfig {
       'isEnabled': false,
       'isDefault': false,
     },
+    'cms': {
+      'id': 'cms',
+      'name': 'CMS采集',
+      'apiEndpoint': '/api/v1/cms',
+      'apiUrl': 'http://$serverHost:$serverPort/api/v1/cms',
+      'iconUrl': 'https://www.example.com/favicon.ico',
+      'color': '#FF9800',
+      'isEnabled': true,
+      'isDefault': false,
+    },
   };
+
+  /// 获取数据源选项列表（包括标准站点和CMS）
+  static List<Map<String, dynamic>> get dataSourceOptions {
+    final List<Map<String, dynamic>> options = [];
+    
+    // 添加启用的标准站点
+    options.addAll(enabledSites);
+    
+    // 添加CMS选项
+    options.add(siteConfigs['cms']!);
+    
+    return options;
+  }
   
   /// 获取默认站点ID
   static String get defaultSiteId {
@@ -169,10 +203,4 @@ class AppConfig {
     }
     return defaultSiteId; // 回退到配置文件中的默认站点
   }
-}
-
-/// 播放器内核枚举
-enum PlayerKernel {
-  vlc,        // VLC内核
-  videoPlayer, // Flutter官方video_player内核
 } 
