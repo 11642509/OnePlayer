@@ -936,110 +936,11 @@ class SettingsPage extends GetView<SettingsController> {
   void _showAddCmsSiteDialog(BuildContext context) {
     final windowController = Get.find<WindowController>();
     final isPortrait = windowController.isPortrait.value;
-    final nameController = TextEditingController();
-    final urlController = TextEditingController();
     
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.6),
-      builder: (context) => Center(
-        child: GlassContainer(
-          width: isPortrait ? 300 : 400,
-          padding: const EdgeInsets.all(20),
-          isPortrait: isPortrait,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '添加CMS站点',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isPortrait ? Colors.grey[800] : Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
-              
-              // 站点名称输入
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: '站点名称',
-                  hintText: '例如：非凡资源',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: isPortrait 
-                      ? Colors.white.withValues(alpha: 0.7)
-                      : Colors.white.withValues(alpha: 0.1),
-                ),
-                style: TextStyle(
-                  color: isPortrait ? Colors.grey[800] : Colors.white,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // 站点URL输入
-              TextField(
-                controller: urlController,
-                decoration: InputDecoration(
-                  labelText: '站点URL',
-                  hintText: 'https://example.com/api.php/provide/vod',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: isPortrait 
-                      ? Colors.white.withValues(alpha: 0.7)
-                      : Colors.white.withValues(alpha: 0.1),
-                ),
-                style: TextStyle(
-                  color: isPortrait ? Colors.grey[800] : Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
-              
-              // 按钮行
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildDialogButton(
-                    '取消',
-                    Colors.grey,
-                    () => Navigator.of(context).pop(),
-                    isPortrait,
-                  ),
-                  _buildDialogButton(
-                    '添加',
-                    const Color(0xFFFF7BB0),
-                    () async {
-                      final name = nameController.text.trim();
-                      final url = urlController.text.trim();
-                      
-                      if (name.isEmpty || url.isEmpty) {
-                        _showSettingToast('请填写完整的站点信息');
-                        return;
-                      }
-                      
-                      final success = await Get.find<CmsSiteService>().addCmsSite(name, url);
-                      if (context.mounted) {
-                        if (success) {
-                          Navigator.of(context).pop();
-                          _showSettingToast('站点添加成功');
-                        } else {
-                          _showSettingToast('站点添加失败，可能URL已存在');
-                        }
-                      }
-                    },
-                    isPortrait,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (context) => _AddCmsSiteDialog(isPortrait: isPortrait),
     );
   }
   
@@ -1101,6 +1002,182 @@ class SettingsPage extends GetView<SettingsController> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 添加CMS站点弹窗组件
+class _AddCmsSiteDialog extends StatefulWidget {
+  final bool isPortrait;
+  
+  const _AddCmsSiteDialog({
+    required this.isPortrait,
+  });
+  
+  @override
+  State<_AddCmsSiteDialog> createState() => _AddCmsSiteDialogState();
+}
+
+class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _urlController;
+  
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _urlController = TextEditingController();
+  }
+  
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _urlController.dispose();
+    super.dispose();
+  }
+  
+  void _showSettingToast(String message) {
+    final windowController = Get.find<WindowController>();
+    final isPortrait = windowController.isPortrait.value;
+    
+    Get.snackbar(
+      '',
+      message,
+      backgroundColor: isPortrait 
+          ? Colors.white.withValues(alpha: 0.85)
+          : Colors.white.withValues(alpha: 0.08),
+      colorText: isPortrait ? Colors.grey[800] : Colors.white,
+      duration: const Duration(seconds: 2),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 16,
+      borderColor: isPortrait 
+          ? Colors.grey.withValues(alpha: 0.25)
+          : Colors.white.withValues(alpha: 0.15),
+      borderWidth: 0.2,
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+  
+  Widget _buildDialogButton(String text, Color color, VoidCallback onPressed) {
+    return UniversalFocus(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: GlassContainer(
+        width: widget.isPortrait ? 300 : 400,
+        padding: const EdgeInsets.all(20),
+        isPortrait: widget.isPortrait,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '添加CMS站点',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // 站点名称输入
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: '站点名称',
+                hintText: '例如：非凡资源',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: widget.isPortrait 
+                    ? Colors.white.withValues(alpha: 0.7)
+                    : Colors.white.withValues(alpha: 0.1),
+              ),
+              style: TextStyle(
+                color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // 站点URL输入
+            TextField(
+              controller: _urlController,
+              decoration: InputDecoration(
+                labelText: '站点URL',
+                hintText: 'https://example.com/api.php/provide/vod',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: widget.isPortrait 
+                    ? Colors.white.withValues(alpha: 0.7)
+                    : Colors.white.withValues(alpha: 0.1),
+              ),
+              style: TextStyle(
+                color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // 按钮行
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildDialogButton(
+                  '取消',
+                  Colors.grey,
+                  () => Navigator.of(context).pop(),
+                ),
+                _buildDialogButton(
+                  '添加',
+                  const Color(0xFFFF7BB0),
+                  () async {
+                    final name = _nameController.text.trim();
+                    final url = _urlController.text.trim();
+                    
+                    if (name.isEmpty || url.isEmpty) {
+                      _showSettingToast('请填写完整的站点信息');
+                      return;
+                    }
+                    
+                    final navigator = Navigator.of(context);
+                    final success = await Get.find<CmsSiteService>().addCmsSite(name, url);
+                    if (mounted) {
+                      if (success) {
+                        navigator.pop();
+                        _showSettingToast('站点添加成功');
+                      } else {
+                        _showSettingToast('站点添加失败，可能URL已存在');
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
