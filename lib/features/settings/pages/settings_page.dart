@@ -940,7 +940,11 @@ class SettingsPage extends GetView<SettingsController> {
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.6),
-      builder: (context) => _AddCmsSiteDialog(isPortrait: isPortrait),
+      barrierDismissible: true,
+      builder: (context) => _AddCmsSiteDialog(
+        key: ValueKey('cms_dialog_${DateTime.now().millisecondsSinceEpoch}'),
+        isPortrait: isPortrait,
+      ),
     );
   }
   
@@ -1013,6 +1017,7 @@ class _AddCmsSiteDialog extends StatefulWidget {
   final bool isPortrait;
   
   const _AddCmsSiteDialog({
+    super.key,
     required this.isPortrait,
   });
   
@@ -1027,8 +1032,8 @@ class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    _urlController = TextEditingController();
+    _nameController = TextEditingController(text: '');
+    _urlController = TextEditingController(text: '');
   }
   
   @override
@@ -1104,6 +1109,7 @@ class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
             
             // 站点名称输入
             TextField(
+              key: const ValueKey('cms_site_name_input'),
               controller: _nameController,
               decoration: InputDecoration(
                 labelText: '站点名称',
@@ -1124,6 +1130,7 @@ class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
             
             // 站点URL输入
             TextField(
+              key: const ValueKey('cms_site_url_input'),
               controller: _urlController,
               decoration: InputDecoration(
                 labelText: '站点URL',
