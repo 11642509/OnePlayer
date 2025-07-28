@@ -301,6 +301,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
   Widget _buildSearchTabBar(bool isPortrait) {
     if (kDebugMode) {
       print('🔍 SearchPage: 构建TabBar, isPortrait=$isPortrait, sites数量=${controller.sites.length}');
+      print('🔍 SearchPage: sites详情: ${controller.sites.map((s) => s.name).join(', ')}');
     }
     
     return TabBar(
@@ -329,6 +330,10 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
             letterSpacing: 0.1,
           ),
         );
+
+        if (kDebugMode) {
+          print('🔍 SearchPage: Tab[$index] 开始构建子组件, isPortrait=$isPortrait');
+        }
 
         return Tab(
           height: isPortrait ? 36 : 40,
