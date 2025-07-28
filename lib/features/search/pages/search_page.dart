@@ -287,7 +287,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     });
   }
 
-  /// 构建搜索TabBar - 完全参考影视页的TabBar构建逻辑  
+  /// 构建搜索TabBar - 完全参考主导航TabBar的简单实现
   Widget _buildSearchTabBar(bool isPortrait) {
     if (kDebugMode) {
       print('🔍 SearchPage: 构建TabBar, isPortrait=$isPortrait');
@@ -302,48 +302,33 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         print('🔍 SearchPage: TabBar Obx更新, sites数量=${controller.sites.length}');
       }
       
+      // 完全参考主导航的TabBar实现
       return TabBar(
         controller: controller.sourceTabController,
         isScrollable: true,
-        // 禁用默认的焦点装饰，只使用我们自定义的FocusAwareTab效果
-        splashFactory: NoSplash.splashFactory,
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
-        tabs: controller.sites.map((site) {
-          final tabContent = Text(
-            site.name,
-            style: TextStyle(
-              fontFamily: AppTypography.systemFont,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-              letterSpacing: 0.1,
-            ),
-          );
-
-          return Tab(
-            height: isPortrait ? 36 : 40,
-            // 竖屏使用与主导航一致的方形高亮，横屏使用药丸效果
-            child: isPortrait 
-                ? _PortraitFocusHighlight(child: tabContent)
-                : FocusAwareTab(child: tabContent),
-          );
-        }).toList(),
-        // 根据屏幕方向调整颜色
-        labelColor: isPortrait ? Colors.grey[800] : Colors.white,
-        unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+        labelColor: Colors.grey[800], // 与主导航一致
+        unselectedLabelColor: Colors.grey[600], // 与主导航一致
+        indicatorColor: Colors.grey[800], // 与主导航一致
         indicatorSize: TabBarIndicatorSize.label,
-        dividerColor: Colors.transparent,
-        indicator: UnderlineTabIndicator(
-          borderSide: BorderSide(
-            color: isPortrait ? Colors.grey[800]! : Colors.white,
-            width: 3,
+        indicatorWeight: 3,
+        dividerColor: Colors.transparent, // 与主导航一致
+        labelStyle: TextStyle(
+          fontFamily: AppTypography.systemFont, // 与主导航一致
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontFamily: AppTypography.systemFont, // 与主导航一致
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.1,
+        ),
+        tabs: controller.sites.map((site) => Tab(
+          child: _PortraitFocusHighlight(
+            child: Text(site.name),
           ),
-          insets: const EdgeInsets.symmetric(horizontal: 16),
-        ),
-        padding: const EdgeInsets.only(left: 16),
-        tabAlignment: TabAlignment.start,
-        labelPadding: EdgeInsets.symmetric(
-          horizontal: isPortrait ? 12 : 16,
-        ),
+        )).toList(),
       );
     });
   }
