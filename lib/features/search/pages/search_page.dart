@@ -550,7 +550,7 @@ class _PortraitFocusHighlightWithIndexState extends State<_PortraitFocusHighligh
     final focusNode = Focus.of(context);
     if (_focusNode != focusNode) {
       if (kDebugMode) {
-        print('🔥 Tab[${widget.index}](${widget.siteName}): FocusNode切换');
+        print('🔥 Tab[${widget.index}](${widget.siteName}): FocusNode切换 ${_focusNode.hashCode} -> ${focusNode.hashCode}');
       }
       
       _focusNode?.removeListener(_onFocusChanged);
@@ -561,8 +561,12 @@ class _PortraitFocusHighlightWithIndexState extends State<_PortraitFocusHighligh
         _isFocused = _focusNode!.hasFocus;
         
         if (kDebugMode) {
-          print('🔥 Tab[${widget.index}](${widget.siteName}): 初始化状态 $_isFocused');
+          print('🔥 Tab[${widget.index}](${widget.siteName}): 初始化状态 $_isFocused, FocusNode=${_focusNode.hashCode}');
         }
+      }
+    } else {
+      if (kDebugMode) {
+        print('🔥 Tab[${widget.index}](${widget.siteName}): FocusNode未变化 ${focusNode.hashCode}');
       }
     }
   }
