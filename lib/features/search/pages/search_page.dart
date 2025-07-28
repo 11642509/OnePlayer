@@ -92,12 +92,16 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
           children: [
             // 搜索输入区域
             _buildHeaderContent(isPortrait),
-            // 搜索站点TabBar（固定显示，参考影视页）
-            if (controller.sites.isNotEmpty) 
-              SizedBox(
-                height: kToolbarHeight,
-                child: _buildSearchTabBar(isPortrait),
-              ),
+            // 搜索站点TabBar（使用Obx响应sites变化）
+            Obx(() {
+              if (controller.sites.isNotEmpty) {
+                return SizedBox(
+                  height: kToolbarHeight,
+                  child: _buildSearchTabBar(isPortrait),
+                );
+              }
+              return const SizedBox();
+            }),
           ],
         ),
         titleSpacing: 0,
@@ -283,55 +287,65 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     });
   }
 
-  /// 构建搜索TabBar - 完全参考影视页的TabBar构建逻辑
+  /// 构建搜索TabBar - 完全参考影视页的TabBar构建逻辑  
   Widget _buildSearchTabBar(bool isPortrait) {
     if (kDebugMode) {
-      print('🔍 SearchPage: 构建TabBar, isPortrait=$isPortrait, sites数量=${controller.sites.length}');
+      print('🔍 SearchPage: 构建TabBar, isPortrait=$isPortrait');
     }
     
-    return TabBar(
-      controller: controller.sourceTabController,
-      isScrollable: true,
-      // 禁用默认的焦点装饰，只使用我们自定义的FocusAwareTab效果
-      splashFactory: NoSplash.splashFactory,
-      overlayColor: WidgetStateProperty.all(Colors.transparent),
-      tabs: controller.sites.map((site) {
-        final tabContent = Text(
-          site.name,
-          style: TextStyle(
-            fontFamily: AppTypography.systemFont,
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-            letterSpacing: 0.1,
-          ),
-        );
+    return Obx(() {
+      if (controller.sites.isEmpty) {
+        return const SizedBox();
+      }
+      
+      if (kDebugMode) {
+        print('🔍 SearchPage: TabBar Obx更新, sites数量=${controller.sites.length}');
+      }
+      
+      return TabBar(
+        controller: controller.sourceTabController,
+        isScrollable: true,
+        // 禁用默认的焦点装饰，只使用我们自定义的FocusAwareTab效果
+        splashFactory: NoSplash.splashFactory,
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
+        tabs: controller.sites.map((site) {
+          final tabContent = Text(
+            site.name,
+            style: TextStyle(
+              fontFamily: AppTypography.systemFont,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              letterSpacing: 0.1,
+            ),
+          );
 
-        return Tab(
-          height: isPortrait ? 36 : 40,
-          // 竖屏使用与主导航一致的方形高亮，横屏使用药丸效果
-          child: isPortrait 
-              ? _PortraitFocusHighlight(child: tabContent)
-              : FocusAwareTab(child: tabContent),
-        );
-      }).toList(),
-      // 根据屏幕方向调整颜色
-      labelColor: isPortrait ? Colors.grey[800] : Colors.white,
-      unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
-      indicatorSize: TabBarIndicatorSize.label,
-      dividerColor: Colors.transparent,
-      indicator: UnderlineTabIndicator(
-        borderSide: BorderSide(
-          color: isPortrait ? Colors.grey[800]! : Colors.white,
-          width: 3,
+          return Tab(
+            height: isPortrait ? 36 : 40,
+            // 竖屏使用与主导航一致的方形高亮，横屏使用药丸效果
+            child: isPortrait 
+                ? _PortraitFocusHighlight(child: tabContent)
+                : FocusAwareTab(child: tabContent),
+          );
+        }).toList(),
+        // 根据屏幕方向调整颜色
+        labelColor: isPortrait ? Colors.grey[800] : Colors.white,
+        unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+        indicatorSize: TabBarIndicatorSize.label,
+        dividerColor: Colors.transparent,
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(
+            color: isPortrait ? Colors.grey[800]! : Colors.white,
+            width: 3,
+          ),
+          insets: const EdgeInsets.symmetric(horizontal: 16),
         ),
-        insets: const EdgeInsets.symmetric(horizontal: 16),
-      ),
-      padding: const EdgeInsets.only(left: 16),
-      tabAlignment: TabAlignment.start,
-      labelPadding: EdgeInsets.symmetric(
-        horizontal: isPortrait ? 12 : 16,
-      ),
-    );
+        padding: const EdgeInsets.only(left: 16),
+        tabAlignment: TabAlignment.start,
+        labelPadding: EdgeInsets.symmetric(
+          horizontal: isPortrait ? 12 : 16,
+        ),
+      );
+    });
   }
 
   /// 处理键盘事件

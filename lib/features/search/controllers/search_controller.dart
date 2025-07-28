@@ -33,7 +33,7 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   // 响应式状态
   final RxString keyword = ''.obs;
   final RxBool isSearching = false.obs;
-  final List<UnifiedSite> sites = []; // 改为普通List，初始化后固定不变
+  final RxList<UnifiedSite> sites = <UnifiedSite>[].obs; // 改为响应式List，与影视页保持一致
   final RxString selectedSiteId = ''.obs;
   final RxMap<String, SearchResponse> searchResults = <String, SearchResponse>{}.obs;
   
@@ -111,7 +111,7 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
       print('搜索控制器初始化完成，共 ${allSites.length} 个站点：${allSites.map((s) => s.name).join(', ')}');
     }
     
-    // 设置到sites变量中 - 使用普通赋值而非响应式
+    // 设置到sites变量中 - 使用响应式赋值
     sites.clear();
     sites.addAll(allSites);
     
