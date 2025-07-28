@@ -300,7 +300,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
   /// 构建搜索TabBar - 参考影视页的TabBar构建逻辑
   Widget _buildSearchTabBar(bool isPortrait) {
     if (kDebugMode) {
-      print('🔍 SearchPage: 构建TabBar, isPortrait=$isPortrait, sites数量=${controller.sites.length} [纯净版本，无响应式内容]');
+      print('🔍 SearchPage: 构建TabBar, isPortrait=$isPortrait, sites数量=${controller.sites.length}');
     }
     
     return TabBar(
@@ -315,6 +315,9 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         
         if (kDebugMode) {
           print('🔍 SearchPage: 创建Tab[$index] - ${site.name}, isPortrait=$isPortrait');
+          if (index == 2) { // 第三个Tab (索引为2)
+            print('🔍 SearchPage: ⚠️ 创建第三个Tab - ${site.name}');
+          }
         }
         
         final tabContent = Text(
@@ -331,7 +334,11 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
           height: isPortrait ? 36 : 40,
           // 竖屏使用与主导航一致的方形高亮，横屏使用药丸效果
           child: isPortrait 
-              ? _PortraitFocusHighlight(child: tabContent)
+              ? _PortraitFocusHighlightWithIndex(
+                  index: index,
+                  siteName: site.name,
+                  child: tabContent,
+                )
               : FocusAwareTab(child: tabContent),
         );
       }).toList(),
@@ -516,15 +523,106 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
   }
 }
 
-/// 一个辅助组件，用于在竖屏模式下为Tab提供清晰的方形焦点高亮。
-/// 与影视页竖屏分类导航保持一致的效果。
-class _PortraitFocusHighlight extends StatefulWidget {
+/// 带索引信息的竖屏焦点高亮组件
+class _PortraitFocusHighlightWithIndex extends StatefulWidget {
   final Widget child;
-  const _PortraitFocusHighlight({required this.child});
+  final int index;
+  final String siteName;
+  
+  const _PortraitFocusHighlightWithIndex({
+    required this.child,
+    required this.index,
+    required this.siteName,
+  });
 
   @override
-  State<_PortraitFocusHighlight> createState() =>
-      _PortraitFocusHighlightState();
+  State<_PortraitFocusHighlightWithIndex> createState() =>
+      _PortraitFocusHighlightWithIndexState();
+}
+
+class _PortraitFocusHighlightWithIndexState extends State<_PortraitFocusHighlightWithIndex> {
+  FocusNode? _focusNode;
+  bool _isFocused = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final focusNode = Focus.of(context);
+    if (_focusNode != focusNode) {
+      if (kDebugMode) {
+        print('🔥 Tab[${widget.index}](${widget.siteName}): FocusNode切换');
+      }
+      
+      _focusNode?.removeListener(_onFocusChanged);
+      _focusNode = focusNode;
+      _focusNode?.addListener(_onFocusChanged);
+      
+      if (_focusNode != null && _isFocused != _focusNode!.hasFocus) {
+        _isFocused = _focusNode!.hasFocus;
+        
+        if (kDebugMode) {
+          print('🔥 Tab[${widget.index}](${widget.siteName}): 初始化状态 $_isFocused');
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    if (kDebugMode) {
+      print('🔥 Tab[${widget.index}](${widget.siteName}): dispose');
+    }
+    _focusNode?.removeListener(_onFocusChanged);
+    super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (mounted && _isFocused != _focusNode?.hasFocus) {
+      final newFocus = _focusNode!.hasFocus;
+      
+      if (kDebugMode) {
+        if (widget.index == 2) { // 特别关注第三个Tab
+          print('🔥 ⚠️ Tab[${widget.index}](${widget.siteName}): 焦点变化 $_isFocused -> $newFocus');
+        } else {
+          print('🔥 Tab[${widget.index}](${widget.siteName}): 焦点变化 $_isFocused -> $newFocus');
+        }
+      }
+      
+      setState(() {
+        _isFocused = newFocus;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: _isFocused
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Colors.black.withValues(alpha: 0.08),
+              border: Border.all(
+                color: Colors.grey.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            )
+          : null,
+      child: widget.child,
+    );
+  }
+}
+
+/// 竖屏焦点高亮组件（备用，保持兼容性）
+class _PortraitFocusHighlight extends StatefulWidget {
+  final Widget child;
+  
+  const _PortraitFocusHighlight({
+    required this.child,
+  });
+
+  @override
+  State<_PortraitFocusHighlight> createState() => _PortraitFocusHighlightState();
 }
 
 class _PortraitFocusHighlightState extends State<_PortraitFocusHighlight> {
@@ -539,6 +637,7 @@ class _PortraitFocusHighlightState extends State<_PortraitFocusHighlight> {
       _focusNode?.removeListener(_onFocusChanged);
       _focusNode = focusNode;
       _focusNode?.addListener(_onFocusChanged);
+      
       if (_focusNode != null && _isFocused != _focusNode!.hasFocus) {
         _isFocused = _focusNode!.hasFocus;
       }
@@ -561,16 +660,14 @@ class _PortraitFocusHighlightState extends State<_PortraitFocusHighlight> {
 
   @override
   Widget build(BuildContext context) {
-    // 为了让高亮和文字之间有呼吸感，使用内边距
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: _isFocused
           ? BoxDecoration(
-              // 轻微的焦点高亮效果，类似测试页风格
               borderRadius: BorderRadius.circular(4),
-              color: Colors.black.withValues(alpha: 0.08), // 轻微的深色高亮
+              color: Colors.black.withValues(alpha: 0.08),
               border: Border.all(
-                color: Colors.grey.withValues(alpha: 0.3), // 轻微的边框
+                color: Colors.grey.withValues(alpha: 0.3),
                 width: 1,
               ),
             )
@@ -579,6 +676,7 @@ class _PortraitFocusHighlightState extends State<_PortraitFocusHighlight> {
     );
   }
 }
+
 
 /// 搜索结果页面 - 参考影视页的VideoScrollPage架构
 class SearchResultPage extends StatefulWidget {
