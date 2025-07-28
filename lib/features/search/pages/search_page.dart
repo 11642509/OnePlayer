@@ -602,7 +602,7 @@ class _PortraitFocusHighlightWithIndexState extends State<_PortraitFocusHighligh
       
       if (kDebugMode) {
         if (widget.index == 2) { // 特别关注第三个Tab
-          print('🔥 ⚠️ Tab[${widget.index}](${widget.siteName}): 焦点变化 $_isFocused -> $newFocus');
+          print('🔥 ⚠️ Tab[${widget.index}](${widget.siteName}): 焦点变化 $_isFocused -> $newFocus, FocusNode=${_focusNode.hashCode}');
         } else {
           print('🔥 Tab[${widget.index}](${widget.siteName}): 焦点变化 $_isFocused -> $newFocus');
         }
@@ -611,6 +611,9 @@ class _PortraitFocusHighlightWithIndexState extends State<_PortraitFocusHighligh
       setState(() {
         _isFocused = newFocus;
       });
+    } else if (kDebugMode && widget.index == 2) {
+      // 第三个Tab的特殊调试：即使没有焦点变化也记录
+      print('🔥 ⚠️ Tab[${widget.index}](${widget.siteName}): _onFocusChanged调用但无变化, mounted=$mounted, _isFocused=$_isFocused, hasFocus=${_focusNode?.hasFocus}');
     }
   }
 

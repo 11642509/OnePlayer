@@ -126,8 +126,19 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   void _updateTabController() {
     if (sites.isEmpty) return;
     
+    if (kDebugMode) {
+      print('🎛️ SearchController: _updateTabController调用, 站点数量=${sites.length}');
+      for (int i = 0; i < sites.length; i++) {
+        print('🎛️ SearchController: 站点[$i] = ${sites[i].name}');
+      }
+    }
+    
     // 只有当TabController不存在或长度不匹配时才创建新的
     if (sourceTabController == null || sourceTabController!.length != sites.length) {
+      if (kDebugMode) {
+        print('🎛️ SearchController: 创建新的TabController, 长度=${sites.length}');
+      }
+      
       // 清理旧的TabController
       if (sourceTabController != null) {
         sourceTabController!.removeListener(_onTabChanged);
@@ -138,12 +149,24 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
       
       // 监听TabController变化
       sourceTabController!.addListener(_onTabChanged);
+      
+      if (kDebugMode) {
+        print('🎛️ SearchController: TabController创建完成, 长度=${sourceTabController!.length}');
+      }
+    } else {
+      if (kDebugMode) {
+        print('🎛️ SearchController: TabController长度匹配，无需重新创建');
+      }
     }
     
     // 设置初始选中的tab
     final selectedIndex = sites.indexWhere((site) => site.id == selectedSiteId.value);
     if (selectedIndex >= 0 && sourceTabController != null && sourceTabController!.index != selectedIndex) {
       sourceTabController!.index = selectedIndex;
+      
+      if (kDebugMode) {
+        print('🎛️ SearchController: 设置选中索引为 $selectedIndex');
+      }
     }
   }
   
