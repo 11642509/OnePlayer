@@ -334,10 +334,17 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
           height: isPortrait ? 36 : 40,
           // 竖屏使用与主导航一致的方形高亮，横屏使用药丸效果
           child: isPortrait 
-              ? _PortraitFocusHighlightWithIndex(
-                  index: index,
-                  siteName: site.name,
-                  child: tabContent,
+              ? Builder(
+                  builder: (context) {
+                    if (kDebugMode) {
+                      print('🏗️ SearchPage: 构建Tab[$index](${site.name})的竖屏焦点组件');
+                    }
+                    return _PortraitFocusHighlightWithIndex(
+                      index: index,
+                      siteName: site.name,
+                      child: tabContent,
+                    );
+                  },
                 )
               : FocusAwareTab(child: tabContent),
         );
@@ -536,8 +543,12 @@ class _PortraitFocusHighlightWithIndex extends StatefulWidget {
   });
 
   @override
-  State<_PortraitFocusHighlightWithIndex> createState() =>
-      _PortraitFocusHighlightWithIndexState();
+  State<_PortraitFocusHighlightWithIndex> createState() {
+    if (kDebugMode) {
+      print('🎯 PortraitFocusHighlightWithIndex: 创建状态 Tab[$index]($siteName)');
+    }
+    return _PortraitFocusHighlightWithIndexState();
+  }
 }
 
 class _PortraitFocusHighlightWithIndexState extends State<_PortraitFocusHighlightWithIndex> {
