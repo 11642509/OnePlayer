@@ -75,7 +75,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     );
   }
 
-  /// 构建搜索页AppBar（包含导航TabBar）
+  /// 构建搜索页AppBar（完全参考影视页）
   PreferredSizeWidget? _buildSearchAppBar(bool isPortrait) {
     if (kDebugMode) {
       print('🔍 SearchPage: 构建AppBar, isPortrait=$isPortrait');
@@ -83,41 +83,26 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     
     return PreferredSize(
       preferredSize: Size.fromHeight(kToolbarHeight + (isPortrait ? 16 : 20) * 2 + 48 + kToolbarHeight),
-      child: Obx(() {
-        final hasKeyword = controller.keyword.value.isNotEmpty;
-        
-        if (kDebugMode) {
-          print('🔍 SearchPage: AppBar Obx更新, hasKeyword=$hasKeyword, isPortrait=$isPortrait');
-        }
-        
-        return AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          automaticallyImplyLeading: false, // 禁用自动返回按钮
-          toolbarHeight: hasKeyword ? kToolbarHeight + (isPortrait ? 16 : 20) * 2 + kToolbarHeight : (isPortrait ? 16 : 20) * 2 + 48,
-          title: Column(
-            children: [
-              // 搜索输入区域
-              _buildHeaderContent(isPortrait),
-              // 搜索站点TabBar（只有在有搜索关键词时显示）
-              if (hasKeyword && controller.sites.isNotEmpty) ...[
-                if (kDebugMode) ...[
-                  Builder(builder: (context) {
-                    print('🔍 SearchPage: 显示TabBar, 站点数量=${controller.sites.length}');
-                    return const SizedBox.shrink();
-                  }),
-                ],
-                SizedBox(
-                  height: kToolbarHeight,
-                  child: _buildSearchTabBar(isPortrait),
-                ),
-              ],
-            ],
-          ),
-          titleSpacing: 0,
-          centerTitle: false,
-        );
-      }),
+      child: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false, // 禁用自动返回按钮
+        toolbarHeight: kToolbarHeight + (isPortrait ? 16 : 20) * 2 + kToolbarHeight,
+        title: Column(
+          children: [
+            // 搜索输入区域
+            _buildHeaderContent(isPortrait),
+            // 搜索站点TabBar（固定显示，参考影视页）
+            if (controller.sites.isNotEmpty) 
+              SizedBox(
+                height: kToolbarHeight,
+                child: _buildSearchTabBar(isPortrait),
+              ),
+          ],
+        ),
+        titleSpacing: 0,
+        centerTitle: false,
+      ),
     );
   }
 
@@ -199,7 +184,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     );
   }
 
-  /// 构建搜索页主体内容
+  /// 构建搜索页主体内容（简化版，参考影视页）
   Widget _buildSearchBody(bool isPortrait) {
     return Obx(() {
       // 如果没有搜索关键词，显示空状态
@@ -269,7 +254,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         );
       }
       
-      // 显示搜索结果TabBarView
+      // 显示搜索结果TabBarView（简化版）
       if (controller.sites.isEmpty) {
         return Center(
           child: Text(
@@ -282,6 +267,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         );
       }
       
+      // 使用TabBarView显示结果，完全参考影视页逻辑
       return TabBarView(
         controller: controller.sourceTabController,
         physics: const NeverScrollableScrollPhysics(), // 禁用滑动切换，只允许点击导航
@@ -297,11 +283,10 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     });
   }
 
-  /// 构建搜索TabBar - 参考影视页的TabBar构建逻辑
+  /// 构建搜索TabBar - 完全参考影视页的TabBar构建逻辑
   Widget _buildSearchTabBar(bool isPortrait) {
     if (kDebugMode) {
       print('🔍 SearchPage: 构建TabBar, isPortrait=$isPortrait, sites数量=${controller.sites.length}');
-      print('🔍 SearchPage: sites详情: ${controller.sites.map((s) => s.name).join(', ')}');
     }
     
     return TabBar(
@@ -310,17 +295,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
       // 禁用默认的焦点装饰，只使用我们自定义的FocusAwareTab效果
       splashFactory: NoSplash.splashFactory,
       overlayColor: WidgetStateProperty.all(Colors.transparent),
-      tabs: controller.sites.asMap().entries.map((entry) {
-        final index = entry.key;
-        final site = entry.value;
-        
-        if (kDebugMode) {
-          print('🔍 SearchPage: 创建Tab[$index] - ${site.name}, isPortrait=$isPortrait');
-          if (index == 2) { // 第三个Tab (索引为2)
-            print('🔍 SearchPage: ⚠️ 创建第三个Tab - ${site.name}');
-          }
-        }
-        
+      tabs: controller.sites.map((site) {
         final tabContent = Text(
           site.name,
           style: TextStyle(
@@ -331,26 +306,11 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
           ),
         );
 
-        if (kDebugMode) {
-          print('🔍 SearchPage: Tab[$index] 开始构建子组件, isPortrait=$isPortrait');
-        }
-
         return Tab(
           height: isPortrait ? 36 : 40,
           // 竖屏使用与主导航一致的方形高亮，横屏使用药丸效果
           child: isPortrait 
-              ? Builder(
-                  builder: (context) {
-                    if (kDebugMode) {
-                      print('🏗️ SearchPage: 构建Tab[$index](${site.name})的竖屏焦点组件');
-                    }
-                    return _PortraitFocusHighlightWithIndex(
-                      index: index,
-                      siteName: site.name,
-                      child: tabContent,
-                    );
-                  },
-                )
+              ? _PortraitFocusHighlight(child: tabContent)
               : FocusAwareTab(child: tabContent),
         );
       }).toList(),
@@ -535,108 +495,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
   }
 }
 
-/// 带索引信息的竖屏焦点高亮组件
-class _PortraitFocusHighlightWithIndex extends StatefulWidget {
-  final Widget child;
-  final int index;
-  final String siteName;
-  
-  const _PortraitFocusHighlightWithIndex({
-    required this.child,
-    required this.index,
-    required this.siteName,
-  });
-
-  @override
-  State<_PortraitFocusHighlightWithIndex> createState() {
-    if (kDebugMode) {
-      print('🎯 PortraitFocusHighlightWithIndex: 创建状态 Tab[$index]($siteName)');
-    }
-    return _PortraitFocusHighlightWithIndexState();
-  }
-}
-
-class _PortraitFocusHighlightWithIndexState extends State<_PortraitFocusHighlightWithIndex> {
-  FocusNode? _focusNode;
-  bool _isFocused = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final focusNode = Focus.of(context);
-    if (_focusNode != focusNode) {
-      if (kDebugMode) {
-        print('🔥 Tab[${widget.index}](${widget.siteName}): FocusNode切换 ${_focusNode.hashCode} -> ${focusNode.hashCode}');
-      }
-      
-      _focusNode?.removeListener(_onFocusChanged);
-      _focusNode = focusNode;
-      _focusNode?.addListener(_onFocusChanged);
-      
-      if (_focusNode != null && _isFocused != _focusNode!.hasFocus) {
-        _isFocused = _focusNode!.hasFocus;
-        
-        if (kDebugMode) {
-          print('🔥 Tab[${widget.index}](${widget.siteName}): 初始化状态 $_isFocused, FocusNode=${_focusNode.hashCode}');
-        }
-      }
-    } else {
-      if (kDebugMode) {
-        print('🔥 Tab[${widget.index}](${widget.siteName}): FocusNode未变化 ${focusNode.hashCode}');
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    if (kDebugMode) {
-      print('🔥 Tab[${widget.index}](${widget.siteName}): dispose');
-    }
-    _focusNode?.removeListener(_onFocusChanged);
-    super.dispose();
-  }
-
-  void _onFocusChanged() {
-    if (mounted && _isFocused != _focusNode?.hasFocus) {
-      final newFocus = _focusNode!.hasFocus;
-      
-      if (kDebugMode) {
-        if (widget.index == 2) { // 特别关注第三个Tab
-          print('🔥 ⚠️ Tab[${widget.index}](${widget.siteName}): 焦点变化 $_isFocused -> $newFocus, FocusNode=${_focusNode.hashCode}');
-        } else {
-          print('🔥 Tab[${widget.index}](${widget.siteName}): 焦点变化 $_isFocused -> $newFocus');
-        }
-      }
-      
-      setState(() {
-        _isFocused = newFocus;
-      });
-    } else if (kDebugMode && widget.index == 2) {
-      // 第三个Tab的特殊调试：即使没有焦点变化也记录
-      print('🔥 ⚠️ Tab[${widget.index}](${widget.siteName}): _onFocusChanged调用但无变化, mounted=$mounted, _isFocused=$_isFocused, hasFocus=${_focusNode?.hasFocus}');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: _isFocused
-          ? BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: Colors.black.withValues(alpha: 0.08),
-              border: Border.all(
-                color: Colors.grey.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            )
-          : null,
-      child: widget.child,
-    );
-  }
-}
-
-/// 竖屏焦点高亮组件（备用，保持兼容性）
+/// 竖屏焦点高亮组件（与影视页完全一致）
 class _PortraitFocusHighlight extends StatefulWidget {
   final Widget child;
   
