@@ -302,32 +302,38 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         print('🔍 SearchPage: TabBar Obx更新, sites数量=${controller.sites.length}');
       }
       
-      // 完全参考主导航的TabBar实现
+      // 完全参考主导航的TabBar实现，但区分横竖屏颜色
       return TabBar(
         controller: controller.sourceTabController,
         isScrollable: true,
-        labelColor: Colors.grey[800], // 与主导航一致
-        unselectedLabelColor: Colors.grey[600], // 与主导航一致
-        indicatorColor: Colors.grey[800], // 与主导航一致
+        // 根据屏幕方向调整颜色，但保持其他设置不变
+        labelColor: isPortrait ? Colors.grey[800] : Colors.white,
+        unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+        indicatorColor: isPortrait ? Colors.grey[800] : Colors.white,
         indicatorSize: TabBarIndicatorSize.label,
         indicatorWeight: 3,
-        dividerColor: Colors.transparent, // 与主导航一致
+        dividerColor: Colors.transparent,
         labelStyle: TextStyle(
-          fontFamily: AppTypography.systemFont, // 与主导航一致
+          fontFamily: AppTypography.systemFont,
           fontSize: 16,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.1,
         ),
         unselectedLabelStyle: TextStyle(
-          fontFamily: AppTypography.systemFont, // 与主导航一致
+          fontFamily: AppTypography.systemFont,
           fontSize: 16,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.1,
         ),
         tabs: controller.sites.map((site) => Tab(
-          child: _PortraitFocusHighlight(
-            child: Text(site.name),
-          ),
+          // 根据屏幕方向使用不同的焦点组件，但不改变TabBar本身的焦点处理
+          child: isPortrait 
+              ? _PortraitFocusHighlight(
+                  child: Text(site.name),
+                )
+              : FocusAwareTab(
+                  child: Text(site.name),
+                ),
         )).toList(),
       );
     });
