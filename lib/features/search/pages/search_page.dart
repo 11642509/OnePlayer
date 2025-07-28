@@ -302,14 +302,14 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         print('🔍 SearchPage: TabBar Obx更新, sites数量=${controller.sites.length}');
       }
       
-      // 完全参考主导航和影视页的TabBar实现，禁用双焦点
+      // 完全参考主导航和影视页的TabBar实现，区分横竖屏处理
       return TabBar(
         controller: controller.sourceTabController,
         isScrollable: true,
-        // 禁用默认的焦点装饰，只使用我们自定义的焦点效果（参考影视页）
-        splashFactory: NoSplash.splashFactory,
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
-        // 根据屏幕方向调整颜色，但保持其他设置不变
+        // 只在竖屏时禁用默认焦点装饰，横屏保持默认行为以确保键盘导航正常
+        splashFactory: isPortrait ? NoSplash.splashFactory : null,
+        overlayColor: isPortrait ? WidgetStateProperty.all(Colors.transparent) : null,
+        // 根据屏幕方向调整颜色
         labelColor: isPortrait ? Colors.grey[800] : Colors.white,
         unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
         indicatorColor: isPortrait ? Colors.grey[800] : Colors.white,
@@ -329,7 +329,7 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
           letterSpacing: 0.1,
         ),
         tabs: controller.sites.map((site) => Tab(
-          // 根据屏幕方向使用不同的焦点组件，但不改变TabBar本身的焦点处理
+          // 根据屏幕方向使用不同的焦点组件
           child: isPortrait 
               ? _PortraitFocusHighlight(
                   child: Text(site.name),
