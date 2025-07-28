@@ -35,14 +35,29 @@ class CategoryTabBar extends StatelessWidget {
       controller: tabController,
       isScrollable: isScrollable,
       tabs: categories.map((category) {
-        final tabContent = Text(
-          category.name,
-          style: TextStyle(
-            fontFamily: AppTypography.systemFont,
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-            letterSpacing: 0.1,
-          ),
+        final tabContent = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              category.name,
+              style: TextStyle(
+                fontFamily: AppTypography.systemFont,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                letterSpacing: 0.1,
+              ),
+            ),
+            if (category.count != null && category.count! > 0) ...[
+              const SizedBox(width: 4),
+              Text(
+                '(${category.count})',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ],
         );
 
         return Tab(

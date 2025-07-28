@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:get/get.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../shared/services/unified_site_service.dart';
 
 /// CMS站点数据模型
 class CmsSite {
@@ -143,6 +145,10 @@ class CmsSiteService extends GetxController {
     }
 
     await _saveToStorage();
+    
+    // 通知统一站点服务重新加载CMS站点
+    _notifyUnifiedSiteService();
+    
     return true;
   }
 
@@ -166,6 +172,10 @@ class CmsSiteService extends GetxController {
     }
 
     await _saveToStorage();
+    
+    // 通知统一站点服务重新加载CMS站点
+    _notifyUnifiedSiteService();
+    
     return true;
   }
 
@@ -184,6 +194,9 @@ class CmsSiteService extends GetxController {
     }
 
     await _saveToStorage();
+    
+    // 通知统一站点服务重新加载CMS站点
+    _notifyUnifiedSiteService();
   }
 
   /// 保存到本地存储
@@ -217,5 +230,21 @@ class CmsSiteService extends GetxController {
       'color': '#FF9800',
       'isEnabled': true,
     };
+  }
+  
+  /// 通知统一站点服务CMS站点发生变更
+  void _notifyUnifiedSiteService() {
+    try {
+      if (Get.isRegistered<UnifiedSiteService>()) {
+        // UnifiedSiteService不再需要reloadCmsSites方法
+        // 新架构下CMS站点直接统一管理，无需单独通知
+      }
+    } catch (e) {
+      // 静默处理错误，不影响CMS服务本身的功能
+      // 在debug模式下输出错误信息
+      if (kDebugMode) {
+        print('通知统一站点服务失败: $e');
+      }
+    }
   }
 }

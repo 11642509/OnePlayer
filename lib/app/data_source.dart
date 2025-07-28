@@ -2,7 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'config/config.dart';
-import '../features/settings/services/cms_site_service.dart';
+import '../shared/services/unified_site_service.dart';
+import '../shared/models/unified_site.dart';
 
 /// 视频格式枚举
 enum VideoFormat {
@@ -259,8 +260,32 @@ class DataSource {
   
   // 单例模式
   static final DataSource _instance = DataSource._internal(
-    currentSiteId: AppConfig.currentDefaultSiteId,
+    currentSiteId: _getInitialSiteId(),
   );
+  
+  /// 获取初始站点ID
+  static String _getInitialSiteId() {
+    try {
+      if (Get.isRegistered<UnifiedSiteService>()) {
+        final siteService = Get.find<UnifiedSiteService>();
+        final selectedSite = siteService.selectedSite;
+        if (selectedSite != null) {
+          return selectedSite.id;
+        }
+        // 如果没有选中站点，使用第一个可用站点
+        if (siteService.allSites.isNotEmpty) {
+          return siteService.allSites.first.id;
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('DataSource: 从UnifiedSiteService获取初始站点ID失败: $e');
+      }
+    }
+    
+    // 回退到AppConfig
+    return AppConfig.currentDefaultSiteId;
+  }
   
   factory DataSource({String? siteId}) {
     if (siteId != null) {
@@ -275,43 +300,56 @@ class DataSource {
 
   /// 获取当前站点的API URL
   String get currentApiUrl {
-    // 如果是CMS站点（cms_开头），使用CMS API端点
-    if (currentSiteId.startsWith('cms_')) {
-      return AppConfig.getSiteApiUrl('cms')!;
+    try {
+      if (Get.isRegistered<UnifiedSiteService>()) {
+        final siteService = Get.find<UnifiedSiteService>();
+        final site = siteService.getSiteById(currentSiteId);
+        
+        if (site != null) {
+          // 构建API URL
+          final endpoint = site.getApiEndpoint();
+          final url = '${AppConfig.apiBaseUrl}$endpoint';
+          
+          if (kDebugMode) {
+            print('DataSource: 站点ID=$currentSiteId, 类型=${site.type}, API URL=$url');
+          }
+          
+          return url;
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('DataSource: 从UnifiedSiteService获取API URL失败: $e');
+      }
     }
     
+    // 回退到AppConfig（向后兼容）
     final apiUrl = AppConfig.getSiteApiUrl(currentSiteId);
     if (apiUrl == null) {
       throw Exception('站点配置未找到: $currentSiteId');
     }
+    
+    if (kDebugMode) {
+      print('DataSource: 回退到AppConfig, 站点ID=$currentSiteId, API URL=$apiUrl');
+    }
+    
     return apiUrl;
   }
 
   /// 获取CMS查询参数
   Map<String, dynamic>? _getCmsQueryParams() {
-    if (currentSiteId == 'cms' || currentSiteId.startsWith('cms_')) {
-      try {
-        final cmsService = Get.find<CmsSiteService>();
+    try {
+      if (Get.isRegistered<UnifiedSiteService>()) {
+        final siteService = Get.find<UnifiedSiteService>();
+        final site = siteService.getSiteById(currentSiteId);
         
-        if (currentSiteId.startsWith('cms_')) {
-          // 动态CMS站点，从站点ID中提取CMS站点ID
-          final siteId = currentSiteId.replaceFirst('cms_', '');
-          final cmsSite = cmsService.cmsSites.firstWhere(
-            (site) => site.id == siteId,
-            orElse: () => throw Exception('找不到CMS站点: $siteId'),
-          );
-          return {'config': cmsSite.url};
-        } else {
-          // 传统CMS模式，使用选中的站点
-          final selectedSite = cmsService.selectedSite;
-          if (selectedSite != null) {
-            return {'config': selectedSite.url};
-          }
+        if (site != null && site.type == SiteType.cms) {
+          return {'config': site.url};
         }
-      } catch (e) {
-        if (kDebugMode) {
-          print('获取CMS配置失败: $e');
-        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('DataSource: 获取CMS参数失败: $e');
       }
     }
     return null;

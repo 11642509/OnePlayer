@@ -4,12 +4,14 @@ class CategoryItem {
   final String id;
   final String name;
   final String? description;
+  final int? count; // 添加count支持
   final Map<String, dynamic>? extra; // 额外数据
   
   const CategoryItem({
     required this.id,
     required this.name,
     this.description,
+    this.count,
     this.extra,
   });
   

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'dart:async';
 import '../../../shared/widgets/backgrounds/optimized_cosmic_background.dart';
 import '../../../shared/widgets/backgrounds/fresh_cosmic_background.dart';
 import '../../../shared/widgets/common/glass_container.dart';
@@ -65,374 +67,62 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
     return Focus(
       autofocus: true,
       onKeyEvent: _handleKeyEvent,
-      child: Column(
-        children: [
-          _buildHeader(isPortrait),
-          Expanded(
-            child: _buildSearchContent(isPortrait),
-          ),
-        ],
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: _buildSearchAppBar(isPortrait),
+        body: _buildSearchBody(isPortrait),
       ),
     );
   }
 
-  /// 构建搜索内容 - 根据搜索状态显示不同内容
-  Widget _buildSearchContent(bool isPortrait) {
-    return Obx(() {
-      // 如果没有搜索关键词，显示空状态
-      if (controller.keyword.value.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.search,
-                size: 64,
-                color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '输入关键词开始搜索',
-                style: TextStyle(
-                  color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        );
-      }
-      
-      // 如果正在搜索，显示加载状态
-      if (controller.isSearching.value) {
-        return const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFFFF7BB0),
-          ),
-        );
-      }
-      
-      // 如果有错误信息，显示错误
-      if (controller.errorMessage.value.isNotEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                controller.errorMessage.value,
-                style: TextStyle(
-                  color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: controller.performSearch,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF7BB0),
-                ),
-                child: const Text('重试', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        );
-      }
-      
-      // 显示搜索结果
-      return _buildSearchResults(isPortrait);
-    });
-  }
-
-  /// 构建搜索结果
-  Widget _buildSearchResults(bool isPortrait) {
-    return Obx(() {
-      if (controller.sources.isEmpty) {
-        return Center(
-          child: Text(
-            '没有可用的搜索源',
-            style: TextStyle(
-              color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-              fontSize: 16,
-            ),
-          ),
-        );
-      }
-
-      return DefaultTabController(
-        length: controller.sources.length,
-        child: Column(
-          children: [
-            // 搜索源TabBar
-            SizedBox(
-              height: kToolbarHeight,
-              child: _buildSearchTabBar(isPortrait),
-            ),
-            // 搜索结果TabBarView
-            Expanded(
-              child: _buildSearchTabBarView(isPortrait),
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  /// 构建搜索TabBar
-  Widget _buildSearchTabBar(bool isPortrait) {
-    return TabBar(
-      controller: controller.sourceTabController,
-      isScrollable: true,
-      // 禁用默认的焦点装饰，只使用我们自定义的FocusAwareTab效果
-      splashFactory: NoSplash.splashFactory,
-      overlayColor: WidgetStateProperty.all(Colors.transparent),
-      // 添加更多焦点稳定性配置
-      automaticIndicatorColorAdjustment: false,
-      enableFeedback: false,
-      tabs: controller.sources.map((source) {
-        final resultCount = controller.getSourceResultCount(source.id);
-        final isLoading = controller.isSourceLoading(source.id);
-        
-        final tabContent = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              source.name,
-              style: TextStyle(
-                fontFamily: AppTypography.systemFont,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                letterSpacing: 0.1,
-              ),
-            ),
-            if (isLoading) ...[
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isPortrait ? Colors.grey[700]! : Colors.white,
-                  ),
-                ),
-              ),
-            ] else if (resultCount > 0) ...[
-              const SizedBox(width: 4),
-              Text(
-                '($resultCount)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ],
-        );
-
-        return Tab(
-          key: ValueKey('search_tab_${source.id}'), // 稳定的key
-          height: isPortrait ? 36 : 40,
-          child: Focus(
-            skipTraversal: false,
-            canRequestFocus: true,
-            child: isPortrait 
-                ? _PortraitFocusHighlight(child: tabContent)
-                : FocusAwareTab(child: tabContent),
-          ),
-        );
-      }).toList(),
-      labelColor: isPortrait ? Colors.grey[800] : Colors.white,
-      unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
-      indicatorSize: TabBarIndicatorSize.label,
-      dividerColor: Colors.transparent,
-      indicator: UnderlineTabIndicator(
-        borderSide: BorderSide(
-          color: isPortrait ? Colors.grey[800]! : Colors.white,
-          width: 3,
-        ),
-        insets: const EdgeInsets.symmetric(horizontal: 16),
-      ),
-      padding: const EdgeInsets.only(left: 16),
-      tabAlignment: TabAlignment.start,
-      labelPadding: EdgeInsets.symmetric(
-        horizontal: isPortrait ? 12 : 16,
-      ),
-      onTap: (index) {
-        // 检测是否点击了当前已选中的标签
-        if (controller.sourceTabController?.index == index) {
-          // 如果是当前选中的标签，可以考虑触发刷新或其他操作
-          // 这里暂时不做处理，保持与影视页一致的行为
-        }
-        // 注意：不需要手动处理tab切换，TabBar会自动处理
-        // controller.selectSource调用会通过TabController的监听器自动触发
-      },
-    );
-  }
-
-  /// 构建搜索TabBarView
-  Widget _buildSearchTabBarView(bool isPortrait) {
-    return TabBarView(
-      key: ValueKey('search_tabbar_view_${controller.sources.length}'), // 稳定的key
-      controller: controller.sourceTabController,
-      physics: const NeverScrollableScrollPhysics(), // 禁用滑动切换，只允许点击导航
-      children: controller.sources.map((source) {
-        return Container(
-          key: ValueKey('tab_content_${source.id}'), // 每个页面稳定的key
-          child: _buildSourceResultPage(source.id, isPortrait),
-        );
-      }).toList(),
-    );
-  }
-
-  /// 构建单个搜索源的结果页面
-  Widget _buildSourceResultPage(String sourceId, bool isPortrait) {
-    return Container(
-      key: ValueKey('search_result_$sourceId'), // 稳定的key避免重建
+  /// 构建搜索页AppBar（包含导航TabBar）
+  PreferredSizeWidget? _buildSearchAppBar(bool isPortrait) {
+    if (kDebugMode) {
+      print('🔍 SearchPage: 构建AppBar, isPortrait=$isPortrait');
+    }
+    
+    return PreferredSize(
+      preferredSize: Size.fromHeight(kToolbarHeight + (isPortrait ? 16 : 20) * 2 + 48 + kToolbarHeight),
       child: Obx(() {
-        final results = controller.sourceResults[sourceId] ?? [];
-        final isLoading = controller.isSourceLoading(sourceId);
+        final hasKeyword = controller.keyword.value.isNotEmpty;
         
-        if (isLoading && results.isEmpty) {
-          return const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFFFF7BB0),
-            ),
-          );
+        if (kDebugMode) {
+          print('🔍 SearchPage: AppBar Obx更新, hasKeyword=$hasKeyword, isPortrait=$isPortrait');
         }
         
-        if (results.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.search_off,
-                  size: 64,
-                  color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '此源暂无搜索结果',
-                  style: TextStyle(
-                    color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-                    fontSize: 16,
-                  ),
+        return AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false, // 禁用自动返回按钮
+          toolbarHeight: hasKeyword ? kToolbarHeight + (isPortrait ? 16 : 20) * 2 + kToolbarHeight : (isPortrait ? 16 : 20) * 2 + 48,
+          title: Column(
+            children: [
+              // 搜索输入区域
+              _buildHeaderContent(isPortrait),
+              // 搜索站点TabBar（只有在有搜索关键词时显示）
+              if (hasKeyword && controller.sites.isNotEmpty) ...[
+                if (kDebugMode) ...[
+                  Builder(builder: (context) {
+                    print('🔍 SearchPage: 显示TabBar, 站点数量=${controller.sites.length}');
+                    return const SizedBox.shrink();
+                  }),
+                ],
+                SizedBox(
+                  height: kToolbarHeight,
+                  child: _buildSearchTabBar(isPortrait),
                 ),
               ],
-            ),
-          );
-        }
-        
-        // 将SearchResult转换为VideoGridWidget需要的格式
-        final videoList = results.map((result) => {
-          'vod_id': result.vodId,
-          'vod_name': result.vodName,
-          'vod_pic': result.vodPic,
-          'vod_remarks': result.vodRemarks,
-        }).toList();
-        
-        return RefreshIndicator(
-          color: const Color(0xFFFF7BB0),
-          backgroundColor: Colors.grey[900],
-          onRefresh: () async {
-            await controller.performSearch();
-          },
-          child: VideoGridWidget(
-            key: ValueKey('video_grid_${sourceId}_${results.length}'), // 防止VideoGrid重建影响焦点
-            videoList: videoList,
-            scrollController: controller.getScrollController(sourceId),
-            isPortrait: isPortrait,
-            isHorizontalLayout: controller.isHorizontalLayout.value,
-            showLoadMore: false, // 搜索结果通常不需要加载更多
-            isLoadingMore: false,
-            hasMore: false,
-            emptyMessage: "此源暂无搜索结果",
-            onVideoTap: (video) {
-              // 获取当前选中的搜索源并切换DataSource
-              final currentSource = controller.selectedSourceId.value;
-              DataSource(siteId: currentSource); // 切换到对应站点
-              
-              Get.toNamed(
-                AppRoutes.videoDetail,
-                parameters: {'videoId': video['vod_id'] ?? ''},
-              );
-            },
+            ],
           ),
+          titleSpacing: 0,
+          centerTitle: false,
         );
       }),
     );
   }
 
-
-  /// 处理键盘事件
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.arrowLeft:
-        if (controller.clearButtonFocusNode.hasFocus) {
-          controller.searchFocusNode.requestFocus();
-          return KeyEventResult.handled;
-        }
-        if (controller.searchFocusNode.hasFocus) {
-          controller.backButtonFocusNode.requestFocus();
-          return KeyEventResult.handled;
-        }
-        break;
-      case LogicalKeyboardKey.arrowRight:
-        if (controller.backButtonFocusNode.hasFocus) {
-          controller.searchFocusNode.requestFocus();
-          return KeyEventResult.handled;
-        }
-        if (controller.searchFocusNode.hasFocus && controller.keyword.value.isNotEmpty) {
-          controller.clearButtonFocusNode.requestFocus();
-          return KeyEventResult.handled;
-        }
-        break;
-      case LogicalKeyboardKey.select:
-      case LogicalKeyboardKey.enter:
-        if (controller.searchFocusNode.hasFocus) {
-          controller.performSearch();
-          return KeyEventResult.handled;
-        } else if (controller.clearButtonFocusNode.hasFocus) {
-          controller.clearSearch();
-          return KeyEventResult.handled;
-        } else if (controller.backButtonFocusNode.hasFocus) {
-          _handleBackNavigation();
-          return KeyEventResult.handled;
-        }
-        break;
-      case LogicalKeyboardKey.escape:
-      case LogicalKeyboardKey.goBack:
-        // 不拦截返回键，让 BackButtonHandler 处理
-        return KeyEventResult.ignored;
-      default:
-        return KeyEventResult.ignored;
-    }
-    return KeyEventResult.ignored;
-  }
-
-  /// 处理手动点击返回按钮的逻辑
-  void _handleBackNavigation() {
-    // 如果正在搜索，先取消搜索状态
-    if (controller.isSearching.value) {
-      return; // 搜索中不允许返回
-    }
-    
-    // 手动点击返回按钮，直接返回
-    Get.back();
-  }
-
-  /// 构建头部
-  Widget _buildHeader(bool isPortrait) {
+  /// 构建头部内容（不包含响应式包装）
+  Widget _buildHeaderContent(bool isPortrait) {
     return Container(
       padding: EdgeInsets.all(isPortrait ? 16 : 20),
       decoration: BoxDecoration(
@@ -507,6 +197,221 @@ class SearchPage extends GetView<search_ctrl.SearchController> {
         ],
       ),
     );
+  }
+
+  /// 构建搜索页主体内容
+  Widget _buildSearchBody(bool isPortrait) {
+    return Obx(() {
+      // 如果没有搜索关键词，显示空状态
+      if (controller.keyword.value.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search,
+                size: 64,
+                color: isPortrait ? Colors.grey[600] : Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '输入关键词开始搜索',
+                style: TextStyle(
+                  color: isPortrait ? Colors.grey[600] : Colors.grey[400],
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      }
+      
+      // 如果正在搜索，显示加载状态
+      if (controller.isSearching.value) {
+        return const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFFF7BB0),
+          ),
+        );
+      }
+      
+      // 如果有错误信息，显示错误
+      if (controller.errorMessage.value.isNotEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: isPortrait ? Colors.grey[600] : Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                controller.errorMessage.value,
+                style: TextStyle(
+                  color: isPortrait ? Colors.grey[600] : Colors.grey[400],
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: controller.performSearch,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF7BB0),
+                ),
+                child: const Text('重试', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+      }
+      
+      // 显示搜索结果TabBarView
+      if (controller.sites.isEmpty) {
+        return Center(
+          child: Text(
+            '没有可用的搜索站点',
+            style: TextStyle(
+              color: isPortrait ? Colors.grey[600] : Colors.grey[400],
+              fontSize: 16,
+            ),
+          ),
+        );
+      }
+      
+      return TabBarView(
+        controller: controller.sourceTabController,
+        physics: const NeverScrollableScrollPhysics(), // 禁用滑动切换，只允许点击导航
+        children: controller.sites.map((site) {
+          return SearchResultPage(
+            key: ValueKey(site.id), // 稳定的key，避免重建
+            controller: controller,
+            siteId: site.id,
+            siteName: site.name,
+          );
+        }).toList(),
+      );
+    });
+  }
+
+  /// 构建搜索TabBar - 参考影视页的TabBar构建逻辑
+  Widget _buildSearchTabBar(bool isPortrait) {
+    if (kDebugMode) {
+      print('🔍 SearchPage: 构建TabBar, isPortrait=$isPortrait, sites数量=${controller.sites.length} [纯净版本，无响应式内容]');
+    }
+    
+    return TabBar(
+      controller: controller.sourceTabController,
+      isScrollable: true,
+      // 禁用默认的焦点装饰，只使用我们自定义的FocusAwareTab效果
+      splashFactory: NoSplash.splashFactory,
+      overlayColor: WidgetStateProperty.all(Colors.transparent),
+      tabs: controller.sites.asMap().entries.map((entry) {
+        final index = entry.key;
+        final site = entry.value;
+        
+        if (kDebugMode) {
+          print('🔍 SearchPage: 创建Tab[$index] - ${site.name}, isPortrait=$isPortrait');
+        }
+        
+        final tabContent = Text(
+          site.name,
+          style: TextStyle(
+            fontFamily: AppTypography.systemFont,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            letterSpacing: 0.1,
+          ),
+        );
+
+        return Tab(
+          height: isPortrait ? 36 : 40,
+          // 竖屏使用与主导航一致的方形高亮，横屏使用药丸效果
+          child: isPortrait 
+              ? _PortraitFocusHighlight(child: tabContent)
+              : FocusAwareTab(child: tabContent),
+        );
+      }).toList(),
+      // 根据屏幕方向调整颜色
+      labelColor: isPortrait ? Colors.grey[800] : Colors.white,
+      unselectedLabelColor: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+      indicatorSize: TabBarIndicatorSize.label,
+      dividerColor: Colors.transparent,
+      indicator: UnderlineTabIndicator(
+        borderSide: BorderSide(
+          color: isPortrait ? Colors.grey[800]! : Colors.white,
+          width: 3,
+        ),
+        insets: const EdgeInsets.symmetric(horizontal: 16),
+      ),
+      padding: const EdgeInsets.only(left: 16),
+      tabAlignment: TabAlignment.start,
+      labelPadding: EdgeInsets.symmetric(
+        horizontal: isPortrait ? 12 : 16,
+      ),
+    );
+  }
+
+  /// 处理键盘事件
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.arrowLeft:
+        if (controller.clearButtonFocusNode.hasFocus) {
+          controller.searchFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+        if (controller.searchFocusNode.hasFocus) {
+          controller.backButtonFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+        break;
+      case LogicalKeyboardKey.arrowRight:
+        if (controller.backButtonFocusNode.hasFocus) {
+          controller.searchFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+        if (controller.searchFocusNode.hasFocus && controller.keyword.value.isNotEmpty) {
+          controller.clearButtonFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+        break;
+      case LogicalKeyboardKey.select:
+      case LogicalKeyboardKey.enter:
+        if (controller.searchFocusNode.hasFocus) {
+          controller.performSearch();
+          return KeyEventResult.handled;
+        } else if (controller.clearButtonFocusNode.hasFocus) {
+          controller.clearSearch();
+          return KeyEventResult.handled;
+        } else if (controller.backButtonFocusNode.hasFocus) {
+          _handleBackNavigation();
+          return KeyEventResult.handled;
+        }
+        break;
+      case LogicalKeyboardKey.escape:
+      case LogicalKeyboardKey.goBack:
+        // 不拦截返回键，让 BackButtonHandler 处理
+        return KeyEventResult.ignored;
+      default:
+        return KeyEventResult.ignored;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// 处理手动点击返回按钮的逻辑
+  void _handleBackNavigation() {
+    // 如果正在搜索，先取消搜索状态
+    if (controller.isSearching.value) {
+      return; // 搜索中不允许返回
+    }
+    
+    // 手动点击返回按钮，直接返回
+    Get.back();
   }
 
   /// 构建搜索输入框
@@ -672,6 +577,211 @@ class _PortraitFocusHighlightState extends State<_PortraitFocusHighlight> {
           : null,
       child: widget.child,
     );
+  }
+}
+
+/// 搜索结果页面 - 参考影视页的VideoScrollPage架构
+class SearchResultPage extends StatefulWidget {
+  final search_ctrl.SearchController controller;
+  final String siteId;
+  final String siteName;
+  
+  const SearchResultPage({
+    super.key,
+    required this.controller,
+    required this.siteId,
+    required this.siteName,
+  });
+
+  @override
+  State<SearchResultPage> createState() => _SearchResultPageState();
+}
+
+class _SearchResultPageState extends State<SearchResultPage> with AutomaticKeepAliveClientMixin {
+  late ScrollController _scrollController;
+  bool _isHorizontalLayout = true; // 默认横向布局，会根据图片检测动态调整
+  
+  // 为网格中的每个项目创建和管理FocusNode - 参考影视页
+  final Map<int, FocusNode> _focusNodes = {};
+  
+  @override
+  bool get wantKeepAlive => true; // 保持页面状态不被销毁
+  
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = widget.controller.getScrollController(widget.siteId);
+    
+    // 监听搜索结果变化，当数据更新时检测第一个视频的封面图 - 参考影视页
+    ever(widget.controller.sourceResults, (Map<String, List> data) {
+      final videoList = data[widget.siteId] ?? [];
+      _checkFirstImageOrientation(videoList);
+    });
+    
+    // 初始检测
+    final currentVideoList = widget.controller.sourceResults[widget.siteId] ?? [];
+    _checkFirstImageOrientation(currentVideoList);
+  }
+  
+  /// 优化的图片方向检测机制 - 完全参考影视页实现
+  Future<void> _checkFirstImageOrientation(List videoList) async {
+    if (videoList.isEmpty) return;
+    
+    final firstVideo = videoList.first;
+    final imageUrl = firstVideo.vodPic; // SearchResult对象的属性
+    if (imageUrl == null || imageUrl.isEmpty) return;
+    
+    // 搜索页目前没有图片缓存机制，直接检测
+    try {
+      // 简化版本的图片检测，如果需要缓存可以后续添加
+      final image = await _loadImageInfo(imageUrl);
+      if (image != null) {
+        final isHorizontal = image.image.width > image.image.height;
+        
+        if (mounted && _isHorizontalLayout != isHorizontal) {
+          if (kDebugMode) {
+            print('🖼️ SearchResultPage[${widget.siteId}]: 图片方向检测 $_isHorizontalLayout -> $isHorizontal');
+          }
+          setState(() {
+            _isHorizontalLayout = isHorizontal;
+          });
+        }
+      }
+    } catch (e) {
+      // 如果图片加载失败，保持默认布局
+      if (kDebugMode) {
+        print('🖼️ SearchResultPage[${widget.siteId}]: 检测图片方向失败: $e');
+      }
+    }
+  }
+  
+  /// 简化的图片信息加载
+  Future<ImageInfo?> _loadImageInfo(String imageUrl) async {
+    try {
+      final imageProvider = NetworkImage(imageUrl);
+      final completer = Completer<ImageInfo?>();
+      final imageStream = imageProvider.resolve(const ImageConfiguration());
+      
+      late ImageStreamListener listener;
+      listener = ImageStreamListener(
+        (ImageInfo info, bool synchronousCall) {
+          if (!completer.isCompleted) {
+            completer.complete(info);
+          }
+          imageStream.removeListener(listener);
+        },
+        onError: (exception, stackTrace) {
+          if (!completer.isCompleted) {
+            completer.complete(null);
+          }
+          imageStream.removeListener(listener);
+        },
+      );
+      
+      imageStream.addListener(listener);
+      
+      // 设置超时
+      Future.delayed(const Duration(seconds: 5), () {
+        if (!completer.isCompleted) {
+          completer.complete(null);
+          imageStream.removeListener(listener);
+        }
+      });
+      
+      return await completer.future;
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  @override
+  void dispose() {
+    // 销毁所有通过此状态管理的FocusNode
+    for (final node in _focusNodes.values) {
+      node.dispose();
+    }
+    // 不要在这里dispose _scrollController，因为它由SearchController管理
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // 必须调用 super.build
+    
+    final windowController = Get.find<WindowController>();
+    final isPortrait = windowController.isPortrait.value;
+    
+    return Obx(() {
+      final results = widget.controller.sourceResults[widget.siteId] ?? [];
+      final isLoading = widget.controller.isSiteLoading(widget.siteId);
+      
+      if (isLoading && results.isEmpty) {
+        return const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFFF7BB0),
+          ),
+        );
+      }
+      
+      if (results.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search_off,
+                size: 64,
+                color: isPortrait ? Colors.grey[600] : Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '此站点暂无搜索结果',
+                style: TextStyle(
+                  color: isPortrait ? Colors.grey[600] : Colors.grey[400],
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      
+      // 将SearchResult转换为VideoGridWidget需要的格式
+      final videoList = results.map((result) => {
+        'vod_id': result.vodId,
+        'vod_name': result.vodName,
+        'vod_pic': result.vodPic,
+        'vod_remarks': result.vodRemarks,
+      }).toList();
+      
+      return RefreshIndicator(
+        color: const Color(0xFFFF7BB0),
+        backgroundColor: Colors.grey[900],
+        onRefresh: () async {
+          await widget.controller.performSearch();
+        },
+        child: VideoGridWidget(
+          videoList: videoList,
+          scrollController: _scrollController,
+          isPortrait: isPortrait,
+          isHorizontalLayout: _isHorizontalLayout,
+          showLoadMore: false, // 搜索结果通常不需要加载更多
+          isLoadingMore: false,
+          hasMore: false,
+          emptyMessage: "此站点暂无搜索结果",
+          onVideoTap: (video) {
+            // 获取当前选中的搜索站点并切换DataSource
+            final currentSite = widget.controller.selectedSiteId.value;
+            DataSource(siteId: currentSite); // 切换到对应站点
+            
+            Get.toNamed(
+              AppRoutes.videoDetail,
+              parameters: {'videoId': video['vod_id'] ?? ''},
+            );
+          },
+        ),
+      );
+    });
   }
 }
 

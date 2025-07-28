@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import '../../../app/config/config.dart';
 import '../../../app/data_source.dart';
+import '../../../shared/services/unified_site_service.dart';
 
 /// 设置控制器
 class SettingsController extends GetxController {
@@ -72,12 +73,57 @@ class SettingsController extends GetxController {
   
   /// 获取站点显示名称
   String getSiteName(String siteId) {
+    try {
+      if (Get.isRegistered<UnifiedSiteService>()) {
+        final siteService = Get.find<UnifiedSiteService>();
+        final site = siteService.getSiteById(siteId);
+        if (site != null) {
+          return site.name;
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('从UnifiedSiteService获取站点名称失败: $e');
+      }
+    }
+    
+    // 回退到AppConfig
     final config = AppConfig.getSiteConfig(siteId);
     return config?['name'] as String? ?? siteId;
   }
   
-  /// 获取所有启用的站点（包括CMS）
+  /// 获取所有站点（包括源站点和CMS）
   List<Map<String, dynamic>> get availableSites {
+    try {
+      if (Get.isRegistered<UnifiedSiteService>()) {
+        final siteService = Get.find<UnifiedSiteService>();
+        final sites = siteService.allSites.map((site) => {
+          'id': site.id,
+          'name': site.name,
+          'type': site.type.toString(),
+          'url': site.url,
+          'isEnabled': site.isEnabled,
+        }).toList();
+        
+        if (kDebugMode) {
+          print('SettingsController: 获取到 ${sites.length} 个站点');
+          for (var site in sites) {
+            print('  - ${site['name']} (${site['type']})');
+          }
+        }
+        
+        return sites;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('获取统一站点列表失败: $e');
+      }
+    }
+    
+    // 回退到原有配置
+    if (kDebugMode) {
+      print('SettingsController: 回退到AppConfig配置，共 ${AppConfig.dataSourceOptions.length} 个站点');
+    }
     return AppConfig.dataSourceOptions;
   }
   

@@ -2,17 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../../../shared/models/search_source.dart';
+import '../../../shared/models/unified_site.dart';
 import '../../../shared/models/search_result.dart';
-import '../../../shared/services/search_service.dart';
+import '../../../shared/services/unified_site_service.dart';
 import '../../../app/routes/app_routes.dart';
-import '../../../app/config/config.dart';
-import '../../settings/services/cms_site_service.dart';
 
 /// 搜索控制器
 class SearchController extends GetxController with GetTickerProviderStateMixin {
   // 核心服务
-  final SearchService _searchService = SearchService();
+  late final UnifiedSiteService _siteService;
   
   // 文本控制器
   final TextEditingController textController = TextEditingController();
@@ -35,8 +33,8 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   // 响应式状态
   final RxString keyword = ''.obs;
   final RxBool isSearching = false.obs;
-  final RxList<SearchSource> sources = <SearchSource>[].obs;
-  final RxString selectedSourceId = ''.obs;
+  final List<UnifiedSite> sites = []; // 改为普通List，初始化后固定不变
+  final RxString selectedSiteId = ''.obs;
   final RxMap<String, SearchResponse> searchResults = <String, SearchResponse>{}.obs;
   
   // 修改数据结构以匹配影视页逻辑 - 每个sourceId对应一个结果列表
@@ -63,12 +61,13 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   @override
   void onInit() {
     super.onInit();
+    _siteService = Get.find<UnifiedSiteService>();
     _setupListeners();
-    // 延迟初始化，确保CMS服务完全加载
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeData();
-    });
+    // 站点数据已在应用启动时加载，直接初始化
+    _initializeData();
   }
+  
+  // 删除不需要的等待逻辑
   
   @override
   void onClose() {
@@ -105,107 +104,44 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   
   /// 初始化数据
   void _initializeData() {
-    final allSources = <SearchSource>[];
-    
-    // 1. 先获取静态配置的搜索源（除了CMS）
-    final staticSources = AppConfig.searchSources
-        .where((config) => config['isEnabled'] == true && config['id'] != 'cms')
-        .map((config) => SearchSource.fromConfig(config))
-        .toList();
-    allSources.addAll(staticSources);
-    
-    // 2. 获取CMS站点并转换为搜索源
-    final cmsSources = _getCmsSearchSources();
-    allSources.addAll(cmsSources);
+    // 直接从统一站点服务获取所有启用的站点
+    final allSites = _siteService.enabledSites;
     
     if (kDebugMode) {
-      print('搜索源初始化完成，共 ${allSources.length} 个源：${allSources.map((s) => s.name).join(', ')}');
+      print('搜索控制器初始化完成，共 ${allSites.length} 个站点：${allSites.map((s) => s.name).join(', ')}');
     }
     
-    // 3. 设置到sources变量中
-    sources.assignAll(allSources);
+    // 设置到sites变量中 - 使用普通赋值而非响应式
+    sites.clear();
+    sites.addAll(allSites);
     
-    // 4. 将完整的源列表保存到全局静态变量中，供SearchService使用
-    SearchSource.setGlobalSources(allSources);
-    
-    if (allSources.isNotEmpty) {
-      selectedSourceId.value = allSources.first.id;
+    if (allSites.isNotEmpty) {
+      selectedSiteId.value = allSites.first.id;
       // 初始化TabController
       _updateTabController();
     }
   }
   
-  /// 获取CMS站点并转换为搜索源格式
-  List<SearchSource> _getCmsSearchSources() {
-    final cmsSources = <SearchSource>[];
-    
-    if (kDebugMode) {
-      print('开始获取CMS站点...');
-      print('CMS服务注册状态: ${Get.isRegistered<CmsSiteService>()}');
-    }
-    
-    try {
-      if (Get.isRegistered<CmsSiteService>()) {
-        final cmsService = Get.find<CmsSiteService>();
-        final cmsSites = cmsService.cmsSites;
-        
-        if (kDebugMode) {
-          print('CMS服务实例获取成功');
-          print('找到 ${cmsSites.length} 个CMS站点：${cmsSites.map((s) => s.name).join(', ')}');
-        }
-        
-        for (final site in cmsSites) {
-          cmsSources.add(SearchSource(
-            id: 'cms_${site.id}',
-            name: site.name,
-            apiEndpoint: '/api/v1/cms',
-            iconUrl: 'https://www.example.com/favicon.ico',
-            color: '#FF9800',
-            isEnabled: true,
-          ));
-          
-          if (kDebugMode) {
-            print('添加CMS搜索源: ${site.name} -> cms_${site.id}');
-          }
-        }
-      } else {
-        if (kDebugMode) {
-          print('CMS服务未注册，跳过CMS站点');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('获取CMS站点失败: $e');
-      }
-    }
-    
-    if (kDebugMode) {
-      print('CMS搜索源构建完成，共 ${cmsSources.length} 个源');
-    }
-    
-    return cmsSources;
-  }
-  
   /// 更新TabController
   void _updateTabController() {
-    if (sources.isEmpty) return;
+    if (sites.isEmpty) return;
     
     // 只有当TabController不存在或长度不匹配时才创建新的
-    if (sourceTabController == null || sourceTabController!.length != sources.length) {
+    if (sourceTabController == null || sourceTabController!.length != sites.length) {
       // 清理旧的TabController
       if (sourceTabController != null) {
         sourceTabController!.removeListener(_onTabChanged);
         sourceTabController!.dispose();
       }
       
-      sourceTabController = TabController(length: sources.length, vsync: this);
+      sourceTabController = TabController(length: sites.length, vsync: this);
       
       // 监听TabController变化
       sourceTabController!.addListener(_onTabChanged);
     }
     
     // 设置初始选中的tab
-    final selectedIndex = sources.indexWhere((source) => source.id == selectedSourceId.value);
+    final selectedIndex = sites.indexWhere((site) => site.id == selectedSiteId.value);
     if (selectedIndex >= 0 && sourceTabController != null && sourceTabController!.index != selectedIndex) {
       sourceTabController!.index = selectedIndex;
     }
@@ -222,10 +158,10 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
       Future.delayed(const Duration(milliseconds: 300), () {
         if (sourceTabController != null && 
             sourceTabController!.index >= 0 && 
-            sourceTabController!.index < sources.length) {
+            sourceTabController!.index < sites.length) {
           final selectedIndex = sourceTabController!.index;
-          final source = sources[selectedIndex];
-          selectSource(source.id);
+          final site = sites[selectedIndex];
+          selectSite(site.id);
         }
         _isProcessingTabChange = false;
       });
@@ -277,13 +213,13 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
     loadingStates.clear();
     
     try {
-      // 设置所有源为加载状态
-      for (final source in sources) {
-        loadingStates[source.id] = true;
+      // 设置所有站点为加载状态
+      for (final site in sites) {
+        loadingStates[site.id] = true;
       }
       
       // 执行搜索
-      final results = await _searchService.searchAll(keyword.value);
+      final results = await _siteService.searchAllSites(keyword.value);
       
       // 更新结果
       searchResults.assignAll(results);
@@ -296,16 +232,16 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
       
       loadingStates.clear();
       
-      // 如果当前选中的源没有结果，自动选择第一个有结果的源
-      if (!results.containsKey(selectedSourceId.value) || 
-          !results[selectedSourceId.value]!.hasResults) {
-        final firstSourceWithResults = results.entries
+      // 如果当前选中的站点没有结果，自动选择第一个有结果的站点
+      if (!results.containsKey(selectedSiteId.value) || 
+          !results[selectedSiteId.value]!.hasResults) {
+        final firstSiteWithResults = results.entries
             .where((entry) => entry.value.hasResults)
             .map((entry) => entry.key)
             .firstOrNull;
         
-        if (firstSourceWithResults != null) {
-          selectedSourceId.value = firstSourceWithResults;
+        if (firstSiteWithResults != null) {
+          selectedSiteId.value = firstSiteWithResults;
         }
       }
       
@@ -370,29 +306,29 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
     searchFocusNode.requestFocus();
   }
   
-  /// 选择搜索源
-  void selectSource(String sourceId) {
-    selectedSourceId.value = sourceId;
+  /// 选择搜索站点
+  void selectSite(String siteId) {
+    selectedSiteId.value = siteId;
     focusedResultIndex.value = -1;
     
     // 只有在不是Tab变化处理过程中时才同步TabController
     if (!_isProcessingTabChange) {
-      final selectedIndex = sources.indexWhere((source) => source.id == sourceId);
+      final selectedIndex = sites.indexWhere((site) => site.id == siteId);
       if (selectedIndex >= 0 && sourceTabController != null && sourceTabController!.index != selectedIndex) {
         sourceTabController!.animateTo(selectedIndex);
       }
     }
     
-    // 切换源时重新检测图片方向
+    // 切换站点时重新检测图片方向
     _checkFirstImageOrientation();
   }
   
-  /// 获取源的焦点节点
-  FocusNode getSourceFocusNode(String sourceId) {
-    if (!_sourceFocusNodes.containsKey(sourceId)) {
-      _sourceFocusNodes[sourceId] = FocusNode(debugLabel: 'Source_$sourceId');
+  /// 获取站点的焦点节点
+  FocusNode getSiteFocusNode(String siteId) {
+    if (!_sourceFocusNodes.containsKey(siteId)) {
+      _sourceFocusNodes[siteId] = FocusNode(debugLabel: 'Site_$siteId');
     }
-    return _sourceFocusNodes[sourceId]!;
+    return _sourceFocusNodes[siteId]!;
   }
   
   /// 获取结果的焦点节点
@@ -411,15 +347,15 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
     searchFocusNode.requestFocus();
   }
   
-  /// 导航到源列表
-  void navigateToSources() {
-    if (sources.isEmpty) return;
+  /// 导航到站点列表
+  void navigateToSites() {
+    if (sites.isEmpty) return;
     
     focusedArea.value = 'sources';
     focusedSourceIndex.value = 0;
     focusedResultIndex.value = -1;
     
-    final focusNode = getSourceFocusNode(sources[0].id);
+    final focusNode = getSiteFocusNode(sites[0].id);
     focusNode.requestFocus();
     _scrollToFocusedSource();
   }
@@ -438,12 +374,12 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
     _scrollToFocusedResult();
   }
   
-  /// 在源列表中向上移动
-  void moveSourceUp() {
+  /// 在站点列表中向上移动
+  void moveSiteUp() {
     if (focusedSourceIndex.value > 0) {
       focusedSourceIndex.value--;
-      final source = sources[focusedSourceIndex.value];
-      final focusNode = getSourceFocusNode(source.id);
+      final site = sites[focusedSourceIndex.value];
+      final focusNode = getSiteFocusNode(site.id);
       focusNode.requestFocus();
       _scrollToFocusedSource();
     } else {
@@ -452,12 +388,12 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
     }
   }
   
-  /// 在源列表中向下移动
-  void moveSourceDown() {
-    if (focusedSourceIndex.value < sources.length - 1) {
+  /// 在站点列表中向下移动
+  void moveSiteDown() {
+    if (focusedSourceIndex.value < sites.length - 1) {
       focusedSourceIndex.value++;
-      final source = sources[focusedSourceIndex.value];
-      final focusNode = getSourceFocusNode(source.id);
+      final site = sites[focusedSourceIndex.value];
+      final focusNode = getSiteFocusNode(site.id);
       focusNode.requestFocus();
       _scrollToFocusedSource();
     }
@@ -521,8 +457,8 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
     switch (focusedArea.value) {
       case 'sources':
         if (focusedSourceIndex.value >= 0) {
-          final source = sources[focusedSourceIndex.value];
-          selectSource(source.id);
+          final site = sites[focusedSourceIndex.value];
+          selectSite(site.id);
         }
         break;
       case 'results':
@@ -540,25 +476,25 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
     }
   }
   
-  /// 获取当前选中源的结果
+  /// 获取当前选中站点的结果
   List<SearchResult> getCurrentResults() {
-    if (selectedSourceId.value.isEmpty) return [];
-    return sourceResults[selectedSourceId.value] ?? [];
+    if (selectedSiteId.value.isEmpty) return [];
+    return sourceResults[selectedSiteId.value] ?? [];
   }
   
-  /// 检查源是否有结果
-  bool hasSourceResults(String sourceId) {
-    return (sourceResults[sourceId]?.isNotEmpty) ?? false;
+  /// 检查站点是否有结果
+  bool hasSiteResults(String siteId) {
+    return (sourceResults[siteId]?.isNotEmpty) ?? false;
   }
   
-  /// 获取源的结果数量
-  int getSourceResultCount(String sourceId) {
-    return sourceResults[sourceId]?.length ?? 0;
+  /// 获取站点的结果数量
+  int getSiteResultCount(String siteId) {
+    return sourceResults[siteId]?.length ?? 0;
   }
   
-  /// 检查源是否正在加载
-  bool isSourceLoading(String sourceId) {
-    return loadingStates[sourceId] ?? false;
+  /// 检查站点是否正在加载
+  bool isSiteLoading(String siteId) {
+    return loadingStates[siteId] ?? false;
   }
   
   /// 滚动到焦点源
@@ -591,10 +527,10 @@ class SearchController extends GetxController with GetTickerProviderStateMixin {
   }
   
   /// 获取或创建 ScrollController - 复制影视页逻辑
-  ScrollController getScrollController(String sourceName) {
-    if (!_scrollControllers.containsKey(sourceName)) {
-      _scrollControllers[sourceName] = ScrollController();
+  ScrollController getScrollController(String siteName) {
+    if (!_scrollControllers.containsKey(siteName)) {
+      _scrollControllers[siteName] = ScrollController();
     }
-    return _scrollControllers[sourceName]!;
+    return _scrollControllers[siteName]!;
   }
 }

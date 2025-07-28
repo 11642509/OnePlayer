@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 /// 一个能够感知自身是否被聚焦的Tab子组件。
 ///
@@ -26,6 +27,10 @@ class _FocusAwareTabState extends State<FocusAwareTab> {
     // 从上下文中获取由TabBar为每个Tab创建的FocusNode
     final focusNode = Focus.of(context);
     if (_focusNode != focusNode) {
+      if (kDebugMode && _focusNode != null) {
+        print('🔥 FocusAwareTab: 切换FocusNode - 旧节点失去监听');
+      }
+      
       _focusNode?.removeListener(_onFocusChanged);
       _focusNode = focusNode;
       _focusNode?.addListener(_onFocusChanged);
@@ -33,6 +38,10 @@ class _FocusAwareTabState extends State<FocusAwareTab> {
       // 确保初始状态正确
       if (_focusNode != null && _isFocused != _focusNode!.hasFocus) {
         _isFocused = _focusNode!.hasFocus;
+        
+        if (kDebugMode) {
+          print('🔥 FocusAwareTab: 初始化焦点状态 - $_isFocused');
+        }
       }
     }
   }
@@ -45,8 +54,14 @@ class _FocusAwareTabState extends State<FocusAwareTab> {
 
   void _onFocusChanged() {
     if (mounted && _isFocused != _focusNode?.hasFocus) {
+      final newFocus = _focusNode!.hasFocus;
+      
+      if (kDebugMode) {
+        print('🔥 FocusAwareTab: 焦点变化 $_isFocused -> $newFocus');
+      }
+      
       setState(() {
-        _isFocused = _focusNode!.hasFocus;
+        _isFocused = newFocus;
       });
     }
   }

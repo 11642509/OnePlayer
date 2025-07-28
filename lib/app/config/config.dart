@@ -96,7 +96,7 @@ class AppConfig {
       'apiUrl': 'http://$serverHost:$serverPort/api/v1/iqiyi',
       'iconUrl': 'https://www.iqiyi.com/favicon.ico',
       'color': '#00C851',
-      'isEnabled': false,
+      'isEnabled': true,
       'isDefault': false,
     },
     'youku': {
@@ -106,7 +106,7 @@ class AppConfig {
       'apiUrl': 'http://$serverHost:$serverPort/api/v1/youku',
       'iconUrl': 'https://www.youku.com/favicon.ico',
       'color': '#1976D2',
-      'isEnabled': false,
+      'isEnabled': true,
       'isDefault': false,
     },
     'tencent': {

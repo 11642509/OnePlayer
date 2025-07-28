@@ -10,6 +10,8 @@ import '../../../core/remote_control/universal_focus.dart';
 import '../../../core/remote_control/focusable_glow.dart';
 import '../../../shared/controllers/window_controller.dart';
 import '../../../features/video_on_demand/controllers/vod_controller.dart';
+import '../../../shared/services/unified_site_service.dart';
+import '../../../shared/models/unified_site.dart';
 import '../services/cms_site_service.dart';
 
 /// 设置页面 - 使用统一毛玻璃风格
@@ -99,47 +101,53 @@ class SettingsPage extends GetView<SettingsController> {
                 title: '数据设置',
                 isPortrait: isPortrait,
                 children: [
-                  Obx(() => GlassOption(
-                    title: '默认数据站点',
-                    subtitle: controller.getSiteName(controller.currentDefaultSite.value),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          controller.getSiteName(controller.currentDefaultSite.value),
-                          style: TextStyle(
-                            color: isPortrait ? Colors.grey[700] : Colors.white,
-                            fontWeight: FontWeight.w600,
+                  Obx(() => Row(
+                    crossAxisAlignment: CrossAxisAlignment.start, // 确保顶部对齐
+                    children: [
+                      // 左侧：默认数据站点选择区域
+                      Expanded(
+                        child: GlassOption(
+                          title: '默认数据站点',
+                          subtitle: controller.getSiteName(controller.currentDefaultSite.value),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                controller.getSiteName(controller.currentDefaultSite.value),
+                                style: TextStyle(
+                                  color: isPortrait ? Colors.grey[700] : Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.chevron_right, color: isPortrait ? Colors.grey[600] : Colors.white54),
+                            ],
                           ),
+                          onTap: () => _showDataSourceDialog(context, controller),
+                          isPortrait: isPortrait,
                         ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.chevron_right, color: isPortrait ? Colors.grey[600] : Colors.white54),
-                      ],
-                    ),
-                    onTap: () => _showDataSourceDialog(context, controller),
-                    isPortrait: isPortrait,
+                      ),
+                      
+                      const SizedBox(width: 12),
+                      
+                      // 右侧：添加站点按钮 - 使用相同的GlassOption结构
+                      SizedBox(
+                        width: 60,
+                        child: GlassOption(
+                          title: '\u200B', // 零宽空格，保持高度但不显示内容
+                          subtitle: '\u200B', // 也需要副标题来匹配左侧高度
+                          trailing: Icon(
+                            Icons.add_circle_outline,
+                            color: isPortrait ? Colors.grey[600] : Colors.white54,
+                            size: 20,
+                          ),
+                          onTap: () => _showAddSiteDialog(context),
+                          isPortrait: isPortrait,
+                        ),
+                      ),
+                    ],
                   )),
-                  
-                  GlassOption(
-                    title: 'CMS采集站点',
-                    subtitle: _getCmsSubtitle(),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _getCmsStatusText(),
-                          style: TextStyle(
-                            color: isPortrait ? Colors.grey[700] : Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.chevron_right, color: isPortrait ? Colors.grey[600] : Colors.white54),
-                      ],
-                    ),
-                    onTap: () => _showCmsManagementDialog(context),
-                    isPortrait: isPortrait,
-                  ),
                   
                   Obx(() => GlassOption(
                     title: '数据源',
@@ -269,6 +277,8 @@ class SettingsPage extends GetView<SettingsController> {
     final windowController = Get.find<WindowController>();
     final isPortrait = windowController.isPortrait.value;
     
+    // 强制刷新站点数据 - 新架构下数据统一管理，无需额外操作
+    
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.6),
@@ -291,11 +301,13 @@ class SettingsPage extends GetView<SettingsController> {
               
               const SizedBox(height: 12),
               
+              // 恢复为单列布局
               Column(
                 children: controller.availableSites.map((site) {
                   final siteId = site['id'] as String;
                   final siteName = site['name'] as String;
-                  return _buildCompactSiteOption(siteName, siteId, controller, context, isPortrait);
+                  // 所有站点都可以删除
+                  return _buildSingleRowSiteOption(siteName, siteId, controller, context, isPortrait, isDeletable: true);
                 }).toList(),
               ),
             ],
@@ -459,8 +471,8 @@ class SettingsPage extends GetView<SettingsController> {
     );
   }
 
-  /// 紧凑的数据站点选项
-  Widget _buildCompactSiteOption(String siteName, String siteId, SettingsController controller, BuildContext context, bool isPortrait) {
+  /// 构建单行左右分开的站点选项
+  Widget _buildSingleRowSiteOption(String siteName, String siteId, SettingsController controller, BuildContext context, bool isPortrait, {bool isDeletable = false}) {
     return Obx(() {
       final isSelected = controller.currentDefaultSite.value == siteId;
       final textColor = isPortrait ? Colors.grey[800]! : Colors.white;
@@ -474,64 +486,157 @@ class SettingsPage extends GetView<SettingsController> {
       
       return Container(
         margin: const EdgeInsets.only(bottom: 6),
-        child: UniversalFocus(
-          onTap: () {
-            controller.setDefaultSite(siteId);
-            Navigator.of(context).pop();
-            _showSettingToast('已切换到$siteName');
-            
-            // 触发影视页重新加载
-            _reloadVideoOnDemandPage();
-          },
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            decoration: BoxDecoration(
-              color: isSelected ? selectedBgColor : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              border: isSelected 
-                ? Border.all(color: selectedBorderColor, width: 1)
-                : Border.all(color: borderColor.withValues(alpha: 0.3), width: 1),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 16,
-                  height: 16,
+        child: Row(
+          children: [
+            // 左侧：站点信息（可点击选择）
+            Expanded(
+              child: UniversalFocus(
+                onTap: () {
+                  controller.setDefaultSite(siteId);
+                  Navigator.of(context).pop();
+                  _showSettingToast('已切换到$siteName');
+                  _reloadVideoOnDemandPage();
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? selectedBorderColor : borderColor,
-                      width: 2,
-                    ),
                     color: isSelected ? selectedBgColor : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: isSelected 
+                      ? Border.all(color: selectedBorderColor, width: 1)
+                      : Border.all(color: borderColor.withValues(alpha: 0.3), width: 1),
                   ),
-                  child: isSelected 
-                    ? Icon(
-                        Icons.check,
-                        size: 10,
-                        color: textColor,
-                      )
-                    : null,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected ? selectedBorderColor : borderColor,
+                            width: 2,
+                          ),
+                          color: isSelected ? selectedBgColor : Colors.transparent,
+                        ),
+                        child: isSelected 
+                          ? Icon(
+                              Icons.check,
+                              size: 10,
+                              color: textColor,
+                            )
+                          : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          siteName,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 14,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    siteName,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+            
+            // 右侧：删除按钮（如果可删除）
+            if (isDeletable) ...[
+              const SizedBox(width: 12),
+              FocusableGlow(
+                onTap: () => _deleteSiteDirectly(siteId, siteName, controller, context),
+                borderRadius: BorderRadius.circular(8),
+                customGlowColor: isPortrait ? Colors.grey.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.2),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: isPortrait 
+                        ? Colors.grey.withValues(alpha: 0.08)
+                        : Colors.white.withValues(alpha: 0.05),
+                    border: Border.all(
+                      color: isPortrait ? Colors.grey.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.15),
+                      width: 1,
                     ),
                   ),
+                  child: Icon(
+                    Icons.close,
+                    size: 16,
+                    color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+                  ),
                 ),
-              ],
-            ),
-          ),
+              ),
+            ],
+          ],
         ),
       );
     });
   }
+
+
+
+  /// 直接删除站点（无二次确认）
+  void _deleteSiteDirectly(String siteId, String siteName, SettingsController controller, BuildContext context) async {
+    if (kDebugMode) {
+      print('开始删除站点: $siteId ($siteName)');
+    }
+    
+    bool success = false;
+    
+    try {
+      // 优先使用统一服务删除
+      if (Get.isRegistered<UnifiedSiteService>()) {
+        final unifiedService = Get.find<UnifiedSiteService>();
+        success = await unifiedService.removeSite(siteId);
+        if (kDebugMode) {
+          print('统一服务删除结果: $success');
+        }
+      }
+      
+      // 如果统一服务删除失败，尝试CMS服务删除
+      if (!success && Get.isRegistered<CmsSiteService>()) {
+        final cmsService = Get.find<CmsSiteService>();
+        if (cmsService.cmsSites.any((site) => site.id == siteId)) {
+          success = await cmsService.removeCmsSite(siteId);
+          if (kDebugMode) {
+            print('CMS服务删除结果: $success');
+          }
+        }
+      }
+      
+      if (success) {
+        _showSettingToast('已删除: $siteName');
+        
+        // 检查是否删除的是当前选中的站点，如果是则需要选择新的默认站点
+        if (controller.currentDefaultSite.value == siteId) {
+          // 等待一下让数据更新
+          await Future.delayed(Duration(milliseconds: 100));
+          final availableSites = controller.availableSites;
+          if (availableSites.isNotEmpty) {
+            final firstSite = availableSites.first;
+            controller.setDefaultSite(firstSite['id'] as String);
+            _showSettingToast('已自动切换到: ${firstSite['name']}');
+          }
+        }
+      } else {
+        _showSettingToast('删除失败: 站点可能不存在或无法删除');
+        if (kDebugMode) {
+          print('删除站点失败: $siteId');
+        }
+      }
+    } catch (e) {
+      _showSettingToast('删除失败: ${e.toString()}');
+      if (kDebugMode) {
+        print('删除站点异常: $e');
+      }
+    }
+  }
+
 
   /// 紧凑的播放器内核选项
   Widget _buildCompactKernelOption(String title, PlayerKernel kernel, SettingsController controller, BuildContext context, bool isPortrait) {
@@ -674,269 +779,8 @@ class SettingsPage extends GetView<SettingsController> {
     );
   }
   
-  /// 获取CMS副标题
-  String _getCmsSubtitle() {
-    try {
-      if (Get.isRegistered<CmsSiteService>()) {
-        final cmsService = Get.find<CmsSiteService>();
-        final sitesCount = cmsService.cmsSites.length;
-        final selectedSite = cmsService.selectedSite;
-        
-        if (sitesCount == 0) {
-          return '未配置CMS站点';
-        } else if (selectedSite != null) {
-          return '已选择: ${selectedSite.name} (共$sitesCount个站点)';
-        } else {
-          return '共$sitesCount个站点，未选择';
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('获取CMS副标题失败: $e');
-      }
-    }
-    return '暂无配置';
-  }
-  
-  /// 获取CMS状态文本
-  String _getCmsStatusText() {
-    try {
-      if (Get.isRegistered<CmsSiteService>()) {
-        final cmsService = Get.find<CmsSiteService>();
-        return '${cmsService.cmsSites.length}个站点';
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('获取CMS状态文本失败: $e');
-      }
-    }
-    return '0个站点';
-  }
-  
-  /// 显示CMS管理弹窗
-  void _showCmsManagementDialog(BuildContext context) {
-    final windowController = Get.find<WindowController>();
-    final isPortrait = windowController.isPortrait.value;
-    
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
-      builder: (context) => Center(
-        child: GlassContainer(
-          width: isPortrait ? 320 : 400,
-          padding: const EdgeInsets.all(20),
-          isPortrait: isPortrait,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 标题
-              Text(
-                'CMS采集站点管理',
-                style: TextStyle(
-                  color: isPortrait ? Colors.grey[800] : Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // CMS站点列表
-              Obx(() {
-                final cmsService = Get.find<CmsSiteService>();
-                final sites = cmsService.cmsSites;
-                final selectedSiteId = cmsService.selectedSiteId;
-                
-                if (sites.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isPortrait 
-                          ? Colors.grey[200]?.withValues(alpha: 0.5)
-                          : Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isPortrait ? Colors.grey[300]! : Colors.white.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    child: Text(
-                      '暂无CMS站点\n点击"添加站点"开始配置',
-                      style: TextStyle(
-                        color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                }
-                
-                return Container(
-                  constraints: const BoxConstraints(maxHeight: 200),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: sites.map((site) => 
-                        _buildCmsSiteOption(site, selectedSiteId, isPortrait)
-                      ).toList(),
-                    ),
-                  ),
-                );
-              }),
-              
-              const SizedBox(height: 16),
-              
-              // 按钮行
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // 添加站点按钮
-                  _buildCmsDialogButton(
-                    '添加站点',
-                    const Color(0xFFFF7BB0),
-                    () => _showAddCmsSiteDialog(context),
-                    isPortrait,
-                  ),
-                  
-                  // 关闭按钮
-                  _buildCmsDialogButton(
-                    '关闭',
-                    Colors.grey,
-                    () => Navigator.of(context).pop(),
-                    isPortrait,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  /// 构建CMS站点选项
-  Widget _buildCmsSiteOption(CmsSite site, String selectedSiteId, bool isPortrait) {
-    final isSelected = site.id == selectedSiteId;
-    final textColor = isPortrait ? Colors.grey[800]! : Colors.white;
-    final borderColor = isPortrait ? Colors.grey[700]! : Colors.white.withValues(alpha: 0.6);
-    final selectedBgColor = isPortrait 
-        ? Colors.grey.withValues(alpha: 0.15) 
-        : Colors.white.withValues(alpha: 0.15);
-    final selectedBorderColor = isPortrait 
-        ? Colors.grey.withValues(alpha: 0.4) 
-        : Colors.white.withValues(alpha: 0.3);
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: UniversalFocus(
-        onTap: () async {
-          await Get.find<CmsSiteService>().selectCmsSite(site.id);
-          _showSettingToast('已选择: ${site.name}');
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? selectedBgColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: isSelected 
-              ? Border.all(color: selectedBorderColor, width: 1)
-              : Border.all(color: borderColor.withValues(alpha: 0.3), width: 1),
-          ),
-          child: Row(
-            children: [
-              // 选择状态指示器
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? selectedBorderColor : borderColor,
-                    width: 2,
-                  ),
-                  color: isSelected ? selectedBgColor : Colors.transparent,
-                ),
-                child: isSelected 
-                  ? Icon(
-                      Icons.check,
-                      size: 10,
-                      color: textColor,
-                    )
-                  : null,
-              ),
-              const SizedBox(width: 12),
-              
-              // 站点信息
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      site.name,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      site.url,
-                      style: TextStyle(
-                        color: isPortrait ? Colors.grey[600] : Colors.grey[400],
-                        fontSize: 12,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              
-              // 删除按钮
-              UniversalFocus(
-                onTap: () => _confirmDeleteCmsSite(site),
-                borderRadius: BorderRadius.circular(4),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: Colors.red.withValues(alpha: 0.7),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  /// 构建CMS弹窗按钮
-  Widget _buildCmsDialogButton(String text, Color color, VoidCallback onPressed, bool isPortrait) {
-    return FocusableGlow(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(8),
-      customGlowColor: color.withValues(alpha: 0.8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-  
-  /// 显示添加CMS站点弹窗
-  void _showAddCmsSiteDialog(BuildContext context) {
+  /// 显示添加站点弹窗
+  void _showAddSiteDialog(BuildContext context) {
     final windowController = Get.find<WindowController>();
     final isPortrait = windowController.isPortrait.value;
     
@@ -944,91 +788,35 @@ class SettingsPage extends GetView<SettingsController> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.6),
       barrierDismissible: true,
-      builder: (context) => _AddCmsSiteDialog(
-        key: ValueKey('cms_dialog_${DateTime.now().millisecondsSinceEpoch}'),
+      builder: (context) => _AddSiteDialog(
+        key: ValueKey('add_site_dialog_${DateTime.now().millisecondsSinceEpoch}'),
         isPortrait: isPortrait,
       ),
     );
   }
   
-  /// 确认删除CMS站点
-  void _confirmDeleteCmsSite(CmsSite site) {
-    final windowController = Get.find<WindowController>();
-    final isPortrait = windowController.isPortrait.value;
-    
-    showDialog(
-      context: Get.context!,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
-      builder: (context) => Center(
-        child: GlassContainer(
-          width: isPortrait ? 280 : 350,
-          padding: const EdgeInsets.all(20),
-          isPortrait: isPortrait,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '确认删除',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isPortrait ? Colors.grey[800] : Colors.white,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '确定要删除站点"${site.name}"吗？',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isPortrait ? Colors.grey[600] : Colors.grey[300],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildCmsDialogButton(
-                    '取消',
-                    Colors.grey,
-                    () => Navigator.of(context).pop(),
-                    isPortrait,
-                  ),
-                  _buildCmsDialogButton(
-                    '删除',
-                    Colors.red,
-                    () async {
-                      final navigator = Navigator.of(context);
-                      await Get.find<CmsSiteService>().removeCmsSite(site.id);
-                      navigator.pop();
-                      _showSettingToast('站点删除成功');
-                    },
-                    isPortrait,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  
+  
+  
+  
+  
+  
 }
 
-/// 添加CMS站点弹窗组件
-class _AddCmsSiteDialog extends StatefulWidget {
+/// 添加站点弹窗组件 - 简洁的单层设计
+class _AddSiteDialog extends StatefulWidget {
   final bool isPortrait;
   
-  const _AddCmsSiteDialog({
+  const _AddSiteDialog({
     super.key,
     required this.isPortrait,
   });
   
   @override
-  State<_AddCmsSiteDialog> createState() => _AddCmsSiteDialogState();
+  State<_AddSiteDialog> createState() => _AddSiteDialogState();
 }
 
-class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
+class _AddSiteDialogState extends State<_AddSiteDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _urlController;
   late final FocusNode _nameFocusNode;
@@ -1141,182 +929,166 @@ class _AddCmsSiteDialogState extends State<_AddCmsSiteDialog> {
         }
       },
       child: Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: widget.isPortrait ? 350 : 450,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: widget.isPortrait 
-                  ? Colors.white.withValues(alpha: 0.95)
-                  : Colors.grey[900]!.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(
-                color: widget.isPortrait 
-                    ? Colors.grey.withValues(alpha: 0.25)
-                    : Colors.white.withValues(alpha: 0.15),
-                width: 0.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 30,
-                  spreadRadius: -5,
-                  offset: const Offset(0, 12),
-                ),
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  blurRadius: 1,
-                  spreadRadius: 0,
-                  offset: const Offset(0, -0.3),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-            Text(
-              '添加CMS站点',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: widget.isPortrait ? Colors.grey[800] : Colors.white,
-              ),
-            ),
-            const SizedBox(height: 20),
-            
-            // 站点名称输入
-            Material(
-              color: Colors.transparent,
-              child: TextField(
-                key: const ValueKey('cms_site_name_input'),
-                controller: _nameController,
-                focusNode: _nameFocusNode,
-                textInputAction: TextInputAction.next,
-                onSubmitted: (value) {
-                  _urlFocusNode.requestFocus();
-                },
-                decoration: InputDecoration(
-                  labelText: '站点名称',
-                  hintText: '例如：非凡资源',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: widget.isPortrait ? Colors.grey[600]! : Colors.white.withValues(alpha: 0.6),
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: widget.isPortrait 
-                      ? Colors.white.withValues(alpha: 0.1)
-                      : Colors.white.withValues(alpha: 0.05),
-                  floatingLabelBehavior: FloatingLabelBehavior.never,
-                ),
+        child: GlassContainer(
+          width: widget.isPortrait ? 320 : 400,
+          padding: const EdgeInsets.all(20),
+          isPortrait: widget.isPortrait,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '添加CMS站点',
                 style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                   color: widget.isPortrait ? Colors.grey[800] : Colors.white,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            
-            // 站点URL输入
-            Material(
-              color: Colors.transparent,
-              child: TextField(
-                key: const ValueKey('cms_site_url_input'),
-                controller: _urlController,
-                focusNode: _urlFocusNode,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (value) {
-                  _cancelButtonFocusNode.requestFocus();
-                },
-                decoration: InputDecoration(
-                  labelText: '站点URL',
-                  hintText: 'https://example.com/api.php/provide/vod',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: widget.isPortrait ? Colors.grey[600]! : Colors.white.withValues(alpha: 0.6),
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: widget.isPortrait 
-                      ? Colors.white.withValues(alpha: 0.1)
-                      : Colors.white.withValues(alpha: 0.05),
-                  floatingLabelBehavior: FloatingLabelBehavior.never,
-                ),
+              const SizedBox(height: 16),
+              
+              Text(
+                '添加新的CMS采集站点到您的数据源列表',
                 style: TextStyle(
-                  color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+                  fontSize: 12,
+                  color: widget.isPortrait ? Colors.grey[600] : Colors.grey[400],
                 ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 20),
-            
-            // 按钮行
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildDialogButton(
-                  '取消',
-                  Colors.grey,
-                  () => Navigator.of(context).pop(),
-                  _cancelButtonFocusNode,
-                ),
-                _buildDialogButton(
-                  '添加',
-                  const Color(0xFFFF7BB0),
-                  () async {
-                    final name = _nameController.text.trim();
-                    final url = _urlController.text.trim();
-                    
-                    if (name.isEmpty || url.isEmpty) {
-                      _showSettingToast('请填写完整的站点信息');
-                      return;
-                    }
-                    
-                    final navigator = Navigator.of(context);
-                    final success = await Get.find<CmsSiteService>().addCmsSite(name, url);
-                    if (mounted) {
-                      if (success) {
-                        navigator.pop();
-                        _showSettingToast('站点添加成功');
-                      } else {
-                        _showSettingToast('站点添加失败，可能URL已存在');
-                      }
-                    }
+              const SizedBox(height: 20),
+              
+              // 站点名称输入
+              Material(
+                color: Colors.transparent,
+                child: TextField(
+                  key: const ValueKey('site_name_input'),
+                  controller: _nameController,
+                  focusNode: _nameFocusNode,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (value) {
+                    _urlFocusNode.requestFocus();
                   },
-                  _addButtonFocusNode,
+                  decoration: InputDecoration(
+                    labelText: '站点名称',
+                    hintText: '例如：非凡资源',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: widget.isPortrait ? Colors.grey[600]! : Colors.white.withValues(alpha: 0.6),
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: widget.isPortrait 
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.white.withValues(alpha: 0.05),
+                    floatingLabelBehavior: FloatingLabelBehavior.never,
+                  ),
+                  style: TextStyle(
+                    color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+                  ),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 16),
+              
+              // 站点URL输入
+              Material(
+                color: Colors.transparent,
+                child: TextField(
+                  key: const ValueKey('site_url_input'),
+                  controller: _urlController,
+                  focusNode: _urlFocusNode,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (value) {
+                    _cancelButtonFocusNode.requestFocus();
+                  },
+                  decoration: InputDecoration(
+                    labelText: '站点URL',
+                    hintText: 'https://example.com/api.php/provide/vod',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: widget.isPortrait ? Colors.grey[400]! : Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: widget.isPortrait ? Colors.grey[600]! : Colors.white.withValues(alpha: 0.6),
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: widget.isPortrait 
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.white.withValues(alpha: 0.05),
+                    floatingLabelBehavior: FloatingLabelBehavior.never,
+                  ),
+                  style: TextStyle(
+                    color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // 按钮行
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildDialogButton(
+                    '取消',
+                    Colors.grey,
+                    () => Navigator.of(context).pop(),
+                    _cancelButtonFocusNode,
+                  ),
+                  _buildDialogButton(
+                    '添加',
+                    const Color(0xFFFF7BB0),
+                    () async {
+                      final name = _nameController.text.trim();
+                      final url = _urlController.text.trim();
+                      
+                      if (name.isEmpty || url.isEmpty) {
+                        _showSettingToast('请填写完整的站点信息');
+                        return;
+                      }
+                      
+                      final navigator = Navigator.of(context);
+                      final success = await Get.find<UnifiedSiteService>().addSite(name, url, SiteType.cms);
+                      if (mounted) {
+                        if (success) {
+                          navigator.pop();
+                          _showSettingToast('站点添加成功');
+                        } else {
+                          _showSettingToast('站点添加失败，可能URL已存在');
+                        }
+                      }
+                    },
+                    _addButtonFocusNode,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ))),
+      ),
     );
   }
 }
