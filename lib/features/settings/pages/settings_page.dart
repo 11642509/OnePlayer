@@ -18,6 +18,17 @@ import '../services/cms_site_service.dart';
 class SettingsPage extends GetView<SettingsController> {
   const SettingsPage({super.key});
 
+  // ScrollController 管理
+  static final Map<String, ScrollController> _scrollControllers = {};
+  
+  /// 获取或创建ScrollController
+  ScrollController _getOrCreateScrollController(String key) {
+    if (!_scrollControllers.containsKey(key)) {
+      _scrollControllers[key] = ScrollController();
+    }
+    return _scrollControllers[key]!;
+  }
+
   @override
   Widget build(BuildContext context) {
     final performance = Get.find<PerformanceManager>();
@@ -101,79 +112,63 @@ class SettingsPage extends GetView<SettingsController> {
                 title: '数据设置',
                 isPortrait: isPortrait,
                 children: [
-                  Obx(() => Row(
-                    crossAxisAlignment: CrossAxisAlignment.start, // 确保顶部对齐
-                    children: [
-                      // 左侧：默认数据站点选择区域
-                      Expanded(
-                        child: GlassOption(
-                          title: '默认数据站点',
-                          subtitle: controller.getSiteName(controller.currentDefaultSite.value),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                controller.getSiteName(controller.currentDefaultSite.value),
-                                style: TextStyle(
-                                  color: isPortrait ? Colors.grey[700] : Colors.white,
-                                  fontWeight: FontWeight.w600,
+                  Obx(() => IntrinsicHeight( // 使用IntrinsicHeight确保高度一致
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch, // 确保所有子组件高度一致
+                      children: [
+                        // 左侧：默认数据站点选择区域
+                        Expanded(
+                          child: GlassOption(
+                            title: '默认数据站点',
+                            subtitle: controller.getSiteName(controller.currentDefaultSite.value),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  controller.getSiteName(controller.currentDefaultSite.value),
+                                  style: TextStyle(
+                                    color: isPortrait ? Colors.grey[700] : Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 8),
+                                Icon(Icons.chevron_right, color: isPortrait ? Colors.grey[600] : Colors.white54),
+                              ],
+                            ),
+                            onTap: () => _showDataSourceDialog(context, controller),
+                            isPortrait: isPortrait,
+                          ),
+                        ),
+                        
+                        const SizedBox(width: 12),
+                        
+                        // 右侧：添加站点按钮 - 高度自动匹配左侧
+                        SizedBox(
+                          width: 60,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8), // 与GlassOption相同的margin
+                            child: UniversalFocus(
+                              onTap: () => _showAddSiteDialog(context),
+                              borderRadius: BorderRadius.circular(16),
+                              child: GlassContainer(
+                                margin: EdgeInsets.zero,
+                                padding: const EdgeInsets.all(16),
+                                isPortrait: isPortrait,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.add_circle_outline,
+                                    color: isPortrait ? Colors.grey[600] : Colors.white54,
+                                    size: 20,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 8),
-                              Icon(Icons.chevron_right, color: isPortrait ? Colors.grey[600] : Colors.white54),
-                            ],
+                            ),
                           ),
-                          onTap: () => _showDataSourceDialog(context, controller),
-                          isPortrait: isPortrait,
                         ),
-                      ),
-                      
-                      const SizedBox(width: 12),
-                      
-                      // 右侧：添加站点按钮 - 使用相同的GlassOption结构
-                      SizedBox(
-                        width: 60,
-                        child: GlassOption(
-                          title: '\u200B', // 零宽空格，保持高度但不显示内容
-                          subtitle: '\u200B', // 也需要副标题来匹配左侧高度
-                          trailing: Icon(
-                            Icons.add_circle_outline,
-                            color: isPortrait ? Colors.grey[600] : Colors.white54,
-                            size: 20,
-                          ),
-                          onTap: () => _showAddSiteDialog(context),
-                          isPortrait: isPortrait,
-                        ),
-                      ),
-                    ],
-                  )),
-                  
-                  Obx(() => GlassOption(
-                    title: '数据源',
-                    subtitle: controller.useMockData.value ? '使用模拟数据（离线模式）' : '使用在线数据',
-                    trailing: Switch(
-                      value: controller.useMockData.value,
-                      onChanged: (value) {
-                        controller.toggleMockData(value);
-                        _showSettingToast(value ? '已切换到模拟数据' : '已切换到在线数据');
-                      },
-                      activeColor: isPortrait ? Colors.grey[700] : Colors.white,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ],
                     ),
-                    onTap: () {
-                      final newValue = !controller.useMockData.value;
-                      controller.toggleMockData(newValue);
-                      _showSettingToast(newValue ? '已切换到模拟数据' : '已切换到在线数据');
-                    },
-                    isPortrait: isPortrait,
                   )),
-                  
-                  GlassOption(
-                    title: '数据源说明',
-                    subtitle: '模拟数据：无需网络，用于测试\n在线数据：需要网络连接',
-                    isPortrait: isPortrait,
-                  ),
                 ],
               ),
               
@@ -285,6 +280,7 @@ class SettingsPage extends GetView<SettingsController> {
       builder: (context) => Center(
         child: GlassContainer(
           width: 280,
+          height: isPortrait ? 400 : 450, // 设置固定高度
           padding: const EdgeInsets.all(16),
           isPortrait: isPortrait,
           child: Column(
@@ -301,20 +297,149 @@ class SettingsPage extends GetView<SettingsController> {
               
               const SizedBox(height: 12),
               
-              // 恢复为单列布局
-              Column(
-                children: controller.availableSites.map((site) {
-                  final siteId = site['id'] as String;
-                  final siteName = site['name'] as String;
-                  // 所有站点都可以删除
-                  return _buildSingleRowSiteOption(siteName, siteId, controller, context, isPortrait, isDeletable: true);
-                }).toList(),
+              // 站点列表区域 - 固定高度，无滚动条，参考视频网格实现
+              Expanded(
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(
+                    scrollbars: false, // 完全禁用滚动条
+                  ),
+                  child: Obx(() => ListView.builder( // 包装在Obx中确保响应式更新
+                    controller: _getOrCreateScrollController('data_source_dialog'),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: controller.availableSites.length,
+                    itemBuilder: (context, index) {
+                      final site = controller.availableSites[index];
+                      final siteId = site['id'] as String;
+                      final siteName = site['name'] as String;
+                      return _buildSingleRowSiteOption(siteName, siteId, controller, context, isPortrait, isDeletable: true);
+                    },
+                  )),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // 添加取消和重置按钮
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // 取消按钮 - 带文字说明
+                  FocusableGlow(
+                    onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      height: isPortrait ? 44 : 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: isPortrait 
+                            ? Colors.white.withValues(alpha: 0.85)
+                            : Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isPortrait
+                              ? Colors.grey.withValues(alpha: 0.25)
+                              : Colors.white.withValues(alpha: 0.15),
+                          width: 0.2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.close,
+                            color: isPortrait ? Colors.grey[800] : Colors.white,
+                            size: isPortrait ? 18 : 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '取消',
+                            style: TextStyle(
+                              color: isPortrait ? Colors.grey[800] : Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  // 重置按钮 - 带文字说明
+                  FocusableGlow(
+                    onTap: () => _resetSitesToDefault(controller, context),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      height: isPortrait ? 44 : 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: isPortrait 
+                            ? Colors.white.withValues(alpha: 0.85)
+                            : Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isPortrait
+                              ? Colors.grey.withValues(alpha: 0.25)
+                              : Colors.white.withValues(alpha: 0.15),
+                          width: 0.2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.refresh,
+                            color: isPortrait ? Colors.grey[800] : Colors.white,
+                            size: isPortrait ? 18 : 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '重置',
+                            style: TextStyle(
+                              color: isPortrait ? Colors.grey[800] : Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// 重置站点到默认配置
+  Future<void> _resetSitesToDefault(SettingsController controller, BuildContext context) async {
+    try {
+      final unifiedService = Get.find<UnifiedSiteService>();
+      final navigator = Navigator.of(context); // 获取Navigator引用，避免async警告
+      
+      // 显示加载提示
+      _showSettingToast('正在重置站点配置...');
+      
+      // 使用UnifiedSiteService的公共方法重置配置
+      await unifiedService.resetToDefaultConfiguration();
+      
+      // 关闭对话框
+      navigator.pop();
+      
+      // 显示成功提示
+      _showSettingToast('站点配置已重置为默认设置');
+      
+      // 重新加载影视页数据
+      _reloadVideoOnDemandPage();
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('重置站点配置失败: $e');
+      }
+      _showSettingToast('重置失败: ${e.toString()}');
+    }
   }
 
   void _showPlayerKernelDialog(BuildContext context, SettingsController controller) {
@@ -490,87 +615,173 @@ class SettingsPage extends GetView<SettingsController> {
           children: [
             // 左侧：站点信息（可点击选择）
             Expanded(
-              child: UniversalFocus(
-                onTap: () {
-                  controller.setDefaultSite(siteId);
-                  Navigator.of(context).pop();
-                  _showSettingToast('已切换到$siteName');
-                  _reloadVideoOnDemandPage();
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected ? selectedBgColor : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    border: isSelected 
-                      ? Border.all(color: selectedBorderColor, width: 1)
-                      : Border.all(color: borderColor.withValues(alpha: 0.3), width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 16,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected ? selectedBorderColor : borderColor,
-                            width: 2,
+              child: Builder(
+                builder: (context) => isPortrait 
+                    ? UniversalFocus( // 竖屏使用UniversalFocus
+                        onTap: () {
+                          controller.setDefaultSite(siteId);
+                          Navigator.of(context).pop();
+                          _showSettingToast('已切换到$siteName');
+                          _reloadVideoOnDemandPage();
+                        },
+                        onFocusChange: (hasFocus) {
+                          // 当获得焦点时，自动滚动到可见区域
+                          if (hasFocus) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              Scrollable.ensureVisible(
+                                context,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            });
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected ? selectedBgColor : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                            border: isSelected 
+                              ? Border.all(color: selectedBorderColor, width: 1)
+                              : Border.all(color: borderColor.withValues(alpha: 0.3), width: 1),
                           ),
-                          color: isSelected ? selectedBgColor : Colors.transparent,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isSelected ? selectedBorderColor : borderColor,
+                                    width: 2,
+                                  ),
+                                  color: isSelected ? selectedBgColor : Colors.transparent,
+                                ),
+                                child: isSelected 
+                                  ? Icon(
+                                      Icons.check,
+                                      size: 10,
+                                      color: textColor,
+                                    )
+                                  : null,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  siteName,
+                                  style: TextStyle(
+                                    color: textColor,
+                                    fontSize: 14,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: isSelected 
-                          ? Icon(
-                              Icons.check,
-                              size: 10,
-                              color: textColor,
-                            )
-                          : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          siteName,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 14,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      )
+                    : FocusableGlow( // 横屏使用FocusableGlow，与取消/重置按钮一致
+                        onTap: () {
+                          controller.setDefaultSite(siteId);
+                          Navigator.of(context).pop();
+                          _showSettingToast('已切换到$siteName');
+                          _reloadVideoOnDemandPage();
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected ? selectedBgColor : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                            border: isSelected 
+                              ? Border.all(color: selectedBorderColor, width: 1)
+                              : Border.all(color: borderColor.withValues(alpha: 0.3), width: 1),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isSelected ? selectedBorderColor : borderColor,
+                                    width: 2,
+                                  ),
+                                  color: isSelected ? selectedBgColor : Colors.transparent,
+                                ),
+                                child: isSelected 
+                                  ? Icon(
+                                      Icons.check,
+                                      size: 10,
+                                      color: textColor,
+                                    )
+                                  : null,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  siteName,
+                                  style: TextStyle(
+                                    color: textColor,
+                                    fontSize: 14,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
               ),
             ),
             
             // 右侧：删除按钮（如果可删除）
             if (isDeletable) ...[
               const SizedBox(width: 12),
-              FocusableGlow(
-                onTap: () => _deleteSiteDirectly(siteId, siteName, controller, context),
-                borderRadius: BorderRadius.circular(8),
-                customGlowColor: isPortrait ? Colors.grey.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.2),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: isPortrait 
-                        ? Colors.grey.withValues(alpha: 0.08)
-                        : Colors.white.withValues(alpha: 0.05),
-                    border: Border.all(
-                      color: isPortrait ? Colors.grey.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.15),
-                      width: 1,
+              isPortrait 
+                  ? UniversalFocus( // 竖屏使用UniversalFocus
+                      onTap: () => _deleteSiteDirectly(siteId, siteName, controller, context),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey.withValues(alpha: 0.08),
+                          border: Border.all(
+                            color: Colors.grey.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    )
+                  : FocusableGlow( // 横屏使用FocusableGlow，与取消/重置按钮一致
+                      onTap: () => _deleteSiteDirectly(siteId, siteName, controller, context),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white.withValues(alpha: 0.05),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    Icons.close,
-                    size: 16,
-                    color: isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
-                  ),
-                ),
-              ),
             ],
           ],
         ),
@@ -765,7 +976,6 @@ class SettingsPage extends GetView<SettingsController> {
         content: const Text(
           '• 性能设置：根据设备性能调整特效质量\n'
           '• 播放内核：选择适合的视频播放引擎\n'
-          '• 数据源：切换在线数据或离线模拟数据\n'
           '• 智能模式：根据设备规格自动调节',
           style: TextStyle(color: Colors.black87),
         ),
@@ -873,25 +1083,44 @@ class _AddSiteDialogState extends State<_AddSiteDialog> {
     );
   }
   
-  Widget _buildDialogButton(String text, Color color, VoidCallback onPressed, FocusNode? focusNode) {
+  Widget _buildDialogButton(IconData iconData, String label, VoidCallback onPressed, FocusNode? focusNode) {
     return FocusableGlow(
       onTap: onPressed,
       focusNode: focusNode,
-      borderRadius: BorderRadius.circular(8),
-      customGlowColor: color.withValues(alpha: 0.8),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        height: widget.isPortrait ? 44 : 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+          color: widget.isPortrait 
+              ? Colors.white.withValues(alpha: 0.85)
+              : Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: widget.isPortrait
+                ? Colors.grey.withValues(alpha: 0.25)
+                : Colors.white.withValues(alpha: 0.15),
+            width: 0.2,
           ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              iconData,
+              color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+              size: widget.isPortrait ? 18 : 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: widget.isPortrait ? Colors.grey[800] : Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -969,7 +1198,13 @@ class _AddSiteDialogState extends State<_AddSiteDialog> {
                   },
                   decoration: InputDecoration(
                     labelText: '站点名称',
+                    labelStyle: TextStyle(
+                      color: widget.isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+                    ),
                     hintText: '例如：非凡资源',
+                    hintStyle: TextStyle(
+                      color: widget.isPortrait ? Colors.grey[500] : Colors.white.withValues(alpha: 0.5),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
@@ -1015,7 +1250,13 @@ class _AddSiteDialogState extends State<_AddSiteDialog> {
                   },
                   decoration: InputDecoration(
                     labelText: '站点URL',
+                    labelStyle: TextStyle(
+                      color: widget.isPortrait ? Colors.grey[600] : Colors.white.withValues(alpha: 0.7),
+                    ),
                     hintText: 'https://example.com/api.php/provide/vod',
+                    hintStyle: TextStyle(
+                      color: widget.isPortrait ? Colors.grey[500] : Colors.white.withValues(alpha: 0.5),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
@@ -1053,14 +1294,14 @@ class _AddSiteDialogState extends State<_AddSiteDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildDialogButton(
+                    Icons.close,
                     '取消',
-                    Colors.grey,
                     () => Navigator.of(context).pop(),
                     _cancelButtonFocusNode,
                   ),
                   _buildDialogButton(
+                    Icons.add,
                     '添加',
-                    const Color(0xFFFF7BB0),
                     () async {
                       final name = _nameController.text.trim();
                       final url = _urlController.text.trim();

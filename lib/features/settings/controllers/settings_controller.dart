@@ -9,15 +9,11 @@ class SettingsController extends GetxController {
   // 播放器内核设置
   final Rx<PlayerKernel> _currentPlayerKernel = PlayerKernel.videoPlayer.obs;
   
-  // 数据源设置
-  final RxBool _useMockData = false.obs;
-  
   // 默认站点设置
   final RxString _currentDefaultSite = ''.obs;
   
   // Getters
   Rx<PlayerKernel> get currentPlayerKernel => _currentPlayerKernel;
-  RxBool get useMockData => _useMockData;
   RxString get currentDefaultSite => _currentDefaultSite;
   
   @override
@@ -30,11 +26,10 @@ class SettingsController extends GetxController {
   void _loadSettings() {
     // 从AppConfig加载当前设置
     _currentPlayerKernel.value = AppConfig.currentPlayerKernel;
-    _useMockData.value = AppConfig.forceMockData;
     _currentDefaultSite.value = AppConfig.currentDefaultSiteId;
     
     if (kDebugMode) {
-      print('设置加载完成: 播放器=${_currentPlayerKernel.value}, 模拟数据=${_useMockData.value}, 默认站点=${_currentDefaultSite.value}');
+      print('设置加载完成: 播放器=${_currentPlayerKernel.value}, 默认站点=${_currentDefaultSite.value}');
     }
   }
   
@@ -45,16 +40,6 @@ class SettingsController extends GetxController {
     
     if (kDebugMode) {
       print('播放器内核已切换: $kernel');
-    }
-  }
-  
-  /// 切换模拟数据开关
-  void toggleMockData(bool useMock) {
-    _useMockData.value = useMock;
-    AppConfig.forceMockData = useMock;
-    
-    if (kDebugMode) {
-      print('数据源已切换: ${useMock ? '模拟数据' : '在线数据'}');
     }
   }
   
@@ -92,11 +77,12 @@ class SettingsController extends GetxController {
     return config?['name'] as String? ?? siteId;
   }
   
-  /// 获取所有站点（包括源站点和CMS）
+  /// 获取所有站点（包括源站点和CMS） - 响应式
   List<Map<String, dynamic>> get availableSites {
     try {
       if (Get.isRegistered<UnifiedSiteService>()) {
         final siteService = Get.find<UnifiedSiteService>();
+        // 直接访问响应式变量，确保UI能响应变化
         final sites = siteService.allSites.map((site) => {
           'id': site.id,
           'name': site.name,
@@ -130,7 +116,6 @@ class SettingsController extends GetxController {
   /// 重置所有设置为默认值
   void resetToDefaults() {
     setPlayerKernel(PlayerKernel.videoPlayer);
-    toggleMockData(false);
     setDefaultSite(AppConfig.defaultSiteId);
   }
 }

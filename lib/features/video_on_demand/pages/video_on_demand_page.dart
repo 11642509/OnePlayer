@@ -248,11 +248,45 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
         if (widget.controller.categoryData.containsKey("主页") && widget.controller.categoryData["主页"]!.isNotEmpty) {
           return _buildVideoScrollContent(widget.controller.categoryData["主页"]!);
         } else if (widget.controller.homeData.isNotEmpty && widget.controller.homeData.containsKey('list')) {
-          // 缓存首页数据 - 使用调度器避免在build期间更新
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            widget.controller.categoryData["主页"] = widget.controller.homeData['list'] as List;
-          });
-          return _buildVideoScrollContent(widget.controller.homeData['list'] as List);
+          // 安全获取首页数据
+          final homeDataList = widget.controller.homeData['list'] as List?;
+          if (homeDataList != null && homeDataList.isNotEmpty) {
+            // 缓存首页数据 - 使用调度器避免在build期间更新
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              widget.controller.categoryData["主页"] = homeDataList;
+            });
+            return _buildVideoScrollContent(homeDataList);
+          } else {
+            // 数据为空时显示提示
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.movie_outlined,
+                    size: 48,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    '暂无视频数据',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '请检查网络连接或在设置中启用模拟数据',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
         } else {
           return const Center(
             child: CircularProgressIndicator(
@@ -281,9 +315,31 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
         
         // 如果没有数据且没有在加载，显示错误或空状态
         return const Center(
-          child: Text(
-            '暂无数据',
-            style: TextStyle(color: Colors.grey),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.movie_outlined,
+                size: 48,
+                color: Colors.grey,
+              ),
+              SizedBox(height: 16),
+              Text(
+                '暂无视频数据',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '请检查网络连接或在设置中启用模拟数据',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
         );
       }
@@ -294,7 +350,34 @@ class _VideoScrollPageState extends State<VideoScrollPage> with AutomaticKeepAli
     if (videoList.isEmpty) {
       return widget.controller.isLoading.value
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF7BB0)))
-          : Center(child: Text("此分类下暂无内容", style: TextStyle(color: Colors.grey[600])));
+          : const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.movie_outlined,
+                    size: 48,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    '此分类下暂无内容',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '请尝试其他分类或稍后再试',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            );
     }
 
     final windowController = Get.find<WindowController>();

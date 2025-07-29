@@ -54,27 +54,18 @@ class UnifiedSiteService extends GetxController {
         .map((config) => UnifiedSite.fromSourceConfig(config))
         .toList();
     
-    // 加载默认CMS站点
-    final defaultCmsSites = [
-      UnifiedSite(
-        id: 'ffzyapi',
-        name: '非凡资源',
-        url: 'https://cj.ffzyapi.com/api.php/provide/vod/from/ffm3u8',
-        type: SiteType.cms,
-        iconUrl: 'https://www.example.com/favicon.ico',
-        color: '#FF9800',
-        isEnabled: true,
-      ),
-      UnifiedSite(
-        id: 'kuaibo',
-        name: '快播资源', 
-        url: 'https://www.kuaibozy.com/api.php/provide/vod',
-        type: SiteType.cms,
-        iconUrl: 'https://www.example.com/favicon.ico',
-        color: '#FF9800',
-        isEnabled: true,
-      ),
-    ];
+    // 从AppConfig加载默认CMS站点
+    final defaultCmsSites = AppConfig.defaultCmsSites
+        .map((config) => UnifiedSite(
+          id: config['id'] as String,
+          name: config['name'] as String,
+          url: config['url'] as String,
+          type: SiteType.cms,
+          iconUrl: config['iconUrl'] as String,
+          color: config['color'] as String,
+          isEnabled: config['isEnabled'] as bool,
+        ))
+        .toList();
     
     _allSites.clear();
     _allSites.addAll(sourceSites);
@@ -132,27 +123,18 @@ class UnifiedSiteService extends GetxController {
         .map((config) => UnifiedSite.fromSourceConfig(config))
         .toList();
     
-    // 加载默认CMS站点
-    final defaultCmsSites = [
-      UnifiedSite(
-        id: 'ffzyapi',
-        name: '非凡资源',
-        url: 'https://cj.ffzyapi.com/api.php/provide/vod/from/ffm3u8',
-        type: SiteType.cms,
-        iconUrl: 'https://www.example.com/favicon.ico',
-        color: '#FF9800',
-        isEnabled: true,
-      ),
-      UnifiedSite(
-        id: 'kuaibo',
-        name: '快播资源', 
-        url: 'https://www.kuaibozy.com/api.php/provide/vod',
-        type: SiteType.cms,
-        iconUrl: 'https://www.example.com/favicon.ico',
-        color: '#FF9800',
-        isEnabled: true,
-      ),
-    ];
+    // 从AppConfig加载默认CMS站点
+    final defaultCmsSites = AppConfig.defaultCmsSites
+        .map((config) => UnifiedSite(
+          id: config['id'] as String,
+          name: config['name'] as String,
+          url: config['url'] as String,
+          type: SiteType.cms,
+          iconUrl: config['iconUrl'] as String,
+          color: config['color'] as String,
+          isEnabled: config['isEnabled'] as bool,
+        ))
+        .toList();
     
     _allSites.addAll(sourceSites);
     _allSites.addAll(defaultCmsSites);
@@ -464,5 +446,35 @@ class UnifiedSiteService extends GetxController {
           .where((entry) => DateTime.now().difference(entry.value) >= _cacheExpiration)
           .length,
     };
+  }
+
+  /// 重置站点到默认配置 - 供设置页面调用
+  Future<void> resetToDefaultConfiguration() async {
+    try {
+      if (kDebugMode) {
+        print('UnifiedSiteService: 开始重置到默认配置');
+      }
+      
+      // 清除当前数据
+      _allSites.clear();
+      
+      // 清除SharedPreferences中的站点数据
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_allSitesKey);
+      await prefs.remove(_initializedKey);
+      await prefs.remove(_selectedSiteKey);
+      
+      // 重新从config.dart初始化默认站点
+      await _initializeFromConfig();
+      
+      if (kDebugMode) {
+        print('UnifiedSiteService: 重置完成，当前站点数量: ${_allSites.length}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('UnifiedSiteService: 重置配置失败: $e');
+      }
+      rethrow;
+    }
   }
 }

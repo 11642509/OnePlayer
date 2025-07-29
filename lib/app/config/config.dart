@@ -40,7 +40,7 @@ class AppConfig {
   }
   
   /// 是否使用模拟数据（当API不可用时）
-  static const bool useMockData = true;
+  static bool useMockData = false;
   
   /// 获取完整的API路径
   static String getApiPath(String endpoint) {
@@ -49,6 +49,16 @@ class AppConfig {
   
   /// 站点配置模型
   static const Map<String, Map<String, dynamic>> siteConfigs = {
+      'bilibili': {
+      'id': 'bilibili',
+      'name': 'B站',
+      'apiEndpoint': '/api/v1/bilibili',
+      'apiUrl': 'http://$serverHost:$serverPort/api/v1/bilibili',
+      'iconUrl': 'https://www.bilibili.com/favicon.ico',
+      'color': '#FF6B9D',
+      'isEnabled': true,
+      'isDefault': true,
+    },
     'ptt': {
       'id': 'ptt',
       'name': 'PTT',
@@ -57,7 +67,7 @@ class AppConfig {
       'iconUrl': 'https://www.ptt.cc/favicon.ico',
       'color': '#9C27B0',
       'isEnabled': true,
-      'isDefault': true,
+      'isDefault': false,
     },
     'jianpian': {
       'id': 'jianpian',
@@ -76,16 +86,6 @@ class AppConfig {
       'apiUrl': 'http://$serverHost:$serverPort/api/v1/yhdm',
       'iconUrl': 'https://www.yhdm.tv/favicon.ico',
       'color': '#FF5722',
-      'isEnabled': true,
-      'isDefault': false,
-    },
-    'bilibili': {
-      'id': 'bilibili',
-      'name': 'B站',
-      'apiEndpoint': '/api/v1/bilibili',
-      'apiUrl': 'http://$serverHost:$serverPort/api/v1/bilibili',
-      'iconUrl': 'https://www.bilibili.com/favicon.ico',
-      'color': '#FF6B9D',
       'isEnabled': true,
       'isDefault': false,
     },
@@ -200,5 +200,77 @@ class AppConfig {
       return _runtimeDefaultSiteId;
     }
     return defaultSiteId; // 回退到配置文件中的默认站点
+  }
+
+  /// 默认CMS站点配置
+  static const List<Map<String, dynamic>> defaultCmsSites = [
+    {
+      'id': 'ffzyapi',
+      'name': '非凡资源',
+      'url': 'https://cj.ffzyapi.com/api.php/provide/vod/from/ffm3u8',
+      'type': 'cms',
+      'iconUrl': 'https://www.example.com/favicon.ico',
+      'color': '#FF9800',
+      'isEnabled': true,
+    },
+    {
+      'id': 'kuaibo', 
+      'name': '快播资源',
+      'url': 'https://www.kuaibozy.com/api.php/provide/vod',
+      'type': 'cms',
+      'iconUrl': 'https://www.example.com/favicon.ico',
+      'color': '#4CAF50',
+      'isEnabled': true,
+    },
+    {
+      'id': 'wolongzy',
+      'name': '卧龙资源',
+      'url': 'https://collect.wolongzyw.com/api.php/provide/vod',
+      'type': 'cms',
+      'iconUrl': 'https://www.example.com/favicon.ico',
+      'color': '#2196F3',
+      'isEnabled': true,
+    },
+    {
+      'id': 'lzzy',
+      'name': '量子资源',
+      'url': 'https://cj.lziapi.com/api.php/provide/vod',
+      'type': 'cms',
+      'iconUrl': 'https://www.example.com/favicon.ico',
+      'color': '#9C27B0',
+      'isEnabled': true,
+    },
+    {
+      'id': 'bfzy',
+      'name': '暴风资源',
+      'url': 'https://bfzyapi.com/api.php/provide/vod/from/bfzym3u8',
+      'type': 'cms',
+      'iconUrl': 'https://www.example.com/favicon.ico',
+      'color': '#9C27B0',
+      'isEnabled': true,
+    },
+  ];
+
+  /// 获取所有默认站点配置（源站点 + CMS站点）
+  static List<Map<String, dynamic>> get allDefaultSites {
+    final List<Map<String, dynamic>> allSites = [];
+    
+    // 添加源站点
+    allSites.addAll(enabledSites);
+    
+    // 添加CMS站点
+    allSites.addAll(defaultCmsSites);
+    
+    return allSites;
+  }
+
+  /// 根据类型获取默认站点
+  static List<Map<String, dynamic>> getDefaultSitesByType(String type) {
+    if (type == 'cms') {
+      return defaultCmsSites;
+    } else if (type == 'source') {
+      return enabledSites;
+    }
+    return allDefaultSites;
   }
 } 

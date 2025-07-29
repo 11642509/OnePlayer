@@ -151,7 +151,7 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     
     try {
       // 检查是否强制使用mock数据
-      if (AppConfig.forceMockData) {
+      if (AppConfig.useMockData) {
         // 强制使用mock数据
         final mockData = HomeContent.getMockData();
         _processHomeData(mockData);
@@ -163,19 +163,55 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
       _processHomeData(data);
       
     } catch (e) {
-      // 如果接口调用失败，回退到使用mock数据
+      // 如果接口调用失败，根据useMockData开关决定是否使用mock数据
       if (kDebugMode) {
-        print('API调用失败，使用mock数据: $e');
+        print('API调用失败: $e');
       }
-      final mockData = HomeContent.getMockData();
-      _processHomeData(mockData);
+      
+      if (AppConfig.useMockData) {
+        if (kDebugMode) {
+          print('使用mock数据作为fallback');
+        }
+        final mockData = HomeContent.getMockData();
+        _processHomeData(mockData);
+      } else {
+        if (kDebugMode) {
+          print('useMockData=false，不使用mock数据，设置空数据状态');
+        }
+        // 不使用mock数据时，设置空数据状态
+        homeData.assignAll({'class': [], 'list': []});
+        classList.assignAll([_homeCategory]); // 只保留主页分类
+        
+        // 初始化主页的基本数据状态
+        currentPages["主页"] = 1;
+        totalPages["主页"] = 1;
+        categoryData["主页"] = [];
+        loadingMoreStates["主页"] = false;
+        hasMoreStates["主页"] = true;
+        
+        // 创建TabController，即使只有主页
+        if (tabController == null || tabController!.length != classList.length) {
+          tabController?.dispose();
+          tabController = TabController(length: classList.length, vsync: this);
+          tabController?.addListener(_onTabChanged);
+        }
+        
+        isLoading.value = false;
+      }
     }
   }
   
   // 处理首页数据
   void _processHomeData(Map<String, dynamic> data) {
     homeData.assignAll(data);
-    classList.assignAll([_homeCategory, ...(data['class'] as List)]);
+    
+    // 安全处理class数据，如果为空则只显示主页
+    final classData = data['class'] as List?;
+    if (classData != null && classData.isNotEmpty) {
+      classList.assignAll([_homeCategory, ...classData]);
+    } else {
+      classList.assignAll([_homeCategory]);
+    }
     
     // 初始化每个分类的页码和数据状态
     for (var category in classList) {
@@ -194,8 +230,10 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
     }
     
     // 缓存首页数据
-    if (homeData.containsKey('list')) {
+    if (homeData.containsKey('list') && homeData['list'] is List) {
       categoryData["主页"] = homeData['list'] as List;
+    } else {
+      categoryData["主页"] = [];
     }
     
     // 只有当TabController不存在或长度不匹配时才创建新的
@@ -292,7 +330,7 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
   // 内部实际获取数据的方法
   Future<Map<String, dynamic>> _fetchCategoryDataInternal(String typeId, String displayName, int page) async {
     // 检查是否强制使用mock数据
-    if (AppConfig.forceMockData) {
+    if (AppConfig.useMockData) {
       final mockData = CategoryContent.getMockData(typeId, page: page);
       
       _updateDataAndPages(displayName, mockData, isLoadMore: page > 1);
@@ -306,12 +344,31 @@ class VodController extends GetxController with GetTickerProviderStateMixin {
       return data;
     } catch (e) {
       if (kDebugMode) {
-        print('分类API调用失败，使用mock数据: $e');
+        print('分类API调用失败: $e');
       }
-      // 如果API调用失败，回退到使用mock数据
-      final mockData = CategoryContent.getMockData(typeId, page: page);
-      _updateDataAndPages(displayName, mockData, isLoadMore: page > 1);
-      return mockData;
+      
+      if (AppConfig.useMockData) {
+        if (kDebugMode) {
+          print('使用分类mock数据作为fallback');
+        }
+        // 如果API调用失败，根据useMockData开关决定是否使用mock数据
+        final mockData = CategoryContent.getMockData(typeId, page: page);
+        _updateDataAndPages(displayName, mockData, isLoadMore: page > 1);
+        return mockData;
+      } else {
+        if (kDebugMode) {
+          print('useMockData=false，不使用分类mock数据，返回空数据');
+        }
+        // 不使用mock数据时，返回空数据结构
+        final emptyData = {
+          'list': [],
+          'pagecount': 1,
+          'total': 0,
+        };
+        
+        _updateDataAndPages(displayName, emptyData, isLoadMore: page > 1);
+        return emptyData;
+      }
     }
   }
   

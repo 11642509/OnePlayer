@@ -86,20 +86,22 @@ class _HomeSelectionState extends State<HomeSelection> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withAlpha(77),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          classList[0]['type_name'] as String,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
+                      // 只有当classList不为空时才显示版本标识
+                      if (classList.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withAlpha(77),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            classList[0]['type_name'] as String,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 6), // 减少间距
